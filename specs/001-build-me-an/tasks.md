@@ -127,11 +127,11 @@ Single Next.js project structure:
 
 ### Repository Layer (Data Access)
 
-- [ ] T047 [P] Create MerchantRepository interface in src/data/interfaces/MerchantRepository.ts
-- [ ] T048 [P] Create MenuRepository interface in src/data/interfaces/MenuRepository.ts
-- [ ] T049 [P] Create OrderRepository interface in src/data/interfaces/OrderRepository.ts
-- [ ] T050 [P] Create SessionRepository interface in src/data/interfaces/SessionRepository.ts
-- [ ] T051 [P] Implement MerchantRepository with cursor pagination in src/data/repositories/MerchantRepository.ts
+- [x] T047 [P] Create MerchantRepository interface in src/data/interfaces/MerchantRepository.ts
+- [x] T048 [P] Create MenuRepository interface in src/data/interfaces/MenuRepository.ts
+- [x] T049 [P] Create OrderRepository interface in src/data/interfaces/OrderRepository.ts
+- [x] T050 [P] Create SessionRepository interface in src/data/interfaces/SessionRepository.ts
+- [x] T051 [P] Implement MerchantRepository with cursor pagination in src/data/repositories/MerchantRepository.ts
 - [ ] T052 [P] Implement MenuRepository with cursor pagination in src/data/repositories/MenuRepository.ts
 - [ ] T053 [P] Implement OrderRepository with cursor pagination in src/data/repositories/OrderRepository.ts
 - [ ] T054 [P] Implement SessionRepository in src/data/repositories/SessionRepository.ts
@@ -151,13 +151,13 @@ Single Next.js project structure:
 
 - [ ] T063 [P] Create file upload utilities with Multer config in src/lib/upload.ts
 - [ ] T064 [P] Create image processing utilities with Sharp in src/lib/image.ts
-- [ ] T065 [P] Create WhatsApp URL generation utilities in src/lib/whatsapp.ts
-- [ ] T066 [P] Create input validation schemas in src/lib/validation.ts
-- [ ] T067 [P] Create currency formatting utilities for IDR in src/lib/utils.ts
+- [x] T065 [P] Create WhatsApp URL generation utilities in src/lib/whatsapp.ts
+- [x] T066 [P] Create input validation schemas in src/lib/validation.ts
+- [x] T067 [P] Create currency formatting utilities for IDR in src/lib/utils.ts
 
 ### API Routes - Authentication
 
-- [ ] T068 Implement POST /api/merchants/register in src/app/api/merchants/register/route.ts
+- [x] T068 Implement POST /api/merchants/register in src/app/api/merchants/register/route.ts
 - [ ] T069 Implement POST /api/merchants/login in src/app/api/merchants/login/route.ts
 - [ ] T070 Implement GET /api/merchants/profile in src/app/api/merchants/profile/route.ts
 - [ ] T071 Implement PUT /api/merchants/profile in src/app/api/merchants/profile/route.ts

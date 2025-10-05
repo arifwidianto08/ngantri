@@ -7,7 +7,7 @@ const createJestConfig = nextJest({
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {
-  setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
+  setupFilesAfterEnv: ["<rootDir>/tests/setup.js"],
   testEnvironment: "jest-environment-node",
   testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
   collectCoverageFrom: [
@@ -25,7 +25,7 @@ const customJestConfig = {
     },
   },
   globals: {
-    fetch: {},
+    fetch: global.fetch,
   },
 };
 
