@@ -1,6 +1,7 @@
 /**
  * Currency utilities for Indonesian Rupiah (IDR)
- * All prices are stored as integers (cents) in the database
+ * All prices are stored as integers (whole rupiah) in the database
+ * IDR does not have fractional parts (no cents)
  */
 
 // Currency configuration for IDR
@@ -9,71 +10,66 @@ export const CURRENCY_CONFIG = {
   symbol: "Rp",
   name: "Indonesian Rupiah",
   locale: "id-ID",
-  // Minimum order values
-  minimumOrderAmount: 500000, // Rp 5,000 in cents
-  minimumItemPrice: 100000, // Rp 1,000 in cents
+  // No minimum order requirement
+  minimumOrderAmount: 0, // No minimum order
+  minimumItemPrice: 0, // No minimum item price
   // Maximum values for validation
-  maximumOrderAmount: 10000000000, // Rp 100,000,000 in cents
-  maximumItemPrice: 5000000000, // Rp 50,000,000 in cents
+  maximumOrderAmount: 100000000, // Rp 100,000,000
+  maximumItemPrice: 50000000, // Rp 50,000,000
 } as const;
 
 /**
- * Convert rupiah amount from cents (database integer) to rupiah
- * @param cents - Amount in cents (database integer)
- * @returns Amount in rupiah
- * @example formatFromCents(150000) // returns 1500 (Rp 1,500)
+ * Convert rupiah amount (already whole numbers, no conversion needed)
+ * @param amount - Amount in rupiah
+ * @returns Amount in rupiah (same value)
+ * @example formatFromCents(1500) // returns 1500 (Rp 1,500)
  */
-export const formatFromCents = (cents: number): number => {
-  return Math.round(cents / 100);
+export const formatFromCents = (amount: number): number => {
+  return Math.round(amount);
 };
 
 /**
- * Convert rupiah amount to cents for database storage
+ * Store rupiah amount (no conversion needed for IDR)
  * @param rupiah - Amount in rupiah
- * @returns Amount in cents (database integer)
- * @example formatToCents(1500) // returns 150000 (stored as 150000 cents)
+ * @returns Amount in rupiah (same value)
+ * @example formatToCents(1500) // returns 1500 (stored as 1500)
  */
 export const formatToCents = (rupiah: number): number => {
-  return Math.round(rupiah * 100);
+  return Math.round(rupiah);
 };
 
 /**
  * Format currency amount for display with proper Indonesian formatting
- * @param cents - Amount in cents (database integer)
+ * @param amount - Amount in rupiah
  * @param options - Formatting options
  * @returns Formatted currency string
- * @example formatCurrency(150000) // returns "Rp 1.500"
+ * @example formatCurrency(1500) // returns "Rp 1.500"
  */
 export const formatCurrency = (
-  cents: number,
+  amount: number,
   options: {
     showSymbol?: boolean;
-    showDecimals?: boolean;
     locale?: string;
   } = {}
 ): string => {
-  const {
-    showSymbol = true,
-    showDecimals = false,
-    locale = CURRENCY_CONFIG.locale,
-  } = options;
+  const { showSymbol = true, locale = CURRENCY_CONFIG.locale } = options;
 
-  const rupiah = formatFromCents(cents);
+  const rupiah = formatFromCents(amount);
 
-  // Use Indonesian number formatting
+  // Use Indonesian number formatting (no decimals for IDR)
   const formatted = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: showDecimals ? 2 : 0,
-    maximumFractionDigits: showDecimals ? 2 : 0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(rupiah);
 
   return showSymbol ? `${CURRENCY_CONFIG.symbol} ${formatted}` : formatted;
 };
 
 /**
- * Parse currency string to cents (for database storage)
+ * Parse currency string to rupiah amount
  * @param currencyString - Currency string (e.g., "Rp 1.500", "1500", "1,500")
- * @returns Amount in cents or null if invalid
- * @example parseCurrencyToCents("Rp 1.500") // returns 150000
+ * @returns Amount in rupiah or null if invalid
+ * @example parseCurrencyToCents("Rp 1.500") // returns 1500
  */
 export const parseCurrencyToCents = (currencyString: string): number | null => {
   if (!currencyString || typeof currencyString !== "string") {
@@ -98,50 +94,39 @@ export const parseCurrencyToCents = (currencyString: string): number | null => {
 
 /**
  * Validate currency amount
- * @param cents - Amount in cents
+ * @param amount - Amount in rupiah
  * @param type - Type of validation (item, order)
  * @returns Validation result
  */
 export const validateCurrencyAmount = (
-  cents: number,
+  amount: number,
   type: "item" | "order" = "item"
 ): {
   valid: boolean;
   error?: string;
   formattedAmount?: string;
 } => {
-  if (typeof cents !== "number" || isNaN(cents)) {
+  if (typeof amount !== "number" || isNaN(amount)) {
     return {
       valid: false,
       error: "Invalid amount format",
     };
   }
 
-  if (cents < 0) {
+  if (amount < 0) {
     return {
       valid: false,
       error: "Amount cannot be negative",
     };
   }
 
-  const minAmount =
-    type === "item"
-      ? CURRENCY_CONFIG.minimumItemPrice
-      : CURRENCY_CONFIG.minimumOrderAmount;
-
+  // No minimum requirements for IDR
   const maxAmount =
     type === "item"
       ? CURRENCY_CONFIG.maximumItemPrice
       : CURRENCY_CONFIG.maximumOrderAmount;
 
-  if (cents < minAmount) {
-    return {
-      valid: false,
-      error: `Minimum ${type} amount is ${formatCurrency(minAmount)}`,
-    };
-  }
-
-  if (cents > maxAmount) {
+  if (amount > maxAmount) {
     return {
       valid: false,
       error: `Maximum ${type} amount is ${formatCurrency(maxAmount)}`,
@@ -150,103 +135,104 @@ export const validateCurrencyAmount = (
 
   return {
     valid: true,
-    formattedAmount: formatCurrency(cents),
+    formattedAmount: formatCurrency(amount),
   };
 };
 
 /**
  * Calculate percentage of amount
- * @param cents - Base amount in cents
+ * @param amount - Base amount in rupiah
  * @param percentage - Percentage to calculate
- * @returns Calculated amount in cents
- * @example calculatePercentage(100000, 10) // returns 10000 (10% of Rp 1,000)
+ * @returns Calculated amount in rupiah
+ * @example calculatePercentage(1000, 10) // returns 100 (10% of Rp 1,000)
  */
 export const calculatePercentage = (
-  cents: number,
+  amount: number,
   percentage: number
 ): number => {
-  return Math.round((cents * percentage) / 100);
+  return Math.round((amount * percentage) / 100);
 };
 
 /**
  * Calculate tax amount (typically PPN 11% in Indonesia)
- * @param cents - Base amount in cents
+ * @param amount - Base amount in rupiah
  * @param taxRate - Tax rate (default 11% for Indonesian PPN)
- * @returns Tax amount in cents
+ * @returns Tax amount in rupiah
  */
-export const calculateTax = (cents: number, taxRate: number = 11): number => {
-  return calculatePercentage(cents, taxRate);
+export const calculateTax = (amount: number, taxRate: number = 11): number => {
+  return calculatePercentage(amount, taxRate);
 };
 
 /**
  * Calculate total with tax
- * @param cents - Base amount in cents
+ * @param amount - Base amount in rupiah
  * @param taxRate - Tax rate (default 11% for Indonesian PPN)
- * @returns Total amount including tax in cents
+ * @returns Total amount including tax in rupiah
  */
 export const calculateTotalWithTax = (
-  cents: number,
+  amount: number,
   taxRate: number = 11
 ): number => {
-  const tax = calculateTax(cents, taxRate);
-  return cents + tax;
+  const tax = calculateTax(amount, taxRate);
+  return amount + tax;
 };
 
 /**
  * Calculate order total from items
- * @param items - Array of items with quantity and price
+ * @param items - Array of items with quantity and price in rupiah
  * @returns Order calculation details
  */
 export const calculateOrderTotal = (
-  items: Array<{ quantity: number; priceInCents: number }>
+  items: Array<{ quantity: number; unitPrice: number }>
 ): {
-  subtotalInCents: number;
-  taxInCents: number;
-  totalInCents: number;
+  subtotalAmount: number;
+  taxAmount: number;
+  totalAmount: number;
   formattedSubtotal: string;
   formattedTax: string;
   formattedTotal: string;
 } => {
-  const subtotalInCents = items.reduce(
-    (sum, item) => sum + item.quantity * item.priceInCents,
+  const subtotalAmount = items.reduce(
+    (sum, item) => sum + item.quantity * item.unitPrice,
     0
   );
 
-  const taxInCents = calculateTax(subtotalInCents);
-  const totalInCents = subtotalInCents + taxInCents;
+  // For food court orders, typically no tax is applied to simplify
+  const taxAmount = 0; // calculateTax(subtotalAmount);
+  const totalAmount = subtotalAmount + taxAmount;
 
   return {
-    subtotalInCents,
-    taxInCents,
-    totalInCents,
-    formattedSubtotal: formatCurrency(subtotalInCents),
-    formattedTax: formatCurrency(taxInCents),
-    formattedTotal: formatCurrency(totalInCents),
+    subtotalAmount,
+    taxAmount,
+    totalAmount,
+    formattedSubtotal: formatCurrency(subtotalAmount),
+    formattedTax: formatCurrency(taxAmount),
+    formattedTotal: formatCurrency(totalAmount),
   };
 };
 
 /**
  * Format currency for input fields (without symbol)
- * @param cents - Amount in cents
+ * @param amount - Amount in rupiah
  * @returns Formatted string for input fields
- * @example formatCurrencyInput(150000) // returns "1.500"
+ * @example formatCurrencyInput(1500) // returns "1.500"
  */
-export const formatCurrencyInput = (cents: number): string => {
-  return formatCurrency(cents, { showSymbol: false });
+export const formatCurrencyInput = (amount: number): string => {
+  return formatCurrency(amount, { showSymbol: false });
 };
 
 /**
- * Check if amount meets minimum order requirement
- * @param cents - Amount in cents
- * @returns Boolean indicating if minimum is met
+ * Check if amount meets minimum order requirement (no minimum for food court)
+ * @param amount - Amount in rupiah
+ * @returns Boolean indicating if minimum is met (always true)
  */
-export const meetsMinimumOrder = (cents: number): boolean => {
-  return cents >= CURRENCY_CONFIG.minimumOrderAmount;
+export const meetsMinimumOrder = (amount: number): boolean => {
+  return amount >= CURRENCY_CONFIG.minimumOrderAmount; // Always true since minimum is 0
 };
 
 /**
  * Get minimum order amount in readable format
- * @returns Formatted minimum order amount
+ * @returns Formatted minimum order amount (no minimum)
  */
 export const getMinimumOrderAmount = (): string => {
   return formatCurrency(CURRENCY_CONFIG.minimumOrderAmount);
@@ -255,10 +241,10 @@ export const getMinimumOrderAmount = (): string => {
 /**
  * Round amount to nearest valid Indonesian currency amount
  * In Indonesia, smallest denomination is Rp 100, so round to nearest 100
- * @param cents - Amount in cents
- * @returns Rounded amount in cents
+ * @param amount - Amount in rupiah
+ * @returns Rounded amount in rupiah
  */
-export const roundCurrencyAmount = (cents: number): number => {
-  // Round to nearest Rp 100 (10000 cents)
-  return Math.round(cents / 10000) * 10000;
+export const roundCurrencyAmount = (amount: number): number => {
+  // Round to nearest Rp 100
+  return Math.round(amount / 100) * 100;
 };

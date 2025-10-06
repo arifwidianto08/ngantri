@@ -11,7 +11,7 @@ import {
   buildPaginatedResult,
 } from "../lib/pagination";
 import { AppError, errors } from "../lib/errors";
-import { calculateOrderTotal, meetsMinimumOrder } from "../lib/currency";
+import { calculateOrderTotal } from "../lib/currency";
 
 // Service-specific types
 export interface OrderItemData {
@@ -106,25 +106,17 @@ export class OrderService implements IOrderService {
     const calculation = calculateOrderTotal(
       data.items.map((item) => ({
         quantity: item.quantity,
-        priceInCents: item.unitPrice,
+        unitPrice: item.unitPrice,
       }))
     );
 
-    // Check minimum order requirement
-    if (!meetsMinimumOrder(calculation.totalInCents)) {
-      throw errors.minimumOrderNotMet(
-        calculation.formattedTotal,
-        calculation.formattedSubtotal
-      );
-    }
-
-    // Create order
+    // Create order (no minimum order requirement)
     const orderData: NewOrder = {
       sessionId: data.sessionId,
       merchantId: data.merchantId,
       customerName: data.customerName || null,
       customerPhone: data.customerPhone || null,
-      totalAmount: calculation.totalInCents,
+      totalAmount: calculation.totalAmount,
       status: "pending",
       notes: data.notes || null,
     };
@@ -219,7 +211,7 @@ export class OrderService implements IOrderService {
     // Validate status
     const validStatuses = [
       "pending",
-      "confirmed",
+      "accepted",
       "preparing",
       "ready",
       "completed",
