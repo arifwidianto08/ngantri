@@ -1,0 +1,804 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { getOrCreateBuyerSession, updateSessionTableNumber, BuyerSession } from "../lib/session";
+import { getOrCreateCart, addToCart, Cart, CartItem, loadCartFromServer } from "../lib/cart";
+
+interface Merchant {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  isAvailable: boolean;
+}
+
+interface MenuCategory {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+interface MenuItem {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  imageUrl?: string;
+  isAvailable: boolean;
+  categoryId: string;
+  merchantId: string;
+}
+
+export default function Home() {
+  const [session, setSession] = useState<BuyerSession | null>(null);
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [tableNumber, setTableNumber] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+
+  // Initialize session and cart on component mount
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Get or create buyer session
+        const buyerSession = await getOrCreateBuyerSession();
+        setSession(buyerSession);
+
+        // Initialize cart
+        const buyerCart = await getOrCreateCart(buyerSession.id);
+        setCart(buyerCart);
+
+        // Load merchants
+        const response = await fetch("/api/merchants");
+        const result = await response.json();
+        if (result.success) {
+          setMerchants(result.data.merchants);
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error("Error initializing app:", error);
+        setLoading(false);
+      }
+    };
+
+    initializeApp();
+  }, []);
+
+  // Load menu items when merchant is selected
+  useEffect(() => {
+    const loadMenuItems = async () => {
+      if (!selectedMerchant) {
+        setMenuItems([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/merchants/${selectedMerchant.id}/menus`);
+        const result = await response.json();
+        if (result.success) {
+          setMenuItems(result.data.menus || []);
+        }
+      } catch (error) {
+        console.error("Error loading menu items:", error);
+      }
+    };
+
+    loadMenuItems();
+  }, [selectedMerchant]);
+
+  const handleTableNumberUpdate = async () => {
+    if (!session || !tableNumber || tableNumber.trim() === "") {
+      alert("Please enter a valid table number");
+      return;
+    }
+
+    try {
+      const updatedSession = await updateSessionTableNumber(session.id, parseInt(tableNumber));
+      setSession(updatedSession);
+      alert("Table number updated successfully!");
+    } catch (error) {
+      console.error("Error updating table number:", error);
+      alert("Failed to update table number");
+    }
+  };
+
+  const handleAddToCart = async (menuItem: MenuItem) => {
+    if (!session || !cart) {
+      alert("Session not initialized");
+      return;
+    }
+
+    try {
+      const updatedCart = await addToCart(cart, {
+        menuId: menuItem.id,
+        name: menuItem.name,
+        price: menuItem.price,
+        quantity: 1,
+        imageUrl: menuItem.imageUrl || null,
+      });
+      setCart(updatedCart);
+      alert(`${menuItem.name} added to cart!`);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      alert("Failed to add item to cart");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-4xl mx-auto">
+        <header className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">ngantri - Food Court Ordering</h1>
+          
+          {/* Session Info */}
+          <div className="bg-gray-50 p-4 rounded-lg mb-4">
+            <p className="text-sm text-gray-600">
+              Session ID: <span className="font-mono">{session?.id}</span>
+            </p>
+            {session?.tableNumber && (
+              <p className="text-sm text-gray-600">
+                Table Number: <span className="font-semibold">{session.tableNumber}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Table Number Input */}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Table Number
+              </label>
+              <input
+                type="number"
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                placeholder="Enter your table number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <button
+              onClick={handleTableNumberUpdate}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
+            >
+              Update Table
+            </button>
+          </div>
+        </header>
+
+        {/* Cart Summary */}
+        {cart && cart.items.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Cart ({cart.items.length} items)</h2>
+            <div className="space-y-2">
+              {cart.items.map((item) => (
+                <div key={item.menuId} className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div>
+                    <span className="font-medium">{item.name}</span>
+                    <span className="text-gray-500 ml-2">×{item.quantity}</span>
+                  </div>
+                  <span className="font-semibold">
+                    Rp {(item.price * item.quantity).toLocaleString("id-ID")}
+                  </span>
+                </div>
+              ))}
+              <div className="flex justify-between items-center pt-2 font-semibold text-lg">
+                <span>Total:</span>
+                <span>Rp {cart.total.toLocaleString("id-ID")}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Merchants List */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Choose a Merchant</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {merchants.map((merchant) => (
+              <button
+                key={merchant.id}
+                onClick={() => setSelectedMerchant(merchant)}
+                className={`p-4 rounded-lg border-2 transition-colors text-left ${
+                  selectedMerchant?.id === merchant.id
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <h3 className="font-semibold text-gray-900">{merchant.name}</h3>
+                {merchant.description && (
+                  <p className="text-sm text-gray-600 mt-1">{merchant.description}</p>
+                )}
+                <div className="mt-2">
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      merchant.isAvailable
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {merchant.isAvailable ? "Available" : "Closed"}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Menu Items */}
+        {selectedMerchant && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Menu - {selectedMerchant.name}
+            </h2>
+            
+            {menuItems.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">
+                No menu items available for this merchant.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {menuItems.map((item) => (
+                  <div key={item.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                    {item.imageUrl && (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-48 object-cover"
+                      />
+                    )}
+                    <div className="p-4">
+                      <h3 className="font-semibold text-gray-900 mb-2">{item.name}</h3>
+                      {item.description && (
+                        <p className="text-sm text-gray-600 mb-3">{item.description}</p>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-bold text-gray-900">
+                          Rp {item.price.toLocaleString("id-ID")}
+                        </span>
+                        <button
+                          onClick={() => handleAddToCart(item)}
+                          disabled={!item.isAvailable}
+                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                            item.isAvailable
+                              ? "bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          }`}
+                        >
+                          {item.isAvailable ? "Add to Cart" : "Unavailable"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+  name: string;          src="/next.svg"
+
+  description?: string;          alt="Next.js logo"
+
+  imageUrl?: string;          width={180}
+
+  isAvailable: boolean;          height={38}
+
+  merchantNumber: number;          priority
+
+}        />
+
+        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
+
+interface MenuCategory {          <li className="mb-2 tracking-[-.01em]">
+
+  id: string;            Get started by editing{" "}
+
+  name: string;            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
+
+  merchantId: string;              src/app/page.tsx
+
+}            </code>
+
+            .
+
+interface MenuItem {          </li>
+
+  id: string;          <li className="tracking-[-.01em]">
+
+  name: string;            Save and see your changes instantly.
+
+  description?: string;          </li>
+
+  price: number;        </ol>
+
+  imageUrl?: string;
+
+  isAvailable: boolean;        <div className="flex gap-4 items-center flex-col sm:flex-row">
+
+  categoryId: string;          <a
+
+  merchantId: string;            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
+
+}            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+
+            target="_blank"
+
+export default function BuyerInterface() {            rel="noopener noreferrer"
+
+  const [session, setSession] = useState<BuyerSession | null>(null);          >
+
+  const [cart, setCart] = useState<Cart | null>(null);            <Image
+
+  const [merchants, setMerchants] = useState<Merchant[]>([]);              className="dark:invert"
+
+  const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null);              src="/vercel.svg"
+
+  const [categories, setCategories] = useState<MenuCategory[]>([]);              alt="Vercel logomark"
+
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);              width={20}
+
+  const [loading, setLoading] = useState(true);              height={20}
+
+  const [tableNumber, setTableNumber] = useState<string>("");            />
+
+  const [showCart, setShowCart] = useState(false);            Deploy now
+
+          </a>
+
+  // Initialize session and cart on component mount          <a
+
+  useEffect(() => {            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
+
+    initializeBuyerSession();            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+
+  }, []);            target="_blank"
+
+            rel="noopener noreferrer"
+
+  // Load merchants on session ready          >
+
+  useEffect(() => {            Read our docs
+
+    if (session) {          </a>
+
+      loadMerchants();        </div>
+
+      loadCartFromServer().then(setCart);      </main>
+
+    }      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
+
+  }, [session]);        <a
+
+          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+
+  // Load menu when merchant is selected          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+
+  useEffect(() => {          target="_blank"
+
+    if (selectedMerchant) {          rel="noopener noreferrer"
+
+      loadMerchantMenu(selectedMerchant.id);        >
+
+    }          <Image
+
+  }, [selectedMerchant]);            aria-hidden
+
+            src="/file.svg"
+
+  const initializeBuyerSession = async () => {            alt="File icon"
+
+    setLoading(true);            width={16}
+
+    try {            height={16}
+
+      const buyerSession = await getOrCreateBuyerSession();          />
+
+      if (buyerSession) {          Learn
+
+        setSession(buyerSession);        </a>
+
+        setTableNumber(buyerSession.tableNumber?.toString() || "");        <a
+
+                  className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+
+        const buyerCart = getOrCreateCart();          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+
+        setCart(buyerCart);          target="_blank"
+
+      }          rel="noopener noreferrer"
+
+    } catch (error) {        >
+
+      console.error("Failed to initialize buyer session:", error);          <Image
+
+    } finally {            aria-hidden
+
+      setLoading(false);            src="/window.svg"
+
+    }            alt="Window icon"
+
+  };            width={16}
+
+            height={16}
+
+  const loadMerchants = async () => {          />
+
+    try {          Examples
+
+      // For demo purposes, we'll use the seeded merchants        </a>
+
+      const mockMerchants: Merchant[] = [        <a
+
+        {          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
+
+          id: "mock-merchant-1",          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+
+          name: "Warung Nasi Padang Sederhana",          target="_blank"
+
+          description: "Authentic Padang cuisine with rich flavors",          rel="noopener noreferrer"
+
+          imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=300",        >
+
+          isAvailable: true,          <Image
+
+          merchantNumber: 1,            aria-hidden
+
+        },            src="/globe.svg"
+
+        {            alt="Globe icon"
+
+          id: "mock-merchant-2",             width={16}
+
+          name: "Bakso Malang Mas Yanto",            height={16}
+
+          description: "Famous Malang meatball soup",          />
+
+          imageUrl: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=300",          Go to nextjs.org →
+
+          isAvailable: true,        </a>
+
+          merchantNumber: 2,      </footer>
+
+        },    </div>
+
+      ];  );
+
+      setMerchants(mockMerchants);}
+
+    } catch (error) {
+      console.error("Error loading merchants:", error);
+    }
+  };
+
+  const loadMerchantMenu = async (merchantId: string) => {
+    try {
+      // Mock menu data based on our seeded data
+      const mockCategories: MenuCategory[] = [
+        { id: "cat-1", name: "Nasi & Lauk", merchantId },
+        { id: "cat-2", name: "Minuman", merchantId },
+      ];
+
+      const mockMenuItems: MenuItem[] = merchantId === "mock-merchant-1" ? [
+        {
+          id: "menu-1",
+          name: "Nasi Rendang",
+          description: "Nasi putih dengan rendang daging sapi yang gurih dan pedas",
+          price: 35000,
+          imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=300",
+          isAvailable: true,
+          categoryId: "cat-1",
+          merchantId,
+        },
+        {
+          id: "menu-2",
+          name: "Nasi Gulai Ayam",
+          description: "Nasi dengan gulai ayam bumbu rempah khas Padang",
+          price: 28000,
+          isAvailable: true,
+          categoryId: "cat-1", 
+          merchantId,
+        },
+        {
+          id: "menu-3",
+          name: "Es Teh Manis",
+          description: "Teh manis dingin segar",
+          price: 8000,
+          isAvailable: true,
+          categoryId: "cat-2",
+          merchantId,
+        },
+      ] : [
+        {
+          id: "menu-4",
+          name: "Bakso Jumbo",
+          description: "Bakso besar dengan kuah kaldu sapi dan mie",
+          price: 25000,
+          imageUrl: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=300",
+          isAvailable: true,
+          categoryId: "cat-1",
+          merchantId,
+        },
+        {
+          id: "menu-5",
+          name: "Bakso Urat", 
+          description: "Bakso dengan urat sapi dan tahu goreng",
+          price: 22000,
+          isAvailable: true,
+          categoryId: "cat-1",
+          merchantId,
+        },
+        {
+          id: "menu-6",
+          name: "Es Jeruk",
+          description: "Jus jeruk segar dengan es batu",
+          price: 12000,
+          isAvailable: true,
+          categoryId: "cat-2",
+          merchantId,
+        },
+      ];
+
+      setCategories(mockCategories);
+      setMenuItems(mockMenuItems);
+    } catch (error) {
+      console.error("Error loading menu:", error);
+    }
+  };
+
+  const handleUpdateTableNumber = async () => {
+    if (!tableNumber || !session) return;
+
+    const success = await updateSessionTableNumber(parseInt(tableNumber));
+    if (success) {
+      setSession({ ...session, tableNumber: parseInt(tableNumber) });
+      alert("Table number updated successfully!");
+    } else {
+      alert("Failed to update table number");
+    }
+  };
+
+  const handleAddToCart = async (menuItem: MenuItem) => {
+    if (!selectedMerchant) return;
+
+    const updatedCart = await addToCart(
+      menuItem.id,
+      menuItem.name,
+      selectedMerchant.id,
+      selectedMerchant.name,
+      menuItem.price,
+      1,
+      undefined,
+      menuItem.imageUrl
+    );
+
+    if (updatedCart) {
+      setCart(updatedCart);
+      alert(`${menuItem.name} added to cart!`);
+    } else {
+      alert("Failed to add item to cart");
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initializing your session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center p-8">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Session Error</h1>
+          <p className="text-gray-600 mb-4">Failed to create buyer session</p>
+          <button 
+            onClick={initializeBuyerSession}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto p-4 space-y-6">
+      {/* Header */}
+      <header className="bg-white shadow-sm rounded-lg p-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">🍽️ Ngantri Food Court</h1>
+            <p className="text-gray-600 mt-1">Session: {session.id.slice(-8)}</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <input
+                type="number"
+                placeholder="Table number"
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                className="border rounded px-3 py-1 w-24 text-sm"
+              />
+              <button
+                onClick={handleUpdateTableNumber}
+                className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
+              >
+                Set Table
+              </button>
+            </div>
+            <button
+              onClick={() => setShowCart(!showCart)}
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 relative"
+            >
+              🛒 Cart ({cart?.totalItems || 0})
+              {cart && cart.totalItems > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {cart.totalItems}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Cart Sidebar */}
+      {showCart && (
+        <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-lg z-50 p-6 overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Your Cart</h2>
+            <button
+              onClick={() => setShowCart(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+          
+          {cart && cart.items.length > 0 ? (
+            <div className="space-y-4">
+              {cart.items.map((item) => (
+                <div key={item.id} className="border-b pb-4">
+                  <h3 className="font-medium">{item.menuName}</h3>
+                  <p className="text-sm text-gray-600">{item.merchantName}</p>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-sm">Qty: {item.quantity}</span>
+                    <span className="font-medium">{formatCurrency(item.totalPrice)}</span>
+                  </div>
+                </div>
+              ))}
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center text-lg font-bold">
+                  <span>Total:</span>
+                  <span>{formatCurrency(cart.totalAmount)}</span>
+                </div>
+                <button className="w-full bg-blue-500 text-white py-2 rounded mt-4 hover:bg-blue-600">
+                  Proceed to Checkout
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">Your cart is empty</p>
+          )}
+        </div>
+      )}
+
+      {/* Merchant Selection */}
+      {!selectedMerchant && (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-2xl font-bold mb-4">Choose a Merchant</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {merchants.map((merchant) => (
+              <div
+                key={merchant.id}
+                onClick={() => setSelectedMerchant(merchant)}
+                className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+              >
+                {merchant.imageUrl && (
+                  <img
+                    src={merchant.imageUrl}
+                    alt={merchant.name}
+                    className="w-full h-32 object-cover rounded mb-3"
+                  />
+                )}
+                <h3 className="font-bold text-lg">{merchant.name}</h3>
+                {merchant.description && (
+                  <p className="text-gray-600 text-sm mt-1">{merchant.description}</p>
+                )}
+                <div className="mt-2">
+                  <span className={`inline-block px-2 py-1 rounded text-xs ${
+                    merchant.isAvailable 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {merchant.isAvailable ? 'Available' : 'Closed'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Menu Display */}
+      {selectedMerchant && (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">{selectedMerchant.name}</h2>
+            <button
+              onClick={() => setSelectedMerchant(null)}
+              className="text-blue-500 hover:text-blue-700"
+            >
+              ← Back to Merchants
+            </button>
+          </div>
+
+          {categories.map((category) => (
+            <div key={category.id} className="mb-8">
+              <h3 className="text-xl font-semibold mb-4 border-b pb-2">{category.name}</h3>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {menuItems
+                  .filter(item => item.categoryId === category.id)
+                  .map((item) => (
+                    <div key={item.id} className="border rounded-lg p-4">
+                      {item.imageUrl && (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="w-full h-32 object-cover rounded mb-3"
+                        />
+                      )}
+                      <h4 className="font-bold">{item.name}</h4>
+                      {item.description && (
+                        <p className="text-gray-600 text-sm mt-1">{item.description}</p>
+                      )}
+                      <div className="flex justify-between items-center mt-3">
+                        <span className="text-lg font-bold text-green-600">
+                          {formatCurrency(item.price)}
+                        </span>
+                        <button
+                          onClick={() => handleAddToCart(item)}
+                          disabled={!item.isAvailable}
+                          className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 disabled:bg-gray-300"
+                        >
+                          {item.isAvailable ? 'Add to Cart' : 'Unavailable'}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                }
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
