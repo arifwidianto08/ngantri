@@ -1,5 +1,5 @@
 CREATE TABLE "buyer_sessions" (
-	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v7() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"table_number" integer,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE "buyer_sessions" (
 );
 --> statement-breakpoint
 CREATE TABLE "cart_items" (
-	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v7() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"session_id" uuid NOT NULL,
 	"merchant_id" uuid NOT NULL,
 	"menu_id" uuid NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE "cart_items" (
 );
 --> statement-breakpoint
 CREATE TABLE "menu_categories" (
-	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v7() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"merchant_id" uuid NOT NULL,
 	"name" varchar(100) NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE "menu_categories" (
 );
 --> statement-breakpoint
 CREATE TABLE "menus" (
-	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v7() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"merchant_id" uuid NOT NULL,
 	"category_id" uuid NOT NULL,
 	"name" varchar(100) NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE "menus" (
 );
 --> statement-breakpoint
 CREATE TABLE "merchants" (
-	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v7() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"phone_number" varchar(20) NOT NULL,
 	"password_hash" varchar(255) NOT NULL,
 	"merchant_number" integer NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE "merchants" (
 );
 --> statement-breakpoint
 CREATE TABLE "order_items" (
-	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v7() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"order_id" uuid NOT NULL,
 	"menu_id" uuid NOT NULL,
 	"menu_name" varchar(100) NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE "order_items" (
 );
 --> statement-breakpoint
 CREATE TABLE "orders" (
-	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v7() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"session_id" uuid NOT NULL,
 	"merchant_id" uuid NOT NULL,
 	"status" varchar(20) DEFAULT 'pending' NOT NULL,

@@ -1,22 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🍽️ Ngantri - Food Court Ordering System
 
-## Getting Started
+A modern web application for managing food court orders built with Next.js 14+, TypeScript, and PostgreSQL.
 
-First, run the development server:
+## ⚡ Quick Start
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Prerequisites
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Node.js 18+ and npm
+- Docker and Docker Compose
+- Git
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 🚀 Setup & Run
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd ngantri
+   ```
+
+2. **Install dependencies and start services**
+
+   ```bash
+   npm run setup
+   ```
+
+   This command will:
+
+   - Install all npm dependencies
+   - Start PostgreSQL with Docker Compose
+   - Wait for database to be ready
+   - Run database migrations
+   - Seed the database with test data
+
+3. **Start development server**
+
+   ```bash
+   npm run dev
+   ```
+
+   The application will be available at: http://localhost:3000
+
+## 🐳 Docker Commands
+
+| Command                  | Description                   |
+| ------------------------ | ----------------------------- |
+| `npm run docker:up`      | Start PostgreSQL container    |
+| `npm run docker:down`    | Stop PostgreSQL container     |
+| `npm run docker:logs`    | View PostgreSQL logs          |
+| `npm run docker:clean`   | Remove containers and volumes |
+| `npm run docker:restart` | Restart Docker services       |
+
+## 🗃️ Database Commands
+
+| Command               | Description                       |
+| --------------------- | --------------------------------- |
+| `npm run db:generate` | Generate Drizzle migrations       |
+| `npm run db:migrate`  | Run database migrations           |
+| `npm run db:studio`   | Open Drizzle Studio (database UI) |
+| `npm run db:seed`     | Populate database with test data  |
+| `npm run db:reset`    | Reset database completely         |
+| `npm run db:wait`     | Wait for database connection      |
+
+## 🔑 Test Credentials
+
+After seeding the database, you can use these test merchant accounts:
+
+| Merchant           | Phone          | Password    | Description    |
+| ------------------ | -------------- | ----------- | -------------- |
+| Warung Nasi Padang | +6281234567890 | password123 | Padang cuisine |
+| Bakso Malang       | +6281234567891 | password123 | Meatball soup  |
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

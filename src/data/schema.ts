@@ -14,7 +14,7 @@ import { sql } from "drizzle-orm";
 export const merchants = pgTable("merchants", {
   id: uuid("id")
     .primaryKey()
-    .default(sql`uuid_generate_v7()`),
+    .default(sql`uuidv7()`),
   phoneNumber: varchar("phone_number", { length: 20 }).notNull().unique(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   merchantNumber: integer("merchant_number").notNull().unique(),
@@ -37,7 +37,7 @@ export const menuCategories = pgTable(
   {
     id: uuid("id")
       .primaryKey()
-      .default(sql`uuid_generate_v7()`),
+      .default(sql`uuidv7()`),
     merchantId: uuid("merchant_id")
       .notNull()
       .references(() => merchants.id),
@@ -60,7 +60,7 @@ export const menuCategories = pgTable(
 export const menus = pgTable("menus", {
   id: uuid("id")
     .primaryKey()
-    .default(sql`uuid_generate_v7()`),
+    .default(sql`uuidv7()`),
   merchantId: uuid("merchant_id")
     .notNull()
     .references(() => merchants.id),
@@ -85,7 +85,7 @@ export const menus = pgTable("menus", {
 export const buyerSessions = pgTable("buyer_sessions", {
   id: uuid("id")
     .primaryKey()
-    .default(sql`uuid_generate_v7()`),
+    .default(sql`uuidv7()`),
   tableNumber: integer("table_number"), // Optional table identification
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -100,7 +100,7 @@ export const buyerSessions = pgTable("buyer_sessions", {
 export const cartItems = pgTable("cart_items", {
   id: uuid("id")
     .primaryKey()
-    .default(sql`uuid_generate_v7()`),
+    .default(sql`uuidv7()`),
   sessionId: uuid("session_id")
     .notNull()
     .references(() => buyerSessions.id),
@@ -125,7 +125,7 @@ export const cartItems = pgTable("cart_items", {
 export const orders = pgTable("orders", {
   id: uuid("id")
     .primaryKey()
-    .default(sql`uuid_generate_v7()`),
+    .default(sql`uuidv7()`),
   sessionId: uuid("session_id")
     .notNull()
     .references(() => buyerSessions.id),
@@ -150,7 +150,7 @@ export const orders = pgTable("orders", {
 export const orderItems = pgTable("order_items", {
   id: uuid("id")
     .primaryKey()
-    .default(sql`uuid_generate_v7()`),
+    .default(sql`uuidv7()`),
   orderId: uuid("order_id")
     .notNull()
     .references(() => orders.id),

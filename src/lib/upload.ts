@@ -36,7 +36,7 @@ const menuImageStorage = multer.diskStorage({
 
 // File filter function
 const fileFilter = (
-  req: any,
+  _req: unknown,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback
 ) => {
@@ -110,7 +110,7 @@ export const extractFileFromFormData = async (
     const formData = await request.formData();
     const file = formData.get("image") as File;
     return file;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -127,6 +127,7 @@ export const convertToMulterFile = (file: File): Express.Multer.File => {
     destination: "",
     filename: "",
     path: "",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     stream: null as any,
   };
 };

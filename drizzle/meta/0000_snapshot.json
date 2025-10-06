@@ -1,5 +1,5 @@
 {
-  "id": "93a9acd5-532c-4819-9965-fe8376a15632",
+  "id": "331d7dcb-7a72-4b06-ab8b-871c2435d01c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -13,7 +13,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "uuid_generate_v7()"
+          "default": "uuidv7()"
         },
         "table_number": {
           "name": "table_number",
@@ -59,7 +59,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "uuid_generate_v7()"
+          "default": "uuidv7()"
         },
         "session_id": {
           "name": "session_id",
@@ -170,7 +170,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "uuid_generate_v7()"
+          "default": "uuidv7()"
         },
         "merchant_id": {
           "name": "merchant_id",
@@ -245,7 +245,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "uuid_generate_v7()"
+          "default": "uuidv7()"
         },
         "merchant_id": {
           "name": "merchant_id",
@@ -355,7 +355,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "uuid_generate_v7()"
+          "default": "uuidv7()"
         },
         "phone_number": {
           "name": "phone_number",
@@ -453,7 +453,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "uuid_generate_v7()"
+          "default": "uuidv7()"
         },
         "order_id": {
           "name": "order_id",
@@ -562,7 +562,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "uuid_generate_v7()"
+          "default": "uuidv7()"
         },
         "session_id": {
           "name": "session_id",
