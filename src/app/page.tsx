@@ -10,12 +10,11 @@ import {
 import {
   getOrCreateCart,
   addToCart,
-  updateCartItemQuantity,
-  removeFromCart,
-  clearCart,
   Cart,
 } from "../lib/cart";
 import OrderStatus from "../components/OrderStatus";
+import CartWidget from "../components/CartWidget";
+import FloatingCart from "../components/FloatingCart";
 
 interface Merchant {
   id: string;
@@ -153,92 +152,6 @@ export default function Home() {
     }
   };
 
-  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
-    try {
-      const updatedCart = await updateCartItemQuantity(itemId, newQuantity);
-      if (updatedCart) {
-        setCart(updatedCart);
-      }
-    } catch (error) {
-      console.error("Error updating quantity:", error);
-      alert("Failed to update quantity");
-    }
-  };
-
-  const handleRemoveItem = async (itemId: string) => {
-    try {
-      const updatedCart = await removeFromCart(itemId);
-      if (updatedCart) {
-        setCart(updatedCart);
-      }
-    } catch (error) {
-      console.error("Error removing item:", error);
-      alert("Failed to remove item");
-    }
-  };
-
-  const handleClearCart = () => {
-    if (confirm("Are you sure you want to clear your cart?")) {
-      clearCart();
-      setCart(getOrCreateCart());
-    }
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!session || !cart || cart.items.length === 0) {
-      alert("No items in cart");
-      return;
-    }
-
-    if (!session.tableNumber) {
-      alert("Please set your table number first");
-      return;
-    }
-
-    if (!selectedMerchant) {
-      alert("Please select a merchant");
-      return;
-    }
-
-    try {
-      const orderData = {
-        sessionId: session.id,
-        merchantId: selectedMerchant.id,
-        items: cart.items.map((item) => ({
-          menuId: item.menuId,
-          menuName: item.menuName,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          menuImageUrl: item.imageUrl,
-        })),
-        notes: `Table ${session.tableNumber}`,
-      };
-
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(orderData),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Show order tracking
-        setActiveOrderId(result.data.order.id);
-        // Clear cart after successful order
-        clearCart();
-        setCart(getOrCreateCart());
-      } else {
-        alert("Failed to place order: " + result.error?.message);
-      }
-    } catch (error) {
-      console.error("Error placing order:", error);
-      alert("Failed to place order. Please try again.");
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -251,9 +164,12 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
         <header className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            ngantri - Food Court Ordering
-          </h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">
+              ngantri - Food Court Ordering
+            </h1>
+            <CartWidget />
+          </div>
 
           {/* Session Info */}
           <div className="bg-gray-50 p-4 rounded-lg mb-4">
@@ -264,6 +180,12 @@ export default function Home() {
               <p className="text-sm text-gray-600">
                 Table Number:{" "}
                 <span className="font-semibold">{session.tableNumber}</span>
+              </p>
+            )}
+            {cart && cart.items.length > 0 && (
+              <p className="text-sm text-green-600 font-semibold mt-2">
+                🛒 {cart.totalItems} item(s) in cart - Rp{" "}
+                {cart.totalAmount.toLocaleString("id-ID")}
               </p>
             )}
           </div>
@@ -290,106 +212,6 @@ export default function Home() {
             </button>
           </div>
         </header>
-
-        {/* Cart Summary */}
-        {cart && cart.items.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Cart ({cart.items.length} items)
-            </h2>
-            <div className="space-y-4">
-              {cart.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
-                >
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">
-                      {item.menuName}
-                    </h4>
-                    <p className="text-sm text-gray-500">{item.merchantName}</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      Rp {item.unitPrice.toLocaleString("id-ID")} each
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    {/* Quantity Controls */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          handleUpdateQuantity(item.id, item.quantity - 1)
-                        }
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"
-                        disabled={item.quantity <= 1}
-                      >
-                        −
-                      </button>
-                      <span className="w-8 text-center font-medium">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() =>
-                          handleUpdateQuantity(item.id, item.quantity + 1)
-                        }
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    {/* Item Total */}
-                    <div className="w-24 text-right">
-                      <p className="font-semibold text-gray-900">
-                        Rp {item.totalPrice.toLocaleString("id-ID")}
-                      </p>
-                    </div>
-
-                    {/* Remove Button */}
-                    <button
-                      onClick={() => handleRemoveItem(item.id)}
-                      className="w-8 h-8 flex items-center justify-center rounded-full bg-red-100 hover:bg-red-200 text-red-600"
-                      title="Remove item"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {/* Cart Total and Actions */}
-              <div className="border-t pt-4 space-y-4">
-                <div className="flex justify-between items-center font-semibold text-lg">
-                  <span>Total:</span>
-                  <span>Rp {cart.totalAmount.toLocaleString("id-ID")}</span>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleClearCart}
-                    className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Clear Cart
-                  </button>
-                  <button
-                    onClick={handlePlaceOrder}
-                    disabled={!session?.tableNumber}
-                    className="flex-2 py-3 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {session?.tableNumber
-                      ? "Place Order"
-                      : "Set Table Number First"}
-                  </button>
-                </div>
-
-                {!session?.tableNumber && (
-                  <p className="text-sm text-orange-600 text-center">
-                    ⚠️ Please set your table number before placing an order
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Merchants List */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -489,6 +311,9 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Floating Cart */}
+      <FloatingCart />
 
       {/* Order Status Tracking */}
       {activeOrderId && (
