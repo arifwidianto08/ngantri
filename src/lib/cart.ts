@@ -63,6 +63,10 @@ export function saveCart(cart: Cart): void {
 
   try {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    // Dispatch custom event to notify components of cart update
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("cart-updated", { detail: cart }));
+    }
   } catch (error) {
     console.error("Error saving cart:", error);
   }
@@ -205,6 +209,10 @@ export async function removeFromCart(itemId: string): Promise<Cart | null> {
 export function clearCart(): void {
   if (typeof localStorage === "undefined") return;
   localStorage.removeItem(CART_STORAGE_KEY);
+  // Dispatch custom event to notify components of cart update
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("cart-updated", { detail: null }));
+  }
 }
 
 /**
