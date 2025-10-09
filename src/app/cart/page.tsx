@@ -17,7 +17,6 @@ export default function CartPage() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [session, setSession] = useState<BuyerSession | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -70,80 +69,6 @@ export default function CartPage() {
     if (confirm("Are you sure you want to clear your entire cart?")) {
       clearCart();
       setCart(getOrCreateCart());
-    }
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!session || !cart || cart.items.length === 0) {
-      alert("No items in cart");
-      return;
-    }
-
-    if (!session.tableNumber) {
-      alert("Please set your table number on the homepage first");
-      return;
-    }
-
-    setIsPlacingOrder(true);
-
-    try {
-      // Group items by merchant
-      const itemsByMerchant = cart.items.reduce((acc, item) => {
-        if (!acc[item.merchantId]) {
-          acc[item.merchantId] = [];
-        }
-        acc[item.merchantId].push(item);
-        return acc;
-      }, {} as Record<string, typeof cart.items>);
-
-      // Create an order for each merchant
-      const orderPromises = Object.entries(itemsByMerchant).map(
-        async ([merchantId, items]) => {
-          const orderData = {
-            sessionId: session.id,
-            merchantId,
-            items: items.map((item) => ({
-              menuId: item.menuId,
-              menuName: item.menuName,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              menuImageUrl: item.imageUrl,
-            })),
-            notes: `Table ${session.tableNumber}`,
-          };
-
-          const response = await fetch("/api/orders", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(orderData),
-          });
-
-          const result = await response.json();
-          return result;
-        }
-      );
-
-      const results = await Promise.all(orderPromises);
-      const allSuccessful = results.every((result) => result.success);
-
-      if (allSuccessful) {
-        alert(
-          `Successfully placed ${results.length} order(s)! Check your orders on the homepage.`
-        );
-        // Clear cart after successful order
-        clearCart();
-        setCart(getOrCreateCart());
-        router.push("/");
-      } else {
-        alert("Some orders failed to place. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error placing order:", error);
-      alert("Failed to place order. Please try again.");
-    } finally {
-      setIsPlacingOrder(false);
     }
   };
 
@@ -364,23 +289,30 @@ export default function CartPage() {
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                     <p className="text-sm text-orange-800">
                       ⚠️ Please set your table number on the homepage before
-                      placing an order
+                      checkout
                     </p>
                   </div>
                 )}
 
-                {/* Place Order Button */}
-                <button
-                  onClick={handlePlaceOrder}
-                  disabled={!session?.tableNumber || isPlacingOrder}
-                  className="w-full py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold text-lg transition-colors"
+                {/* Proceed to Checkout Button */}
+                <Link
+                  href={session?.tableNumber ? "/checkout" : "/"}
+                  className={`block w-full py-4 text-center rounded-lg font-semibold text-lg transition-colors ${
+                    session?.tableNumber
+                      ? "bg-green-600 text-white hover:bg-green-700"
+                      : "bg-gray-400 text-white cursor-not-allowed"
+                  }`}
+                  onClick={(e) => {
+                    if (!session?.tableNumber) {
+                      e.preventDefault();
+                      alert("Please set your table number first");
+                    }
+                  }}
                 >
-                  {isPlacingOrder
-                    ? "Placing Order..."
-                    : session?.tableNumber
-                    ? "Place Order"
+                  {session?.tableNumber
+                    ? "Proceed to Checkout"
                     : "Set Table Number First"}
-                </button>
+                </Link>
 
                 <p className="text-xs text-gray-500 text-center">
                   You will pay in person at the merchant counter
