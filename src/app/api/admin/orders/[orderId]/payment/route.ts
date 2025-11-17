@@ -3,37 +3,22 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders, orderPayments } from "@/data/schema";
 import { eq, and, isNull } from "drizzle-orm";
-
-function checkAuth(request: NextRequest): boolean {
-  const authHeader = request.headers.get("authorization");
-
-  if (!authHeader || !authHeader.startsWith("Basic ")) {
-    return false;
-  }
-
-  const base64Credentials = authHeader.split(" ")[1];
-  const credentials = Buffer.from(base64Credentials, "base64").toString(
-    "ascii"
-  );
-  const [username, password] = credentials.split(":");
-
-  const adminUsername = process.env.ADMIN_USERNAME || "admin";
-  const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
-
-  return username === adminUsername && password === adminPassword;
-}
+import { getAdminSession } from "@/lib/admin-auth";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
-  if (!checkAuth(request)) {
-    return new NextResponse("Unauthorized", {
-      status: 401,
-      headers: {
-        "WWW-Authenticate": 'Basic realm="Admin Area"',
+  const session = await getAdminSession();
+
+  if (!session) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { message: "Unauthorized" },
       },
-    });
+      { status: 401 }
+    );
   }
 
   try {

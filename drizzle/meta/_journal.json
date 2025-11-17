@@ -15,6 +15,13 @@
       "when": 1763377364831,
       "tag": "0001_sleepy_darkstar",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1763385579054,
+      "tag": "0002_fine_logan",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,18 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import bcrypt from "bcryptjs";
-import { merchants, menuCategories, menus } from "../src/data/schema";
+import {
+  admins,
+  merchants,
+  menuCategories,
+  menus,
+  orderItems,
+  orderPaymentItems,
+  orderPayments,
+  orders,
+  cartItems,
+  buyerSessions,
+} from "../src/data/schema";
 
 // Hash password helper
 const hashPassword = async (password: string): Promise<string> => {
@@ -28,9 +39,32 @@ async function seedDatabase() {
   try {
     // Clean existing data (in reverse dependency order)
     console.log("🧹 Cleaning existing data...");
+    await db.delete(orderItems);
+    await db.delete(orderPaymentItems);
+    await db.delete(orderPayments);
+    await db.delete(orders);
+    await db.delete(cartItems);
+    await db.delete(buyerSessions);
     await db.delete(menus);
     await db.delete(menuCategories);
     await db.delete(merchants);
+    await db.delete(admins);
+
+    // Seed admins
+    console.log("👤 Seeding admins...");
+    const adminData = [
+      {
+        username: "admin",
+        passwordHash: await hashPassword("admin123"),
+        name: "System Administrator",
+      },
+    ];
+
+    const insertedAdmins = await db
+      .insert(admins)
+      .values(adminData)
+      .returning();
+    console.log(`✅ Inserted ${insertedAdmins.length} admin(s)`);
 
     // Seed merchants
     console.log("🏪 Seeding merchants...");
@@ -183,9 +217,12 @@ async function seedDatabase() {
 
     console.log("\n🎉 Database seeding completed successfully!");
     console.log("\n📊 Summary:");
+    console.log(`   • ${insertedAdmins.length} admin(s)`);
     console.log(`   • ${insertedMerchants.length} merchants`);
     console.log(`   • ${insertedCategories.length} categories`);
     console.log(`   • ${insertedMenus.length} menu items`);
+    console.log("\n🔑 Admin login credentials:");
+    console.log("   Username: admin, Password: admin123");
     console.log("\n🔑 Test merchant login credentials:");
     console.log(
       "   Phone: +6281234567890, Password: password123 (Warung Nasi Padang)"

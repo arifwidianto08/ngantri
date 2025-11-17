@@ -39,18 +39,61 @@ export default function AdminOrdersPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    accepted: 0,
+    preparing: 0,
+    ready: 0,
+    completed: 0,
+    cancelled: 0,
+    unpaid: 0,
+  });
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    const fetchOrders = async () => {
+      setLoading(true);
+      try {
+        const url =
+          filterStatus === "all"
+            ? "/api/admin/orders"
+            : `/api/admin/orders?status=${filterStatus}`;
 
-  const fetchOrders = async () => {
+        const response = await fetch(url);
+        const result = await response.json();
+
+        if (result.success) {
+          setOrders(result.data);
+          if (result.stats) {
+            setStats(result.stats);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [filterStatus]);
+
+  const refetchOrders = async () => {
+    setLoading(true);
     try {
-      const response = await fetch("/api/admin/orders");
+      const url =
+        filterStatus === "all"
+          ? "/api/admin/orders"
+          : `/api/admin/orders?status=${filterStatus}`;
+
+      const response = await fetch(url);
       const result = await response.json();
 
       if (result.success) {
         setOrders(result.data);
+        if (result.stats) {
+          setStats(result.stats);
+        }
       }
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -74,7 +117,7 @@ export default function AdminOrdersPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchOrders();
+        refetchOrders();
         alert("Order marked as paid!");
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
@@ -106,7 +149,7 @@ export default function AdminOrdersPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchOrders();
+        refetchOrders();
         alert("Order status updated!");
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
@@ -126,11 +169,6 @@ export default function AdminOrdersPage() {
 
     updateOrderStatus(orderId, "cancelled");
   };
-
-  const filteredOrders =
-    filterStatus === "all"
-      ? orders
-      : orders.filter((order) => order.status === filterStatus);
 
   if (loading) {
     return (
@@ -155,7 +193,7 @@ export default function AdminOrdersPage() {
         </div>
         <button
           type="button"
-          onClick={fetchOrders}
+          onClick={refetchOrders}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
         >
           <svg
@@ -180,25 +218,19 @@ export default function AdminOrdersPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Total Orders</p>
-          <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Pending</p>
-          <p className="text-2xl font-bold text-yellow-600">
-            {orders.filter((o) => o.status === "pending").length}
-          </p>
+          <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Unpaid</p>
-          <p className="text-2xl font-bold text-orange-600">
-            {orders.filter((o) => o.paymentStatus !== "paid").length}
-          </p>
+          <p className="text-2xl font-bold text-orange-600">{stats.unpaid}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Completed</p>
-          <p className="text-2xl font-bold text-green-600">
-            {orders.filter((o) => o.status === "completed").length}
-          </p>
+          <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
         </div>
       </div>
 
@@ -264,7 +296,7 @@ export default function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredOrders.map((order) => (
+              {orders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-mono text-gray-900">
                     #{order.id.slice(0, 8)}
@@ -322,7 +354,7 @@ export default function AdminOrdersPage() {
           </table>
         </div>
 
-        {filteredOrders.length === 0 && (
+        {orders.length === 0 && (
           <div className="text-center py-12 text-gray-500">No orders found</div>
         )}
       </div>

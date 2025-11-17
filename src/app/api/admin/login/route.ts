@@ -17,8 +17,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (validateAdminCredentials(username, password)) {
-      await createAdminSession(username);
+    const validation = await validateAdminCredentials(username, password);
+
+    if (validation.valid && validation.adminId) {
+      await createAdminSession(validation.adminId, username);
 
       return NextResponse.json({
         success: true,

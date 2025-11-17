@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
   orders,
@@ -9,37 +8,31 @@ import {
   orderItems,
 } from "@/data/schema";
 import { desc, isNull, eq, sql, inArray } from "drizzle-orm";
+import { getAdminSession } from "@/lib/admin-auth";
 
-function checkAuth(request: NextRequest): boolean {
-  const authHeader = request.headers.get("authorization");
+export async function GET(request: Request) {
+  const session = await getAdminSession();
 
-  if (!authHeader || !authHeader.startsWith("Basic ")) {
-    return false;
-  }
-
-  const base64Credentials = authHeader.split(" ")[1];
-  const credentials = Buffer.from(base64Credentials, "base64").toString(
-    "ascii"
-  );
-  const [username, password] = credentials.split(":");
-
-  const adminUsername = process.env.ADMIN_USERNAME || "admin";
-  const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
-
-  return username === adminUsername && password === adminPassword;
-}
-
-export async function GET(request: NextRequest) {
-  if (!checkAuth(request)) {
-    return new NextResponse("Unauthorized", {
-      status: 401,
-      headers: {
-        "WWW-Authenticate": 'Basic realm="Admin Area"',
+  if (!session) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { message: "Unauthorized" },
       },
-    });
+      { status: 401 }
+    );
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const statusFilter = searchParams.get("status");
+
+    // Build where conditions
+    const whereConditions = [isNull(orders.deletedAt)];
+    if (statusFilter && statusFilter !== "all") {
+      whereConditions.push(eq(orders.status, statusFilter));
+    }
+
     // Get all orders with merchant info and payment status
     const allOrders = await db
       .select({
@@ -65,7 +58,11 @@ export async function GET(request: NextRequest) {
         orderPayments,
         eq(orderPaymentItems.paymentId, orderPayments.id)
       )
-      .where(isNull(orders.deletedAt))
+      .where(
+        whereConditions.length > 1
+          ? sql`${whereConditions.join(" AND ")}`
+          : whereConditions[0]
+      )
       .orderBy(desc(orders.createdAt))
       .limit(100);
 
@@ -94,9 +91,45 @@ export async function GET(request: NextRequest) {
       items: itemsByOrderId[order.id] || [],
     }));
 
+    // Get stats (always return stats for all statuses)
+    const statusCounts = await db
+      .select({
+        status: orders.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(orders)
+      .where(isNull(orders.deletedAt))
+      .groupBy(orders.status);
+
+    const paymentStats = await db
+      .select({
+        unpaidCount: sql<number>`count(CASE WHEN COALESCE(${orderPayments.status}, 'pending') != 'paid' THEN 1 END)::int`,
+      })
+      .from(orders)
+      .leftJoin(orderPaymentItems, eq(orders.id, orderPaymentItems.orderId))
+      .leftJoin(
+        orderPayments,
+        eq(orderPaymentItems.paymentId, orderPayments.id)
+      )
+      .where(isNull(orders.deletedAt));
+
+    const totalCount = statusCounts.reduce((sum, item) => sum + item.count, 0);
+
+    const stats = {
+      total: totalCount,
+      pending: statusCounts.find((s) => s.status === "pending")?.count || 0,
+      accepted: statusCounts.find((s) => s.status === "accepted")?.count || 0,
+      preparing: statusCounts.find((s) => s.status === "preparing")?.count || 0,
+      ready: statusCounts.find((s) => s.status === "ready")?.count || 0,
+      completed: statusCounts.find((s) => s.status === "completed")?.count || 0,
+      cancelled: statusCounts.find((s) => s.status === "cancelled")?.count || 0,
+      unpaid: paymentStats[0]?.unpaidCount || 0,
+    };
+
     return NextResponse.json({
       success: true,
       data: ordersWithItems,
+      stats,
     });
   } catch (error) {
     console.error("Error fetching orders:", error);

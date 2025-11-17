@@ -1,25 +1,55 @@
 import { cookies } from "next/headers";
+import { db } from "@/lib/db";
+import { admins } from "@/data/schema";
+import { eq, isNull } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 const ADMIN_SESSION_COOKIE = "admin_session";
 const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 hours
 
 export interface AdminSession {
+  adminId: string;
   username: string;
   loginTime: number;
 }
 
-export function validateAdminCredentials(
+export async function validateAdminCredentials(
   username: string,
   password: string
-): boolean {
-  const adminUsername = process.env.ADMIN_USERNAME || "admin";
-  const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+): Promise<{ valid: boolean; adminId?: string }> {
+  try {
+    const admin = await db
+      .select()
+      .from(admins)
+      .where(eq(admins.username, username) && isNull(admins.deletedAt))
+      .limit(1);
 
-  return username === adminUsername && password === adminPassword;
+    if (admin.length === 0) {
+      return { valid: false };
+    }
+
+    const isValidPassword = await bcrypt.compare(
+      password,
+      admin[0].passwordHash
+    );
+
+    if (!isValidPassword) {
+      return { valid: false };
+    }
+
+    return { valid: true, adminId: admin[0].id };
+  } catch (error) {
+    console.error("Error validating admin credentials:", error);
+    return { valid: false };
+  }
 }
 
-export async function createAdminSession(username: string): Promise<void> {
+export async function createAdminSession(
+  adminId: string,
+  username: string
+): Promise<void> {
   const session: AdminSession = {
+    adminId,
     username,
     loginTime: Date.now(),
   };

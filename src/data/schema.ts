@@ -10,6 +10,23 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
+// Admins table - system administrators
+export const admins = pgTable("admins", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`uuidv7()`),
+  username: varchar("username", { length: 50 }).notNull().unique(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  name: varchar("name", { length: 100 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
 // Merchants table - registered food court vendors
 export const merchants = pgTable("merchants", {
   id: uuid("id")
@@ -213,6 +230,8 @@ export const orderItems = pgTable("order_items", {
 });
 
 // Export types for TypeScript
+export type Admin = typeof admins.$inferSelect;
+export type NewAdmin = typeof admins.$inferInsert;
 export type Merchant = typeof merchants.$inferSelect;
 export type NewMerchant = typeof merchants.$inferInsert;
 export type MenuCategory = typeof menuCategories.$inferSelect;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 interface Merchant {
   id: string;
@@ -30,11 +31,14 @@ export default function AdminMerchantsPage() {
       const response = await fetch("/api/merchants");
       const result = await response.json();
 
-      if (result.success) {
+      if (result.success && Array.isArray(result.data)) {
         setMerchants(result.data);
+      } else {
+        setMerchants([]);
       }
     } catch (error) {
       console.error("Error fetching merchants:", error);
+      setMerchants([]);
     } finally {
       setLoading(false);
     }
@@ -179,11 +183,14 @@ export default function AdminMerchantsPage() {
             className="bg-white rounded-lg shadow overflow-hidden"
           >
             {merchant.imageUrl && (
-              <img
-                src={merchant.imageUrl}
-                alt={merchant.name}
-                className="w-full h-48 object-cover"
-              />
+              <div className="relative w-full h-48">
+                <Image
+                  src={merchant.imageUrl}
+                  alt={merchant.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
             )}
             {!merchant.imageUrl && (
               <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
@@ -303,11 +310,14 @@ export default function AdminMerchantsPage() {
 
             <div className="p-6 space-y-6">
               {selectedMerchant.imageUrl && (
-                <img
-                  src={selectedMerchant.imageUrl}
-                  alt={selectedMerchant.name}
-                  className="w-full h-64 object-cover rounded-lg"
-                />
+                <div className="relative w-full h-64 rounded-lg overflow-hidden">
+                  <Image
+                    src={selectedMerchant.imageUrl}
+                    alt={selectedMerchant.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-4 text-sm">

@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import Loader from "@/components/loader";
 
 interface Merchant {
   id: string;
@@ -15,138 +13,62 @@ interface Merchant {
   isAvailable: boolean;
 }
 
-interface Order {
-  id: string;
+interface Stats {
+  totalOrders: number;
+  totalRevenue: number;
+  pendingOrders: number;
+  completedOrders: number;
+  totalMenus: number;
+  availableMenus: number;
+  totalCategories: number;
+}
+
+interface OrderStatus {
   status: string;
-  totalAmount: number;
-  customerName?: string;
-  customerPhone?: string;
-  createdAt: string;
-  sessionId: string;
+  count: number;
 }
 
-interface MenuCategory {
-  id: string;
-  name: string;
-  merchantId: string;
-}
-
-interface MenuItem {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  imageUrl?: string;
-  isAvailable: boolean;
-  categoryId: string;
+interface RevenueDay {
+  date: string;
+  revenue: number;
 }
 
 export default function MerchantDashboard() {
   const [merchant, setMerchant] = useState<Merchant | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [menuLoading, setMenuLoading] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"orders" | "menu" | "profile">(
-    "orders"
-  );
-  const router = useRouter();
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [ordersByStatus, setOrdersByStatus] = useState<OrderStatus[]>([]);
+  const [revenueByDay, setRevenueByDay] = useState<RevenueDay[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const checkAuthentication = useCallback(async () => {
-    try {
-      const response = await fetch("/api/merchants/me");
-      const result = await response.json();
-
-      if (result.success && result.data.merchant) {
-        setMerchant(result.data.merchant);
-      } else {
-        // Not authenticated, redirect to login
-        router.push("/login");
-        return;
-      }
-    } catch (error) {
-      console.error("Authentication check failed:", error);
-      router.push("/login");
-    } finally {
-      setAuthLoading(false);
-    }
-  }, [router]);
-
-  // Check authentication on component mount
   useEffect(() => {
-    checkAuthentication();
-  }, [checkAuthentication]);
+    fetchData();
+  }, []);
 
-  const handleLogout = async () => {
+  const fetchData = async () => {
     try {
-      await fetch("/api/merchants/logout", {
-        method: "POST",
-      });
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+      // Fetch merchant info
+      const merchantResponse = await fetch("/api/merchants/me");
+      const merchantResult = await merchantResponse.json();
 
-  const fetchOrders = useCallback(async () => {
-    if (!merchant?.id) return; // Don't fetch if no merchant authenticated
+      if (merchantResult.success) {
+        setMerchant(merchantResult.data.merchant);
+      }
 
-    setLoading(true);
-    try {
-      const response = await fetch("/api/orders");
-      if (response.ok) {
-        const result = await response.json();
-        setOrders(result.data || []);
-      } else if (response.status === 401) {
-        // Session expired, redirect to login
-        router.push("/login");
+      // Fetch stats
+      const statsResponse = await fetch("/api/merchants/dashboard/stats");
+      const statsResult = await statsResponse.json();
+
+      if (statsResult.success) {
+        setStats(statsResult.data.stats);
+        setOrdersByStatus(statsResult.data.ordersByStatus);
+        setRevenueByDay(statsResult.data.revenueByDay);
       }
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
-  }, [merchant?.id, router]);
-
-  const fetchCategories = useCallback(async () => {
-    if (!merchant?.id) return; // Don't fetch if no merchant authenticated
-
-    setMenuLoading(true);
-    try {
-      const response = await fetch(`/api/merchants/${merchant.id}/categories`);
-      if (response.ok) {
-        const result = await response.json();
-        setCategories(result.data?.categories || []);
-      } else if (response.status === 401) {
-        router.push("/login");
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    } finally {
-      setMenuLoading(false);
-    }
-  }, [merchant?.id, router]);
-
-  const fetchMenuItems = useCallback(async () => {
-    if (!merchant?.id) return; // Don't fetch if no merchant authenticated
-
-    setMenuLoading(true);
-    try {
-      const response = await fetch(`/api/merchants/${merchant.id}/menus`);
-      if (response.ok) {
-        const result = await response.json();
-        setMenuItems(result.data?.menus || []);
-      } else if (response.status === 401) {
-        router.push("/login");
-      }
-    } catch (error) {
-      console.error("Error fetching menu items:", error);
-    } finally {
-      setMenuLoading(false);
-    }
-  }, [merchant?.id, router]);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -156,407 +78,245 @@ export default function MerchantDashboard() {
     }).format(amount);
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    try {
-      const response = await fetch(`/api/orders/${orderId}/status`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status: newStatus,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Refresh orders list to show updated status
-        fetchOrders();
-      } else {
-        alert(`Failed to update order status: ${result.error}`);
-      }
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      alert("Failed to update order status. Please try again.");
-    }
-  };
-
-  // Fetch data when merchant is loaded
-  useEffect(() => {
-    if (merchant?.id) {
-      fetchOrders();
-      const fetchMenuData = async () => {
-        setMenuLoading(true);
-        await Promise.all([fetchCategories(), fetchMenuItems()]);
-        setMenuLoading(false);
-      };
-      fetchMenuData();
-    }
-  }, [merchant?.id, fetchOrders, fetchCategories, fetchMenuItems]);
-
-  if (authLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Checking authentication...</div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <header className="bg-white shadow-sm rounded-lg p-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Merchant Dashboard
-          </h1>
-          <p className="text-gray-600 mt-1">
-            {merchant
-              ? `Welcome, ${merchant.name}`
-              : "Manage your menu, orders, and business data"}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
-        >
-          Logout
-        </button>
-      </header>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 mt-1">
+          Overview of your business performance
+        </p>
+      </div>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white rounded-lg shadow-sm">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8 px-6">
-            <button
-              type="button"
-              onClick={() => setActiveTab("orders")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "orders"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              📋 Orders
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("menu")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "menu"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              🍽️ Menu Management
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("profile")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "profile"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              🏪 Profile
-            </button>
-          </nav>
-        </div>
+      {/* Merchant Profile Card */}
+      {merchant && (
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+          <div className="flex items-start gap-6">
+            {merchant.imageUrl ? (
+              <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border-4 border-white/20">
+                <Image
+                  src={merchant.imageUrl}
+                  alt={merchant.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-24 h-24 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0 border-4 border-white/20">
+                <span className="text-4xl">🏪</span>
+              </div>
+            )}
 
-        <div className="p-6">
-          {activeTab === "orders" && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Incoming Orders</h2>
-                <button
-                  type="button"
-                  onClick={fetchOrders}
-                  disabled={loading}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h2 className="text-2xl font-bold">{merchant.name}</h2>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    merchant.isAvailable
+                      ? "bg-green-500 text-white"
+                      : "bg-red-500 text-white"
+                  }`}
                 >
-                  {loading ? "Loading..." : "Refresh Orders"}
-                </button>
+                  {merchant.isAvailable ? "🟢 Available" : "🔴 Unavailable"}
+                </span>
               </div>
 
-              {orders.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p className="text-lg">📝 No orders yet</p>
-                  <p className="text-sm mt-1">
-                    Orders will appear here when customers place them
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <p className="text-sm text-white/80">Merchant Number</p>
+                  <p className="text-lg font-semibold">
+                    #{merchant.merchantNumber}
                   </p>
                 </div>
-              ) : (
-                <div className="grid gap-4">
-                  {orders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="border rounded-lg p-4 bg-white shadow-sm"
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="font-medium">
-                            Order #{order.id.slice(-8)}
-                          </h3>
-                          {order.customerName && (
-                            <p className="text-sm text-gray-600">
-                              Customer: {order.customerName}
-                            </p>
-                          )}
-                          {order.customerPhone && (
-                            <p className="text-sm text-gray-600">
-                              Phone: {order.customerPhone}
-                            </p>
-                          )}
-                          <div className="text-xs text-gray-500 mt-1">
-                            {new Date(order.createdAt).toLocaleString("id-ID")}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-semibold">
-                            {formatCurrency(order.totalAmount)}
-                          </div>
-                          <div
-                            className={`inline-block px-2 py-1 rounded text-xs ${
-                              order.status === "pending"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : order.status === "accepted"
-                                ? "bg-blue-100 text-blue-800"
-                                : order.status === "preparing"
-                                ? "bg-orange-100 text-orange-800"
-                                : order.status === "ready"
-                                ? "bg-green-100 text-green-800"
-                                : order.status === "completed"
-                                ? "bg-gray-100 text-gray-800"
-                                : order.status === "cancelled"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {order.status}
-                          </div>
-                        </div>
-                      </div>
+                <div>
+                  <p className="text-sm text-white/80">Phone Number</p>
+                  <p className="text-lg font-semibold">
+                    {merchant.phoneNumber}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-white/80">Merchant ID</p>
+                  <p className="text-sm font-mono">
+                    {merchant.id.slice(0, 8)}...
+                  </p>
+                </div>
+              </div>
 
-                      {/* Status Update Buttons */}
-                      <div className="flex gap-2 flex-wrap">
-                        {order.status === "pending" && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateOrderStatus(order.id, "accepted")
-                              }
-                              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
-                            >
-                              Accept
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateOrderStatus(order.id, "cancelled")
-                              }
-                              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        )}
-
-                        {order.status === "accepted" && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateOrderStatus(order.id, "preparing")
-                            }
-                            className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded text-sm"
-                          >
-                            Start Preparing
-                          </button>
-                        )}
-
-                        {order.status === "preparing" && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(order.id, "ready")}
-                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
-                          >
-                            Mark Ready
-                          </button>
-                        )}
-
-                        {order.status === "ready" && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateOrderStatus(order.id, "completed")
-                            }
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm"
-                          >
-                            Complete
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+              {merchant.description && (
+                <div className="mt-4">
+                  <p className="text-sm text-white/80">Description</p>
+                  <p className="text-base">{merchant.description}</p>
                 </div>
               )}
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
-          {activeTab === "menu" && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Menu Management</h2>
-                <div className="space-x-2">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setMenuLoading(true);
-                      await Promise.all([fetchCategories(), fetchMenuItems()]);
-                      setMenuLoading(false);
-                    }}
-                    disabled={menuLoading}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
-                  >
-                    {menuLoading ? "Loading..." : "Refresh All"}
-                  </button>
-                </div>
-              </div>
-
-              {menuLoading ? (
-                <Loader message="Loading menu data..." />
-              ) : (
-                <>
-                  {/* Categories Section */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-lg font-medium mb-3">
-                      Categories ({categories.length})
-                    </h3>
-                    {categories.length === 0 ? (
-                      <p className="text-gray-500 text-sm">
-                        No categories found. Create your first category to
-                        organize your menu.
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {categories.map((category) => (
-                          <div
-                            key={category.id}
-                            className="bg-white p-3 rounded border"
-                          >
-                            <div className="font-medium text-sm">
-                              {category.name}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Menu Items Section */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-lg font-medium mb-3">
-                      Menu Items ({menuItems.length})
-                    </h3>
-                    {menuItems.length === 0 ? (
-                      <p className="text-gray-500 text-sm">
-                        No menu items found. Add your first menu item to get
-                        started.
-                      </p>
-                    ) : (
-                      <div className="grid gap-4">
-                        {menuItems.map((item) => (
-                          <div
-                            key={item.id}
-                            className="bg-white p-4 rounded border flex justify-between items-start"
-                          >
-                            <div className="flex-1">
-                              <h4 className="font-medium">{item.name}</h4>
-                              {item.description && (
-                                <p className="text-sm text-gray-600 mt-1">
-                                  {item.description}
-                                </p>
-                              )}
-                              <div className="flex items-center mt-2 space-x-4">
-                                <span className="text-lg font-semibold text-green-600">
-                                  {formatCurrency(item.price)}
-                                </span>
-                                <span
-                                  className={`text-xs px-2 py-1 rounded ${
-                                    item.isAvailable
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-red-100 text-red-800"
-                                  }`}
-                                >
-                                  {item.isAvailable
-                                    ? "Available"
-                                    : "Unavailable"}
-                                </span>
-                              </div>
-                            </div>
-                            {item.imageUrl && (
-                              <Image
-                                src={item.imageUrl}
-                                alt={item.name}
-                                width={64}
-                                height={64}
-                                className="w-16 h-16 object-cover rounded ml-4"
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Total Orders</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {stats?.totalOrders || 0}
+              </p>
             </div>
-          )}
-
-          {activeTab === "profile" && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Merchant Profile</h2>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-center py-8 text-gray-500">
-                  <p className="text-lg">🏪 Merchant Profile</p>
-                  <p className="text-sm mt-1">
-                    Merchant ID:{" "}
-                    <code className="bg-gray-200 px-2 py-1 rounded">
-                      {merchant?.id || "Not loaded"}
-                    </code>
-                  </p>
-                  <p className="text-sm mt-2">
-                    <strong>Name:</strong> {merchant?.name || "Not loaded"}
-                  </p>
-                  <p className="text-sm">
-                    <strong>Phone:</strong>{" "}
-                    {merchant?.phoneNumber || "Not loaded"}
-                  </p>
-                  <p className="text-xs mt-2">
-                    Profile management features coming soon...
-                  </p>
-                </div>
-              </div>
+            <div className="bg-blue-100 p-3 rounded-lg">
+              <span className="text-2xl">📦</span>
             </div>
-          )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Total Revenue</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {formatCurrency(stats?.totalRevenue || 0)}
+              </p>
+            </div>
+            <div className="bg-green-100 p-3 rounded-lg">
+              <span className="text-2xl">💰</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Pending Orders</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {stats?.pendingOrders || 0}
+              </p>
+            </div>
+            <div className="bg-orange-100 p-3 rounded-lg">
+              <span className="text-2xl">⏳</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Completed</p>
+              <p className="text-2xl font-bold text-green-600">
+                {stats?.completedOrders || 0}
+              </p>
+            </div>
+            <div className="bg-green-100 p-3 rounded-lg">
+              <span className="text-2xl">✅</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* System Status Footer */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-lg mb-2">🔧 System Status</h3>
-        <div className="grid md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <strong>Backend API:</strong> ✅ Ready
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Orders by Status */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Orders by Status
+          </h3>
+          <div className="space-y-3">
+            {ordersByStatus.map((item) => (
+              <div key={item.status} className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-700 capitalize">
+                      {item.status}
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {item.count} orders
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${
+                        item.status === "completed"
+                          ? "bg-green-500"
+                          : item.status === "pending"
+                          ? "bg-orange-500"
+                          : item.status === "cancelled"
+                          ? "bg-red-500"
+                          : "bg-blue-500"
+                      }`}
+                      style={{
+                        width: `${
+                          (item.count / (stats?.totalOrders || 1)) * 100
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            {ordersByStatus.length === 0 && (
+              <p className="text-gray-500 text-sm text-center py-4">
+                No order data available
+              </p>
+            )}
           </div>
-          <div>
-            <strong>Database:</strong> ✅ Connected
+        </div>
+
+        {/* Revenue by Day */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Revenue (Last 7 Days)
+          </h3>
+          <div className="space-y-2">
+            {revenueByDay.map((item) => (
+              <div
+                key={item.date}
+                className="flex items-center justify-between text-sm"
+              >
+                <span className="text-gray-600">
+                  {new Date(item.date).toLocaleDateString("id-ID", {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+                <span className="font-semibold text-gray-900">
+                  {formatCurrency(item.revenue)}
+                </span>
+              </div>
+            ))}
+            {revenueByDay.length === 0 && (
+              <p className="text-gray-500 text-sm text-center py-4">
+                No revenue data available
+              </p>
+            )}
           </div>
-          <div>
-            <strong>Features:</strong> Orders, Menu, Categories
-          </div>
+        </div>
+      </div>
+
+      {/* Menu Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <p className="text-sm text-gray-600">Total Menus</p>
+          <p className="text-3xl font-bold text-gray-900">
+            {stats?.totalMenus || 0}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <p className="text-sm text-gray-600">Available Menus</p>
+          <p className="text-3xl font-bold text-green-600">
+            {stats?.availableMenus || 0}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <p className="text-sm text-gray-600">Total Categories</p>
+          <p className="text-3xl font-bold text-gray-900">
+            {stats?.totalCategories || 0}
+          </p>
         </div>
       </div>
     </div>
