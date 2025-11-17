@@ -146,6 +146,33 @@ export const orders = pgTable("orders", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
+// Order Payments - payment transactions for orders via Xendit
+export const orderPayments = pgTable("order_payments", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`uuidv7()`),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id),
+  xenditInvoiceId: varchar("xendit_invoice_id", { length: 255 })
+    .notNull()
+    .unique(), // Xendit's invoice ID
+  paymentUrl: varchar("payment_url", { length: 500 }).notNull(), // Payment URL for customer
+  amount: integer("amount").notNull(), // Amount in IDR
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, paid, expired, failed, cancelled
+  paymentMethod: varchar("payment_method", { length: 50 }), // e.g., BANK_TRANSFER, E_WALLET, CREDIT_CARD
+  paidAt: timestamp("paid_at", { withTimezone: true }), // When payment was confirmed
+  expiresAt: timestamp("expires_at", { withTimezone: true }), // Payment link expiration
+  webhookData: text("webhook_data"), // JSON data from Xendit webhook
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
 // Order Items - individual items within an order (denormalized for history)
 export const orderItems = pgTable("order_items", {
   id: uuid("id")
@@ -186,3 +213,5 @@ export type Order = typeof orders.$inferSelect;
 export type NewOrder = typeof orders.$inferInsert;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type NewOrderItem = typeof orderItems.$inferInsert;
+export type OrderPayment = typeof orderPayments.$inferSelect;
+export type NewOrderPayment = typeof orderPayments.$inferInsert;

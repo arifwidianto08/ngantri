@@ -158,7 +158,7 @@ export default function Home() {
   };
 
   if (loading) {
-    return <Loader message="Setting up your session..." />;
+    return <Loader message="Setting up your session..." fullScreen />;
   }
 
   return (
