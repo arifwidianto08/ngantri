@@ -713,7 +713,7 @@ paths:
         - name: status
           in: query
           schema:
-            $ref: "#/components/schemas/OrderStatus"
+            $ref: "#/components/schemas/order-status"
           description: Filter by status
         - name: date
           in: query
@@ -754,7 +754,7 @@ paths:
               required: [status]
               properties:
                 status:
-                  $ref: "#/components/schemas/OrderStatus"
+                  $ref: "#/components/schemas/order-status"
       responses:
         "200":
           description: Order status updated
@@ -1141,7 +1141,7 @@ components:
           type: string
           pattern: '^\d{6}-\d{4}$'
         status:
-          $ref: "#/components/schemas/OrderStatus"
+          $ref: "#/components/schemas/order-status"
         total_quantity:
           type: integer
         total_amount:

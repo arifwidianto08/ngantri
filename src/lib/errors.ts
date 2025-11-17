@@ -76,7 +76,7 @@ export class AppError extends Error {
   constructor(
     code: ErrorCode,
     message: string,
-    statusCode: number = 500,
+    statusCode: number,
     details?: unknown
   ) {
     super(message);
@@ -98,7 +98,7 @@ export class AppError extends Error {
 export const createErrorResponse = (
   code: ErrorCode,
   message: string,
-  statusCode: number = 500,
+  statusCode: number,
   details?: unknown,
   path?: string
 ): NextResponse<ErrorResponse> => {
@@ -122,7 +122,7 @@ export const createErrorResponse = (
 export const createSuccessResponse = <T>(
   data: T,
   message?: string,
-  statusCode: number = 200
+  statusCode = 200
 ): NextResponse<SuccessResponse<T>> => {
   const successResponse: SuccessResponse<T> = {
     success: true,

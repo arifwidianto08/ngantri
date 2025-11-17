@@ -19,11 +19,12 @@ export const paginationQuerySchema = z.object({
     .string()
     .optional()
     .default(PAGINATION_CONFIG.defaultLimit.toString())
-    .transform((val) => parseInt(val, 10))
+    .transform((val) => Number.parseInt(val, 10))
     .pipe(
       z.number().min(PAGINATION_CONFIG.minLimit).max(PAGINATION_CONFIG.maxLimit)
     ),
   direction: z.enum(["asc", "desc"]).optional().default("desc"),
+  status: z.string().optional(),
 });
 
 export type PaginationQuery = z.infer<typeof paginationQuerySchema>;
@@ -33,6 +34,7 @@ export interface CursorPaginationParams {
   cursor?: string;
   limit: number;
   direction: "asc" | "desc";
+  status?: string;
 }
 
 // Paginated result structure
@@ -78,6 +80,7 @@ export const createPaginationParams = (
     cursor: validated.cursor,
     limit: validated.limit,
     direction: validated.direction,
+    status: validated.status,
   };
 };
 
@@ -141,7 +144,7 @@ export const buildPaginatedResult = <T extends { id: string }>(
 export const buildCursorWhereClause = (
   cursor: string | undefined,
   direction: "asc" | "desc",
-  idColumn: string = "id"
+  idColumn = "id"
 ): {
   whereClause: string;
   parameter?: string;

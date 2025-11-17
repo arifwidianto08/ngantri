@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Loader from "@/components/loader";
 
 export default function MerchantLogin() {
   const [phoneNumber, setPhoneNumber] = useState("");

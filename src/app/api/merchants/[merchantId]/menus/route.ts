@@ -4,8 +4,8 @@
  */
 
 import { NextRequest } from "next/server";
-import { MenuRepositoryImpl } from "../../../../../data/repositories/MenuRepository";
-import { MenuService } from "../../../../../services/MenuService";
+import { MenuRepositoryImpl } from "../../../../../data/repositories/menu-repository";
+import { MenuService } from "../../../../../services/menu-service";
 import { createSuccessResponse } from "../../../../../lib/errors";
 import { createPaginationParams } from "../../../../../lib/pagination";
 
