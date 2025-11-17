@@ -8,6 +8,7 @@ import { getBuyerSession } from "../../lib/session";
 import type { BuyerSession } from "../../lib/session";
 import Image from "next/image";
 import Loader from "@/components/loader";
+import { CheckCircle } from "lucide-react";
 
 interface ValidationErrors {
   name?: string;
@@ -51,6 +52,8 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [countdown, setCountdown] = useState(3);
   const router = useRouter();
 
   useEffect(() => {
@@ -124,14 +127,14 @@ export default function CheckoutPage() {
 
     // Validate name
     if (!customerName.trim()) {
-      newErrors.name = "Username tidak boleh kosong"; // Username cannot be empty
+      newErrors.name = "Username tidak boleh kosong";
     } else if (customerName.trim().length < 2) {
       newErrors.name = "Name must be at least 2 characters";
     }
 
     // Validate WhatsApp number
     if (!whatsappNumber.trim()) {
-      newErrors.whatsapp = "Nomor WhatsApp belum diisi"; // WhatsApp number not filled
+      newErrors.whatsapp = "Nomor WhatsApp belum diisi";
     } else {
       // Remove non-digit characters
       const cleaned = whatsappNumber.replace(/\D/g, "");
@@ -233,8 +236,6 @@ export default function CheckoutPage() {
 
       // Check if all orders succeeded
       const failed = results.filter((r) => !r.success);
-      const succeeded = results.filter((r) => r.success);
-
       if (failed.length > 0) {
         // Some orders failed
         const failedMerchants = failed.map((r) => r.merchantName).join(", ");
@@ -244,33 +245,23 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Get all order IDs
-      const orderIds = succeeded
-        .filter(
-          (order): order is OrderResult & { orderId: string } =>
-            order.success && typeof order.orderId === "string"
-        )
-        .map((order) => order.orderId);
-
-      // Create single payment for all orders
-      const paymentResponse = await fetch("/api/payments/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_ids: orderIds }),
-      });
-
-      const paymentResult = await paymentResponse.json();
-
-      if (!paymentResult.success || !paymentResult.data.payment.payment_url) {
-        throw new Error("Failed to create payment link");
-      }
-
-      // All successful - clear cart
       clearCart();
       window.dispatchEvent(new Event("cart-updated"));
 
-      // Redirect to payment URL
-      window.location.href = paymentResult.data.payment.payment_url;
+      // Show success dialog
+      setShowSuccessDialog(true);
+
+      // Countdown and redirect
+      let count = 3;
+      setCountdown(count);
+      const interval = setInterval(() => {
+        count--;
+        setCountdown(count);
+        if (count === 0) {
+          clearInterval(interval);
+          router.push("/orders?view=pending");
+        }
+      }, 1000);
     } catch (error) {
       console.error("Error placing orders:", error);
       const errorMessage =
@@ -287,6 +278,36 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Success Dialog */}
+      {showSuccessDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-in fade-in zoom-in duration-300">
+            <div className="mb-6">
+              <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-12 h-12 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Order Placed Successfully! 🎉
+              </h2>
+              <p className="text-gray-600">
+                Your order has been confirmed and sent to the merchant.
+              </p>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-800">
+                <strong>Next Step:</strong> Please pay at the merchant counter
+                when your order is ready.
+              </p>
+            </div>
+            <p className="text-sm text-gray-500">
+              Redirecting to your orders in{" "}
+              <span className="font-bold text-blue-600">{countdown}</span>{" "}
+              seconds...
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">

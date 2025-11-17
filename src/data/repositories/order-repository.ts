@@ -29,6 +29,15 @@ export class OrderRepositoryImpl implements OrderRepository {
     return order || null;
   }
 
+  async findByIds(ids: string[]): Promise<Order[]> {
+    const results = await db
+      .select()
+      .from(orders)
+      .where(and(inArray(orders.id, ids), isNull(orders.deletedAt)));
+
+    return results;
+  }
+
   async findBySession(
     sessionId: string,
     options?: {
@@ -316,5 +325,62 @@ export class OrderRepositoryImpl implements OrderRepository {
       .orderBy(desc(orderPayments.createdAt));
 
     return payments;
+  }
+
+  async findOrdersWithItemsAndPaymentStatus(orderIds: string[]): Promise<
+    Array<{
+      order: Order;
+      items: OrderItem[];
+      paymentStatus: string;
+    }>
+  > {
+    if (orderIds.length === 0) return [];
+
+    // Get all orders
+    const ordersData = await db
+      .select()
+      .from(orders)
+      .where(and(inArray(orders.id, orderIds), isNull(orders.deletedAt)));
+
+    // Get all items for these orders in one query
+    const allItems = await db
+      .select()
+      .from(orderItems)
+      .where(inArray(orderItems.orderId, orderIds));
+
+    // Get payment status for all orders in one query
+    const paymentStatuses = await db
+      .select({
+        orderId: orderPaymentItems.orderId,
+        paymentStatus: sql<string>`COALESCE(${orderPayments.status}, 'pending')`,
+      })
+      .from(orderPaymentItems)
+      .leftJoin(
+        orderPayments,
+        eq(orderPaymentItems.paymentId, orderPayments.id)
+      )
+      .where(inArray(orderPaymentItems.orderId, orderIds));
+
+    // Create a map for quick lookup
+    const itemsByOrderId = allItems.reduce((acc, item) => {
+      if (!acc[item.orderId]) acc[item.orderId] = [];
+      acc[item.orderId].push(item);
+      return acc;
+    }, {} as Record<string, OrderItem[]>);
+
+    const paymentStatusByOrderId = paymentStatuses.reduce(
+      (acc, { orderId, paymentStatus }) => {
+        acc[orderId] = paymentStatus;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
+    // Combine everything
+    return ordersData.map((order) => ({
+      order,
+      items: itemsByOrderId[order.id] || [],
+      paymentStatus: paymentStatusByOrderId[order.id] || "pending",
+    }));
   }
 }

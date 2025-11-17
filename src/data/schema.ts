@@ -152,16 +152,15 @@ export const orderPayments = pgTable("order_payments", {
   id: uuid("id")
     .primaryKey()
     .default(sql`uuidv7()`),
-  xenditInvoiceId: varchar("xendit_invoice_id", { length: 255 })
+  orderId: uuid("order_id")
     .notNull()
-    .unique(), // Xendit's invoice ID
-  paymentUrl: varchar("payment_url", { length: 500 }).notNull(), // Payment URL for customer
+    .references(() => orders.id),
+  paymentUrl: varchar("payment_url", { length: 500 }), // Payment URL for customer
   amount: integer("amount").notNull(), // Total amount in IDR for all orders
   status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, paid, expired, failed, cancelled
   paymentMethod: varchar("payment_method", { length: 50 }), // e.g., BANK_TRANSFER, E_WALLET, CREDIT_CARD
   paidAt: timestamp("paid_at", { withTimezone: true }), // When payment was confirmed
   expiresAt: timestamp("expires_at", { withTimezone: true }), // Payment link expiration
-  webhookData: text("webhook_data"), // JSON data from Xendit webhook
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -107,13 +107,20 @@ export async function GET(request: NextRequest) {
         ...(statusParam && { status: statusParam }),
       });
 
-      // Fetch items for each order
-      const ordersWithItems = await Promise.all(
-        result.data.map(async (order) => {
-          const items = await orderRepository.findOrderItems(order.id);
-          return { ...order, items };
-        })
-      );
+      // Fetch items and payment status for all orders in one query
+      const orderIds = result.data.map((o) => o.id);
+      const ordersWithDetails =
+        await orderRepository.findOrdersWithItemsAndPaymentStatus(orderIds);
+
+      // Merge with original order data to preserve pagination info
+      const ordersWithItems = result.data.map((order) => {
+        const details = ordersWithDetails.find((d) => d.order.id === order.id);
+        return {
+          ...order,
+          items: details?.items || [],
+          paymentStatus: details?.paymentStatus || "pending",
+        };
+      });
 
       return NextResponse.json({
         success: true,
@@ -137,13 +144,20 @@ export async function GET(request: NextRequest) {
       paginationParams
     );
 
-    // Fetch items for each order
-    const ordersWithItems = await Promise.all(
-      result.data.map(async (order) => {
-        const items = await orderRepository.findOrderItems(order.id);
-        return { ...order, items };
-      })
-    );
+    // Fetch items and payment status for all orders in one query
+    const orderIds = result.data.map((o) => o.id);
+    const ordersWithDetails =
+      await orderRepository.findOrdersWithItemsAndPaymentStatus(orderIds);
+
+    // Merge with original order data to preserve pagination info
+    const ordersWithItems = result.data.map((order) => {
+      const details = ordersWithDetails.find((d) => d.order.id === order.id);
+      return {
+        ...order,
+        items: details?.items || [],
+        paymentStatus: details?.paymentStatus || "pending",
+      };
+    });
 
     return NextResponse.json({
       success: true,

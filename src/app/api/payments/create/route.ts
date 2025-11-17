@@ -4,7 +4,6 @@
  */
 
 import type { NextRequest } from "next/server";
-import { createPaymentInvoice } from "@/lib/xendit";
 import { OrderRepositoryImpl } from "@/data/repositories/order-repository";
 import {
   createSuccessResponse,
@@ -14,7 +13,6 @@ import {
 } from "@/lib/errors";
 import { db } from "@/lib/db";
 import { orderPayments, orderPaymentItems } from "@/data/schema";
-import { eq, and, inArray, isNull, desc } from "drizzle-orm";
 
 const orderRepository = new OrderRepositoryImpl();
 
@@ -44,126 +42,42 @@ const createPaymentHandler = async (request: NextRequest) => {
     );
   }
 
-  // Calculate total amount
-  const totalAmount = orders.reduce(
-    (sum, order) => sum + (order?.totalAmount || 0),
-    0
-  );
-
-  // Check if there's already an active (pending) payment for these orders
-  const existingPaymentItems = await db
-    .select()
-    .from(orderPaymentItems)
-    .where(inArray(orderPaymentItems.orderId, order_ids));
-
-  if (existingPaymentItems.length > 0) {
-    // Get the payment details
-    const paymentIds = [
-      ...new Set(existingPaymentItems.map((item) => item.paymentId)),
-    ];
-    const existingPayments = await db
-      .select()
-      .from(orderPayments)
-      .where(
-        and(
-          inArray(orderPayments.id, paymentIds),
-          eq(orderPayments.status, "pending"),
-          isNull(orderPayments.deletedAt)
-        )
-      )
-      .orderBy(desc(orderPayments.createdAt))
-      .limit(1);
-
-    if (existingPayments.length > 0) {
-      const existingPayment = existingPayments[0];
-      // Check if payment is still valid (not expired)
-      if (
-        existingPayment.expiresAt &&
-        new Date(existingPayment.expiresAt) > new Date()
-      ) {
-        return createSuccessResponse({
-          payment: {
-            id: existingPayment.id,
-            payment_id: existingPayment.xenditInvoiceId,
-            payment_url: existingPayment.paymentUrl,
-            amount: existingPayment.amount,
-            expiry_date: existingPayment.expiresAt,
-            order_ids,
-          },
-        });
-      }
-
-      // Mark existing payment as expired
-      await db
-        .update(orderPayments)
-        .set({
-          status: "expired",
-          updatedAt: new Date(),
-        })
-        .where(eq(orderPayments.id, existingPayment.id));
-    }
-  }
-
   try {
-    // Get all order items for invoice details
-    const allOrderItems = await db.query.orderItems.findMany({
-      where: (orderItems, { inArray }) =>
-        inArray(orderItems.orderId, order_ids),
+    const { payments } = await db.transaction(async (tx) => {
+      const payments = await tx
+        .insert(orderPayments)
+        .values(
+          orders.map((order) => ({
+            orderId: order?.id as string,
+            paymentUrl: "",
+            amount: order?.totalAmount as number,
+            status: "pending",
+            expiresAt: null,
+          }))
+        )
+        .returning();
+
+      // Create payment items for each order
+      const paymentItems = await tx
+        .insert(orderPaymentItems)
+        .values(
+          payments.map((payment) => ({
+            paymentId: payment.id,
+            orderId: payment.orderId,
+            amount: payment.amount,
+          }))
+        )
+        .returning();
+
+      return {
+        payments,
+        paymentItems,
+      };
     });
-
-    // Get customer info from first order
-    const firstOrder = orders[0];
-    const sessionId = firstOrder?.sessionId;
-
-    // Create Xendit invoice
-    const externalId = `PAYMENT-${Date.now()}`;
-    const invoice = await createPaymentInvoice({
-      externalId: externalId,
-      amount: totalAmount,
-      description: `Payment for ${order_ids.length} order(s)`,
-      customerName: firstOrder?.customerName || "Customer",
-      customerPhone: firstOrder?.customerPhone || undefined,
-      items: allOrderItems.map((item) => ({
-        name: item.menuName,
-        quantity: item.quantity,
-        price: item.unitPrice,
-      })),
-      successRedirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-success?session_id=${sessionId}`,
-      failureRedirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-failed?session_id=${sessionId}`,
-    });
-
-    // Create payment record
-    const [payment] = await db
-      .insert(orderPayments)
-      .values({
-        xenditInvoiceId: invoice.id,
-        paymentUrl: invoice.invoice_url,
-        amount: totalAmount,
-        status: "pending",
-        expiresAt: new Date(invoice.expiry_date),
-      })
-      .returning();
-
-    // Create payment items for each order
-    await db.insert(orderPaymentItems).values(
-      orders
-        .filter((order): order is NonNullable<typeof order> => order !== null)
-        .map((order) => ({
-          paymentId: payment.id,
-          orderId: order.id,
-          amount: order.totalAmount,
-        }))
-    );
 
     return createSuccessResponse({
-      payment: {
-        id: payment.id,
-        payment_id: invoice.id,
-        payment_url: invoice.invoice_url,
-        amount: totalAmount,
-        expiry_date: invoice.expiry_date,
-        order_ids,
-      },
+      orders,
+      payments,
     });
   } catch (error) {
     console.error("Error creating payment:", error);

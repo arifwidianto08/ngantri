@@ -1,5 +1,5 @@
 {
-  "id": "0aa1012d-51d1-49c2-8f0b-0a124caeff73",
+  "id": "fc66d8ea-168a-495f-a08b-a92c8d7ab7c2",
   "prevId": "331d7dcb-7a72-4b06-ab8b-871c2435d01c",
   "version": "7",
   "dialect": "postgresql",
@@ -553,6 +553,78 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.order_payment_items": {
+      "name": "order_payment_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "uuidv7()"
+        },
+        "payment_id": {
+          "name": "payment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "order_payment_items_payment_id_order_payments_id_fk": {
+          "name": "order_payment_items_payment_id_order_payments_id_fk",
+          "tableFrom": "order_payment_items",
+          "tableTo": "order_payments",
+          "columnsFrom": [
+            "payment_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "order_payment_items_order_id_orders_id_fk": {
+          "name": "order_payment_items_order_id_orders_id_fk",
+          "tableFrom": "order_payment_items",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.order_payments": {
       "name": "order_payments",
       "schema": "",
@@ -570,17 +642,11 @@
           "primaryKey": false,
           "notNull": true
         },
-        "xendit_invoice_id": {
-          "name": "xendit_invoice_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
         "payment_url": {
           "name": "payment_url",
           "type": "varchar(500)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "amount": {
           "name": "amount",
@@ -610,12 +676,6 @@
         "expires_at": {
           "name": "expires_at",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "webhook_data": {
-          "name": "webhook_data",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -657,15 +717,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "order_payments_xendit_invoice_id_unique": {
-          "name": "order_payments_xendit_invoice_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "xendit_invoice_id"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

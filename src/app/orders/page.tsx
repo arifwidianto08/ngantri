@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Loader from "@/components/loader";
+import { getOrCreateBuyerSession } from "@/lib/session";
 
 interface OrderItem {
   id: string;
@@ -19,6 +20,7 @@ interface Order {
   merchantId: string;
   merchantName?: string;
   status: string;
+  paymentStatus: string;
   totalAmount: number;
   customerName: string;
   customerPhone: string;
@@ -61,17 +63,18 @@ export default function OrdersPage() {
       }
 
       try {
-        const sessionId = searchParams.get("session_id");
+        // Get session from session management utility
+        const buyerSession = await getOrCreateBuyerSession();
         const view = searchParams.get("view") || "pending";
 
-        if (!sessionId) {
+        if (!buyerSession) {
           setLoading(false);
           return;
         }
 
         // Build query params
         const params = new URLSearchParams({
-          session_id: sessionId,
+          session_id: buyerSession.id,
         });
 
         // Filter by view: active or history
@@ -174,9 +177,7 @@ export default function OrdersPage() {
           <button
             type="button"
             onClick={() => {
-              const params = new URLSearchParams(searchParams.toString());
-              params.set("view", "pending");
-              router.push(`/orders?${params.toString()}`);
+              router.push("/orders?view=pending");
             }}
             className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
               currentView === "pending"
@@ -189,9 +190,7 @@ export default function OrdersPage() {
           <button
             type="button"
             onClick={() => {
-              const params = new URLSearchParams(searchParams.toString());
-              params.set("view", "history");
-              router.push(`/orders?${params.toString()}`);
+              router.push("/orders?view=history");
             }}
             className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
               currentView === "history"
@@ -281,19 +280,34 @@ export default function OrdersPage() {
                         #{order.id.slice(0, 8)}
                       </p>
                     </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                        STATUS_COLORS[
-                          order.status as keyof typeof STATUS_COLORS
-                        ]
-                      }`}
-                    >
-                      {
-                        STATUS_LABELS[
-                          order.status as keyof typeof STATUS_LABELS
-                        ]
-                      }
-                    </span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                          STATUS_COLORS[
+                            order.status as keyof typeof STATUS_COLORS
+                          ]
+                        }`}
+                      >
+                        {
+                          STATUS_LABELS[
+                            order.status as keyof typeof STATUS_LABELS
+                          ]
+                        }
+                      </span>
+                      {order.paymentStatus && (
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            order.paymentStatus === "paid"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-orange-100 text-orange-800"
+                          }`}
+                        >
+                          {order.paymentStatus === "paid"
+                            ? "💵 Paid"
+                            : "⏳ Unpaid"}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t">
