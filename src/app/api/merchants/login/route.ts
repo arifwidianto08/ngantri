@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { MerchantRepositoryImpl } from "../../../../data/repositories/MerchantRepository";
-import { MerchantService } from "../../../../services/MerchantService";
+import { MerchantService } from "../../../../services/merchant-service";
 import {
   createSuccessResponse,
   handleApiError,

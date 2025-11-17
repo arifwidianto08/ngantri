@@ -5,9 +5,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { SessionRepositoryImpl } from "../../../../../data/repositories/SessionRepository";
-import { SessionService } from "../../../../../services/SessionService";
+import { SessionService } from "../../../../../services/session-service";
 import { MenuRepositoryImpl } from "../../../../../data/repositories/MenuRepository";
-import { MenuService } from "../../../../../services/MenuService";
+import { MenuService } from "../../../../../services/menu-service";
 import {
   createSuccessResponse,
   createErrorResponse,

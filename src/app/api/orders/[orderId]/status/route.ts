@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { OrderRepositoryImpl } from "@/data/repositories/OrderRepository";
-import { OrderService } from "@/services/OrderService";
+import { OrderService } from "@/services/order-service";
 import { handleApiError } from "@/lib/errors";
 import { requireMerchantAuth } from "@/lib/merchantAuth";
 

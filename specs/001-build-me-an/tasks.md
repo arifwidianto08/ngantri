@@ -138,14 +138,14 @@ Single Next.js project structure:
 
 ### Service Layer (Business Logic)
 
-- [ ] T055 [P] Create MerchantService interface in src/services/interfaces/MerchantService.ts
-- [ ] T056 [P] Create MenuService interface in src/services/interfaces/MenuService.ts
-- [ ] T057 [P] Create OrderService interface in src/services/interfaces/OrderService.ts
-- [ ] T058 [P] Create SessionService interface in src/services/interfaces/SessionService.ts
-- [ ] T059 [P] Implement MerchantService with business logic in src/services/MerchantService.ts
-- [ ] T060 [P] Implement MenuService with business logic in src/services/MenuService.ts
-- [ ] T061 [P] Implement OrderService with business logic in src/services/OrderService.ts
-- [ ] T062 [P] Implement SessionService with business logic in src/services/SessionService.ts
+- [ ] T055 [P] Create MerchantService interface in src/services/interfaces/merchant-service.ts
+- [ ] T056 [P] Create MenuService interface in src/services/interfaces/menu-service.ts
+- [ ] T057 [P] Create OrderService interface in src/services/interfaces/order-service.ts
+- [ ] T058 [P] Create SessionService interface in src/services/interfaces/session-service.ts
+- [ ] T059 [P] Implement MerchantService with business logic in src/services/merchant-service.ts
+- [ ] T060 [P] Implement MenuService with business logic in src/services/menu-service.ts
+- [ ] T061 [P] Implement OrderService with business logic in src/services/order-service.ts
+- [ ] T062 [P] Implement SessionService with business logic in src/services/session-service.ts
 
 ### Utility Libraries
 
@@ -232,10 +232,10 @@ Single Next.js project structure:
 
 ### Unit Tests
 
-- [ ] T112 [P] Unit tests for MerchantService in tests/unit/services/MerchantService.test.ts
-- [ ] T113 [P] Unit tests for MenuService in tests/unit/services/MenuService.test.ts
-- [ ] T114 [P] Unit tests for OrderService in tests/unit/services/OrderService.test.ts
-- [ ] T115 [P] Unit tests for SessionService in tests/unit/services/SessionService.test.ts
+- [ ] T112 [P] Unit tests for MerchantService in tests/unit/services/merchant-service.test.ts
+- [ ] T113 [P] Unit tests for MenuService in tests/unit/services/menu-service.test.ts
+- [ ] T114 [P] Unit tests for OrderService in tests/unit/services/order-service.test.ts
+- [ ] T115 [P] Unit tests for SessionService in tests/unit/services/session-service.test.ts
 - [ ] T116 [P] Unit tests for validation utilities in tests/unit/lib/validation.test.ts
 - [ ] T117 [P] Unit tests for WhatsApp utilities in tests/unit/lib/whatsapp.test.ts
 - [ ] T118 [P] Unit tests for image processing in tests/unit/lib/image.test.ts
