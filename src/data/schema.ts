@@ -146,19 +146,17 @@ export const orders = pgTable("orders", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-// Order Payments - payment transactions for orders via Xendit
+// Order Payments - payment transactions for multiple orders via Xendit
+// One payment can cover multiple orders (like Tokopedia/Shopee checkout)
 export const orderPayments = pgTable("order_payments", {
   id: uuid("id")
     .primaryKey()
     .default(sql`uuidv7()`),
-  orderId: uuid("order_id")
-    .notNull()
-    .references(() => orders.id),
   xenditInvoiceId: varchar("xendit_invoice_id", { length: 255 })
     .notNull()
     .unique(), // Xendit's invoice ID
   paymentUrl: varchar("payment_url", { length: 500 }).notNull(), // Payment URL for customer
-  amount: integer("amount").notNull(), // Amount in IDR
+  amount: integer("amount").notNull(), // Total amount in IDR for all orders
   status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, paid, expired, failed, cancelled
   paymentMethod: varchar("payment_method", { length: 50 }), // e.g., BANK_TRANSFER, E_WALLET, CREDIT_CARD
   paidAt: timestamp("paid_at", { withTimezone: true }), // When payment was confirmed
@@ -171,6 +169,23 @@ export const orderPayments = pgTable("order_payments", {
     .notNull()
     .defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+// Order Payment Items - junction table linking payments to orders (many-to-many)
+export const orderPaymentItems = pgTable("order_payment_items", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`uuidv7()`),
+  paymentId: uuid("payment_id")
+    .notNull()
+    .references(() => orderPayments.id),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id),
+  amount: integer("amount").notNull(), // Amount for this specific order within the payment
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // Order Items - individual items within an order (denormalized for history)

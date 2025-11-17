@@ -1,4 +1,10 @@
-import { Order, NewOrder, OrderItem, NewOrderItem } from "../schema";
+import type {
+  Order,
+  NewOrder,
+  OrderItem,
+  NewOrderItem,
+  OrderPayment,
+} from "../schema";
 
 export interface OrderRepository {
   // Order operations
@@ -55,6 +61,7 @@ export interface OrderRepository {
     order: Order;
     items: OrderItem[];
   } | null>;
+  findPaymentsByOrderId(orderId: string): Promise<OrderPayment[]>;
   count(
     merchantId?: string,
     options?: {

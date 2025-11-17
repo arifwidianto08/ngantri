@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { OrderRepositoryImpl } from "../../../data/repositories/order-repository";
 import { OrderService } from "../../../services/order-service";
 import {
@@ -78,11 +79,38 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/orders
- * Get orders for the authenticated merchant
+ * Get orders - supports filtering by IDs or fetching merchant orders
  */
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate merchant from session
+    const { searchParams } = new URL(request.url);
+    const idsParam = searchParams.get("ids");
+
+    // If IDs are provided, fetch those specific orders
+    if (idsParam) {
+      const ids = idsParam.split(",").filter((id) => id.trim());
+
+      if (ids.length === 0) {
+        return createErrorResponse(
+          ERROR_CODES.BAD_REQUEST,
+          "Invalid order IDs",
+          400
+        );
+      }
+
+      const orderPromises = ids.map((id) => orderService.findById(id));
+      const orders = await Promise.all(orderPromises);
+
+      // Filter out null orders (not found)
+      const validOrders = orders.filter((order) => order !== null);
+
+      return NextResponse.json({
+        success: true,
+        data: validOrders,
+      });
+    }
+
+    // Otherwise, get orders for authenticated merchant
     const authenticatedMerchant = await requireMerchantAuth(request);
 
     // Get orders for this merchant with pagination

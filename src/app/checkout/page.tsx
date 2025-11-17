@@ -9,6 +9,40 @@ import type { BuyerSession } from "../../lib/session";
 import Image from "next/image";
 import Loader from "@/components/loader";
 
+interface ValidationErrors {
+  name?: string;
+  whatsapp?: string;
+}
+
+interface CartItem {
+  id: string;
+  menuId: string;
+  menuName: string;
+  quantity: number;
+  unitPrice: number;
+  imageUrl?: string;
+  merchantId: string;
+  merchantName: string;
+}
+
+interface MerchantGroup {
+  merchantName: string;
+  items: CartItem[];
+  total: number;
+}
+
+interface OrdersByMerchant {
+  merchantName: string;
+  items: CartItem[];
+}
+
+interface OrderResult {
+  success: boolean;
+  merchantName: string;
+  orderId?: string;
+  error?: unknown;
+}
+
 export default function CheckoutPage() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [session, setSession] = useState<BuyerSession | null>(null);
@@ -16,10 +50,7 @@ export default function CheckoutPage() {
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [loading, setLoading] = useState(true);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [errors, setErrors] = useState<{
-    name?: string;
-    whatsapp?: string;
-  }>({});
+  const [errors, setErrors] = useState<ValidationErrors>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -69,8 +100,7 @@ export default function CheckoutPage() {
       acc[item.merchantId].items.push(item);
       acc[item.merchantId].total += item.quantity * item.unitPrice;
       return acc;
-    }, {} as Record<string, { merchantName: string; items: typeof cart.items; total: number }>) ||
-    {};
+    }, {} as Record<string, MerchantGroup>) || {};
 
   const grandTotal = Object.values(merchantGroups).reduce(
     (sum, group) => sum + group.total,
@@ -78,7 +108,7 @@ export default function CheckoutPage() {
   );
 
   const validateInputs = (): boolean => {
-    const newErrors: { name?: string; whatsapp?: string } = {};
+    const newErrors: ValidationErrors = {};
 
     // Validate name
     if (!customerName.trim()) {
@@ -102,6 +132,53 @@ export default function CheckoutPage() {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const createOrdersForMerchants = async (
+    cleanedWhatsapp: string,
+    ordersByMerchant: Record<string, OrdersByMerchant>
+  ): Promise<OrderResult[]> => {
+    const orderPromises = Object.entries(ordersByMerchant).map(
+      async ([merchantId, { merchantName, items }]) => {
+        if (!session) {
+          return { success: false, merchantName, error: "No session" };
+        }
+
+        const orderData = {
+          sessionId: session.id,
+          merchantId: merchantId,
+          customerName: customerName.trim(),
+          customerPhone: cleanedWhatsapp,
+          items: items.map((item) => ({
+            menuId: item.menuId,
+            menuName: item.menuName,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            menuImageUrl: item.imageUrl,
+          })),
+          notes: `Table ${session.tableNumber}`,
+        };
+
+        const response = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(orderData),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          return {
+            success: true,
+            merchantName,
+            orderId: result.data.order.id,
+          };
+        }
+        return { success: false, merchantName, error: result.error };
+      }
+    );
+
+    return await Promise.all(orderPromises);
   };
 
   const handlePlaceOrder = async () => {
@@ -130,71 +207,59 @@ export default function CheckoutPage() {
         }
         acc[item.merchantId].items.push(item);
         return acc;
-      }, {} as Record<string, { merchantName: string; items: typeof cart.items }>);
+      }, {} as Record<string, OrdersByMerchant>);
 
-      // Place orders for each merchant
-      const orderPromises = Object.entries(ordersByMerchant).map(
-        async ([merchantId, { merchantName, items }]) => {
-          const orderData = {
-            sessionId: session.id,
-            merchantId: merchantId,
-            customerName: customerName.trim(),
-            customerPhone: cleanedWhatsapp,
-            items: items.map((item) => ({
-              menuId: item.menuId,
-              menuName: item.menuName,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              menuImageUrl: item.imageUrl,
-            })),
-            notes: `Table ${session.tableNumber}`,
-          };
-
-          const response = await fetch("/api/orders", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(orderData),
-          });
-
-          const result = await response.json();
-
-          if (result.success) {
-            return {
-              success: true,
-              merchantName,
-              orderId: result.data.order.id,
-            };
-          }
-          return { success: false, merchantName, error: result.error };
-        }
+      // Create orders for each merchant
+      const results = await createOrdersForMerchants(
+        cleanedWhatsapp,
+        ordersByMerchant
       );
-
-      const results = await Promise.all(orderPromises);
 
       // Check if all orders succeeded
       const failed = results.filter((r) => !r.success);
       const succeeded = results.filter((r) => r.success);
 
-      if (failed.length === 0) {
-        // All orders succeeded
-        const orderIds = succeeded.map((r) => r.orderId);
-
-        // Clear cart
-        clearCart();
-        window.dispatchEvent(new Event("cart-updated"));
-
-        // Redirect to order status page with order IDs
-        router.push(`/orders?ids=${orderIds.join(",")}`);
-      } else {
+      if (failed.length > 0) {
         // Some orders failed
         const failedMerchants = failed.map((r) => r.merchantName).join(", ");
         alert(
           `Some orders failed for: ${failedMerchants}\n\nPlease try again or contact support.`
         );
+        return;
       }
+
+      // Get all order IDs
+      const orderIds = succeeded
+        .filter(
+          (order): order is OrderResult & { orderId: string } =>
+            order.success && typeof order.orderId === "string"
+        )
+        .map((order) => order.orderId);
+
+      // Create single payment for all orders
+      const paymentResponse = await fetch("/api/payments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_ids: orderIds }),
+      });
+
+      const paymentResult = await paymentResponse.json();
+
+      if (!paymentResult.success || !paymentResult.data.payment.payment_url) {
+        throw new Error("Failed to create payment link");
+      }
+
+      // All successful - clear cart
+      clearCart();
+      window.dispatchEvent(new Event("cart-updated"));
+
+      // Redirect to payment URL
+      window.location.href = paymentResult.data.payment.payment_url;
     } catch (error) {
       console.error("Error placing orders:", error);
-      alert("Failed to place orders. Please try again.");
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to place orders";
+      alert(`${errorMessage}. Please try again.`);
     } finally {
       setIsPlacingOrder(false);
     }
@@ -321,7 +386,7 @@ export default function CheckoutPage() {
                     </p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
-                    We'll send order updates via WhatsApp
+                    We&apos;ll send order updates via WhatsApp
                   </p>
                 </div>
               </div>
@@ -426,8 +491,8 @@ export default function CheckoutPage() {
               {/* Payment Notice */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <p className="text-sm text-blue-800">
-                  💳 <strong>Payment:</strong> Please pay in person at each
-                  merchant counter
+                  💳 <strong>Payment:</strong> You will be redirected to secure
+                  payment page.
                 </p>
               </div>
 
@@ -438,7 +503,7 @@ export default function CheckoutPage() {
                 disabled={isPlacingOrder}
                 className="w-full px-6 py-4 bg-green-600 text-white text-lg font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
-                {isPlacingOrder ? "Placing Order..." : "Place Order"}
+                {isPlacingOrder ? "Processing..." : "Continue to Payment"}
               </button>
 
               <p className="text-xs text-gray-500 text-center mt-4">

@@ -1,13 +1,13 @@
 /**
  * POST /api/webhooks/xendit
- * Handle Xendit payment webhooks
+ * Handle Xendit payment webhooks for multi-order payments
  */
 
 import type { NextRequest } from "next/server";
 import { validateWebhookToken } from "@/lib/xendit";
 import { db } from "@/lib/db";
-import { orderPayments, orders } from "@/data/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { orderPayments, orderPaymentItems, orders } from "@/data/schema";
+import { eq, and, isNull, inArray } from "drizzle-orm";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -62,21 +62,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the order
-    const [order] = await db
+    // Find all orders linked to this payment
+    const paymentItems = await db
       .select()
-      .from(orders)
-      .where(eq(orders.id, paymentRecord.orderId))
-      .limit(1);
+      .from(orderPaymentItems)
+      .where(eq(orderPaymentItems.paymentId, paymentRecord.id));
 
-    if (!order) {
-      console.error("Order not found:", paymentRecord.orderId);
+    const orderIds = paymentItems.map((item) => item.orderId);
+
+    if (orderIds.length === 0) {
+      console.error("No orders found for payment:", paymentRecord.id);
       return createErrorResponse(
         ERROR_CODES.ORDER_NOT_FOUND,
-        "Order not found",
+        "No orders found for this payment",
         404
       );
     }
+
+    const relatedOrders = await db
+      .select()
+      .from(orders)
+      .where(inArray(orders.id, orderIds));
 
     // Update payment record based on status
     const paymentUpdate: Record<string, string | Date | object> = {
@@ -99,38 +105,48 @@ export async function POST(request: NextRequest) {
       .set(paymentUpdate)
       .where(eq(orderPayments.id, paymentRecord.id));
 
-    // Update order status if payment is completed
-    if (status === "PAID" && order.status === "pending") {
-      await db
-        .update(orders)
-        .set({
-          status: "accepted",
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, paymentRecord.orderId));
+    // Update all related orders based on payment status
+    if (status === "PAID") {
+      // Update all pending orders to accepted
+      const pendingOrderIds = relatedOrders
+        .filter((order) => order.status === "pending")
+        .map((order) => order.id);
+
+      if (pendingOrderIds.length > 0) {
+        await db
+          .update(orders)
+          .set({
+            status: "accepted",
+            updatedAt: new Date(),
+          })
+          .where(inArray(orders.id, pendingOrderIds));
+      }
     } else if (status === "EXPIRED" || status === "FAILED") {
-      // Optionally cancel order if payment failed/expired
-      // Only if order is still pending
-      if (order.status === "pending") {
+      // Cancel all pending orders
+      const pendingOrderIds = relatedOrders
+        .filter((order) => order.status === "pending")
+        .map((order) => order.id);
+
+      if (pendingOrderIds.length > 0) {
         await db
           .update(orders)
           .set({
             status: "cancelled",
             updatedAt: new Date(),
           })
-          .where(eq(orders.id, paymentRecord.orderId));
+          .where(inArray(orders.id, pendingOrderIds));
       }
     }
 
     console.log("Payment updated successfully:", {
-      orderId: paymentRecord.orderId,
+      orderIds,
       paymentId: paymentRecord.id,
       status: paymentUpdate.status,
     });
 
     return createSuccessResponse({
       message: "Webhook processed successfully",
-      order_id: paymentRecord.orderId,
+      order_ids: orderIds,
       payment_id: paymentRecord.id,
       status: paymentUpdate.status,
     });

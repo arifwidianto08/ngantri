@@ -394,10 +394,18 @@ export class OrderService implements IOrderService {
    * Validate Indonesian phone number format
    */
   private validatePhoneNumber(phoneNumber: string): void {
-    const phoneRegex = /^(\+62|0)[0-9]{8,13}$/;
     const cleanPhone = phoneNumber.replace(/[-\s]/g, "");
 
+    // Accept formats: 0812xxx, +62812xxx, or 812xxx (without leading 0)
+    const phoneRegex = /^(\+62|62|0)?[0-9]{9,13}$/;
+
     if (!phoneRegex.test(cleanPhone)) {
+      throw errors.validation("Invalid Indonesian phone number format");
+    }
+
+    // Additional validation: must have at least 10 digits total (including prefix)
+    const digitsOnly = cleanPhone.replace(/\D/g, "");
+    if (digitsOnly.length < 10 || digitsOnly.length > 15) {
       throw errors.validation("Invalid Indonesian phone number format");
     }
   }

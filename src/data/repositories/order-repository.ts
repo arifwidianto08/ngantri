@@ -1,14 +1,17 @@
-import { eq, desc, gt, and, isNull, sql, gte, lte } from "drizzle-orm";
+import { eq, desc, gt, and, isNull, sql, gte, lte, inArray } from "drizzle-orm";
 import { db } from "../../lib/db";
 import {
   orders,
   orderItems,
-  Order,
-  NewOrder,
-  OrderItem,
-  NewOrderItem,
+  orderPayments,
+  orderPaymentItems,
+  type Order,
+  type NewOrder,
+  type OrderItem,
+  type NewOrderItem,
+  type OrderPayment,
 } from "../schema";
-import { OrderRepository } from "../interfaces/order-repository";
+import type { OrderRepository } from "../interfaces/order-repository";
 
 export class OrderRepositoryImpl implements OrderRepository {
   async create(order: NewOrder): Promise<Order> {
@@ -275,5 +278,33 @@ export class OrderRepositoryImpl implements OrderRepository {
       averageOrderValue: 0,
       ordersByStatus: {},
     };
+  }
+
+  async findPaymentsByOrderId(orderId: string): Promise<OrderPayment[]> {
+    // Find payment IDs linked to this order through junction table
+    const paymentItems = await db
+      .select()
+      .from(orderPaymentItems)
+      .where(eq(orderPaymentItems.orderId, orderId));
+
+    if (paymentItems.length === 0) {
+      return [];
+    }
+
+    const paymentIds = paymentItems.map((item) => item.paymentId);
+
+    // Get the payment records
+    const payments = await db
+      .select()
+      .from(orderPayments)
+      .where(
+        and(
+          inArray(orderPayments.id, paymentIds),
+          isNull(orderPayments.deletedAt)
+        )
+      )
+      .orderBy(desc(orderPayments.createdAt));
+
+    return payments;
   }
 }
