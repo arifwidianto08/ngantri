@@ -6,7 +6,7 @@ import {
   createErrorResponse,
   ERROR_CODES,
 } from "../../../lib/errors";
-import { requireMerchantAuth } from "../../../lib/merchantAuth";
+import { requireMerchantAuth } from "../../../lib/merchant-auth";
 
 const orderRepository = new OrderRepositoryImpl();
 const orderService = new OrderService(orderRepository);

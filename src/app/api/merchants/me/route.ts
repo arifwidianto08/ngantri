@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedMerchant } from "@/lib/merchantAuth";
+import { getAuthenticatedMerchant } from "@/lib/merchant-auth";
 
 /**
  * GET /api/merchants/me

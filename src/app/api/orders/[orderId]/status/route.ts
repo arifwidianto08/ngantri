@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { OrderRepositoryImpl } from "@/data/repositories/order-repository";
 import { OrderService } from "@/services/order-service";
 import { handleApiError } from "@/lib/errors";
-import { requireMerchantAuth } from "@/lib/merchantAuth";
+import { requireMerchantAuth } from "@/lib/merchant-auth";
 
 // Initialize services
 const orderRepository = new OrderRepositoryImpl();

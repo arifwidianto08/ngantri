@@ -43,6 +43,7 @@ export default function Home() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [tableNumber, setTableNumber] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [menuLoading, setMenuLoading] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
 
   // Initialize session and cart on component mount
@@ -81,9 +82,11 @@ export default function Home() {
     const loadMenuItems = async () => {
       if (!selectedMerchant) {
         setMenuItems([]);
+        setMenuLoading(false);
         return;
       }
 
+      setMenuLoading(true);
       try {
         const response = await fetch(
           `/api/merchants/${selectedMerchant.id}/menus`
@@ -94,6 +97,8 @@ export default function Home() {
         }
       } catch (error) {
         console.error("Error loading menu items:", error);
+      } finally {
+        setMenuLoading(false);
       }
     };
 
@@ -256,7 +261,9 @@ export default function Home() {
               Menu - {selectedMerchant.name}
             </h2>
 
-            {menuItems.length === 0 ? (
+            {menuLoading ? (
+              <Loader message="Loading menu items..." />
+            ) : menuItems.length === 0 ? (
               <p className="text-gray-500 text-center py-8">
                 No menu items available for this merchant.
               </p>
