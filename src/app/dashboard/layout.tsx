@@ -3,6 +3,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import {
+  LayoutDashboard,
+  Package,
+  UtensilsCrossed,
+  Folder,
+  LogOut,
+} from "lucide-react";
 
 interface Merchant {
   id: string;
@@ -62,10 +69,10 @@ export default function MerchantDashboardLayout({
   }
 
   const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: "📊" },
-    { name: "Orders", href: "/dashboard/orders", icon: "📦" },
-    { name: "Menus", href: "/dashboard/menus", icon: "🍽️" },
-    { name: "Categories", href: "/dashboard/categories", icon: "📁" },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Orders", href: "/dashboard/orders", icon: Package },
+    { name: "Menus", href: "/dashboard/menus", icon: UtensilsCrossed },
+    { name: "Categories", href: "/dashboard/categories", icon: Folder },
   ];
 
   return (
@@ -91,6 +98,7 @@ export default function MerchantDashboardLayout({
           <nav className="flex-1 p-4 space-y-1">
             {navigation.map((item) => {
               const isActive = pathname === item.href;
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.name}
@@ -101,7 +109,7 @@ export default function MerchantDashboardLayout({
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
-                  <span className="text-lg">{item.icon}</span>
+                  <Icon className="w-5 h-5" />
                   {item.name}
                 </Link>
               );
@@ -115,7 +123,7 @@ export default function MerchantDashboardLayout({
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
             >
-              <span className="text-lg">🚪</span>
+              <LogOut className="w-5 h-5" />
               Logout
             </button>
           </div>

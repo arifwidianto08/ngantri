@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Loader from "@/components/loader";
+import { Package, Loader2, PartyPopper, CheckCircle2 } from "lucide-react";
 import { getOrCreateBuyerSession } from "@/lib/session";
 
 interface OrderItem {
@@ -114,7 +115,11 @@ export default function OrdersPage() {
   }, [searchParams]);
 
   if (loading) {
-    return <Loader message="Loading your orders..." />;
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Loader message="Loading your orders..." />
+      </div>
+    );
   }
 
   const allCompleted = orders.every((order) => order.status === "completed");
@@ -123,47 +128,32 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+      <header className="bg-white shadow-md sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                📦 Order Status
+            <div className="flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <Package className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" />
+                <span>Order Status</span>
               </h1>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span>Track your orders in real-time</span>
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mt-1">
+                <span>Track in real-time</span>
                 {refreshing && (
                   <span className="inline-flex items-center gap-1 text-blue-600">
-                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
-                      <title>Loading</title>
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                        fill="none"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Updating...
+                    <Loader2 className="animate-spin h-3 w-3" />
+                    <span className="hidden sm:inline">Updating...</span>
                   </span>
                 )}
                 {!refreshing && (
-                  <span className="text-xs text-gray-500">
-                    Last updated: {lastUpdate.toLocaleTimeString("id-ID")}
+                  <span className="text-xs text-gray-400">
+                    {lastUpdate.toLocaleTimeString("id-ID")}
                   </span>
                 )}
               </div>
             </div>
             <Link
               href="/"
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+              className="px-3 sm:px-4 py-2 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
             >
               ← Home
             </Link>
@@ -171,47 +161,49 @@ export default function OrdersPage() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-4 sm:py-6">
         {/* View Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-4 sm:mb-6">
           <button
             type="button"
             onClick={() => {
               router.push("/orders?view=pending");
             }}
-            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex-1 px-4 py-3 rounded-xl font-bold transition-all shadow-sm ${
               currentView === "pending"
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50 border"
+                ? "bg-blue-600 text-white shadow-lg scale-105"
+                : "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
             }`}
           >
-            Ongoing
+            <div className="text-sm sm:text-base">Ongoing</div>
           </button>
           <button
             type="button"
             onClick={() => {
               router.push("/orders?view=history");
             }}
-            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`flex-1 px-4 py-3 rounded-xl font-bold transition-all shadow-sm ${
               currentView === "history"
-                ? "bg-blue-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50 border"
+                ? "bg-blue-600 text-white shadow-lg scale-105"
+                : "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
             }`}
           >
-            History
+            <div className="text-sm sm:text-base">History</div>
           </button>
         </div>
 
         {/* Success Message - Only show for pending orders */}
         {currentView === "pending" && orders.length > 0 && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-            <div className="flex items-start gap-4">
-              <div className="text-4xl">✓</div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-green-900 mb-2">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex-shrink-0">
+                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg sm:text-xl font-bold text-green-900 mb-2">
                   Order Placed Successfully!
                 </h2>
-                <p className="text-green-800 mb-4">
+                <p className="text-sm sm:text-base text-green-800 mb-3">
                   Your order{orders.length > 1 ? "s have" : " has"} been sent to
                   the merchant{orders.length > 1 ? "s" : ""}. Please wait for
                   confirmation.
@@ -220,7 +212,7 @@ export default function OrdersPage() {
                   {orders.map((order) => (
                     <span
                       key={order.id}
-                      className="inline-block px-3 py-1 bg-white border border-green-300 rounded-full text-sm font-mono text-green-900"
+                      className="inline-block px-3 py-1.5 bg-white border-2 border-green-300 rounded-full text-xs sm:text-sm font-mono text-green-900 shadow-sm"
                     >
                       #{order.id.slice(0, 8)}
                     </span>
@@ -233,56 +225,83 @@ export default function OrdersPage() {
 
         {/* Status Banner */}
         {currentView === "pending" && anyReady && !allCompleted && (
-          <div className="bg-green-100 border border-green-300 rounded-lg p-4 mb-6">
-            <p className="text-green-900 font-semibold">
-              🎉 Some of your orders are ready for pickup!
+          <div className="bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-300 rounded-xl p-4 mb-4 sm:mb-6">
+            <p className="text-green-900 font-bold text-sm sm:text-base flex items-center gap-2">
+              <PartyPopper className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+              <span>Some of your orders are ready for pickup!</span>
             </p>
           </div>
         )}
 
         {allCompleted && (
-          <div className="bg-gray-100 border border-gray-300 rounded-lg p-4 mb-6">
-            <p className="text-gray-900 font-semibold">
-              ✓ All orders completed! Thank you for your order.
+          <div className="bg-gradient-to-r from-gray-100 to-gray-200 border-2 border-gray-300 rounded-xl p-4 mb-4 sm:mb-6">
+            <p className="text-gray-900 font-bold text-sm sm:text-base flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
+              <span>All orders completed! Thank you for your order.</span>
             </p>
           </div>
         )}
 
         {/* Orders List */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {orders.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">📦</div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            <div className="bg-white rounded-2xl shadow-sm p-12 sm:p-16 flex flex-col items-center text-center">
+              <div className="mb-4">
+                <Package
+                  className="w-20 h-20 sm:w-24 sm:h-24 text-gray-300"
+                  strokeWidth={1}
+                />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
                 No orders found
               </h2>
-              <p className="text-gray-600">
+              <p className="text-sm sm:text-base text-gray-600 mb-6">
                 {currentView === "pending"
                   ? "You don't have any active orders"
                   : "You don't have any order history"}
               </p>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold shadow-lg hover:shadow-xl transition-all"
+              >
+                <span>Browse Menu</span>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <title>Arrow</title>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </Link>
             </div>
           ) : (
             orders.map((order) => (
               <Link
                 key={order.id}
                 href={`/orders/${order.id}`}
-                className="block bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                className="block bg-white rounded-xl shadow-md hover:shadow-xl transition-all overflow-hidden border-2 border-gray-200 hover:border-blue-300 active:scale-[0.99]"
               >
                 {/* Order Card */}
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-bold text-gray-900">
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-start justify-between mb-3 gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 text-base sm:text-lg truncate">
                         {order.merchantName || "Merchant"}
                       </h3>
-                      <p className="text-sm text-gray-500 font-mono">
+                      <p className="text-xs sm:text-sm text-gray-500 font-mono">
                         #{order.id.slice(0, 8)}
                       </p>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                       <span
-                        className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 ${
                           STATUS_COLORS[
                             order.status as keyof typeof STATUS_COLORS
                           ]
@@ -296,10 +315,10 @@ export default function OrdersPage() {
                       </span>
                       {order.paymentStatus && (
                         <span
-                          className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
                             order.paymentStatus === "paid"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-orange-100 text-orange-800"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : "bg-orange-50 text-orange-700 border-orange-200"
                           }`}
                         >
                           {order.paymentStatus === "paid"
@@ -310,11 +329,16 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t">
-                    <div className="text-sm text-gray-600">
-                      {new Date(order.createdAt).toLocaleString("id-ID")}
+                  <div className="flex items-center justify-between pt-3 border-t-2 border-gray-100">
+                    <div className="text-xs sm:text-sm text-gray-600">
+                      {new Date(order.createdAt).toLocaleString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
-                    <div className="text-lg font-bold text-gray-900">
+                    <div className="text-base sm:text-lg font-bold text-gray-900">
                       Rp {order.totalAmount.toLocaleString("id-ID")}
                     </div>
                   </div>
@@ -325,14 +349,30 @@ export default function OrdersPage() {
         </div>
 
         {/* Actions */}
-        <div className="mt-8 flex justify-center gap-4">
-          <Link
-            href="/"
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
-          >
-            Order More
-          </Link>
-        </div>
+        {orders.length > 0 && (
+          <div className="mt-8 flex justify-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg hover:shadow-xl transition-all"
+            >
+              <span>Order More</span>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Arrow</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
