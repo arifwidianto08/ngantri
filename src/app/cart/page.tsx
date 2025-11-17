@@ -8,10 +8,12 @@ import {
   updateCartItemQuantity,
   removeFromCart,
   clearCart,
-  Cart,
 } from "../../lib/cart";
-import { getBuyerSession, BuyerSession } from "../../lib/session";
+import type { Cart } from "../../lib/cart";
+import { getBuyerSession } from "../../lib/session";
+import type { BuyerSession } from "../../lib/session";
 import Image from "next/image";
+import Loader from "@/components/loader";
 
 export default function CartPage() {
   const [cart, setCart] = useState<Cart | null>(null);
@@ -87,11 +89,7 @@ export default function CartPage() {
     {};
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading cart...</div>
-      </div>
-    );
+    return <Loader message="Loading cart..." />;
   }
 
   return (
@@ -111,6 +109,7 @@ export default function CartPage() {
             </div>
             {cart && cart.items.length > 0 && (
               <button
+                type="button"
                 onClick={handleClearCart}
                 className="text-red-600 hover:text-red-700 text-sm font-medium"
               >
@@ -174,98 +173,127 @@ export default function CartPage() {
             {/* Cart Items by Merchant */}
             <div className="space-y-6 mb-6">
               {Object.entries(itemsByMerchant).map(
-                ([merchantId, { merchantName, items }]) => (
-                  <div
-                    key={merchantId}
-                    className="bg-white rounded-lg shadow-sm overflow-hidden"
-                  >
-                    {/* Merchant Header */}
-                    <div className="bg-gray-50 px-6 py-3 border-b">
-                      <h3 className="font-semibold text-gray-900">
-                        {merchantName}
-                      </h3>
-                    </div>
+                ([merchantId, { merchantName, items }]) => {
+                  const merchantTotal = items.reduce(
+                    (sum, item) => sum + item.totalPrice,
+                    0
+                  );
 
-                    {/* Items */}
-                    <div className="divide-y">
-                      {items.map((item) => (
-                        <div key={item.id} className="p-6">
-                          <div className="flex gap-4">
-                            {/* Item Image */}
-                            {item.imageUrl && (
-                              <div className="flex-shrink-0">
-                                <Image
-                                  src={item.imageUrl}
-                                  alt={item.menuName}
-                                  width={80}
-                                  height={80}
-                                  className="rounded-lg object-cover"
-                                />
-                              </div>
-                            )}
-
-                            {/* Item Details */}
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold text-gray-900 mb-1">
-                                {item.menuName}
-                              </h4>
-                              <p className="text-sm text-gray-600 mb-2">
-                                Rp {item.unitPrice.toLocaleString("id-ID")}{" "}
-                                each
-                              </p>
-
-                              {/* Quantity Controls */}
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
-                                  <button
-                                    onClick={() =>
-                                      handleUpdateQuantity(
-                                        item.id,
-                                        item.quantity - 1
-                                      )
-                                    }
-                                    className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 font-medium"
-                                    disabled={item.quantity <= 1}
-                                  >
-                                    −
-                                  </button>
-                                  <span className="w-12 text-center font-medium">
-                                    {item.quantity}
-                                  </span>
-                                  <button
-                                    onClick={() =>
-                                      handleUpdateQuantity(
-                                        item.id,
-                                        item.quantity + 1
-                                      )
-                                    }
-                                    className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 font-medium"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-
-                                <button
-                                  onClick={() => handleRemoveItem(item.id)}
-                                  className="text-red-600 hover:text-red-700 text-sm font-medium"
-                                >
-                                  Remove
-                                </button>
-                              </div>
+                  return (
+                    <div
+                      key={merchantId}
+                      className="bg-white rounded-lg shadow-md overflow-hidden border-2 border-blue-100"
+                    >
+                      {/* Merchant Header */}
+                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b-2 border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                              {merchantName.charAt(0).toUpperCase()}
                             </div>
-
-                            {/* Item Total */}
-                            <div className="text-right">
-                              <p className="font-bold text-gray-900 text-lg">
-                                Rp {item.totalPrice.toLocaleString("id-ID")}
+                            <div>
+                              <h3 className="font-bold text-gray-900 text-lg">
+                                {merchantName}
+                              </h3>
+                              <p className="text-sm text-gray-600">
+                                {items.length} item
+                                {items.length !== 1 ? "s" : ""}
                               </p>
                             </div>
                           </div>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-600">Subtotal</p>
+                            <p className="text-lg font-bold text-blue-600">
+                              Rp {merchantTotal.toLocaleString("id-ID")}
+                            </p>
+                          </div>
                         </div>
-                      ))}
+                      </div>
+
+                      {/* Items */}
+                      <div className="divide-y">
+                        {items.map((item) => (
+                          <div key={item.id} className="p-6">
+                            <div className="flex gap-4">
+                              {/* Item Image */}
+                              {item.imageUrl && (
+                                <div className="flex-shrink-0">
+                                  <Image
+                                    src={item.imageUrl}
+                                    alt={item.menuName}
+                                    width={80}
+                                    height={80}
+                                    className="rounded-lg object-cover"
+                                  />
+                                </div>
+                              )}
+
+                              {/* Item Details */}
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-gray-900 mb-1">
+                                  {item.menuName}
+                                </h4>
+                                <p className="text-sm text-gray-600 mb-2">
+                                  Rp {item.unitPrice.toLocaleString("id-ID")}{" "}
+                                  each
+                                </p>
+
+                                {/* Quantity Controls */}
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-2 py-1">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleUpdateQuantity(
+                                          item.id,
+                                          item.quantity - 1
+                                        )
+                                      }
+                                      className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 font-medium"
+                                      disabled={item.quantity <= 1}
+                                    >
+                                      −
+                                    </button>
+                                    <span className="w-12 text-center font-medium">
+                                      {item.quantity}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleUpdateQuantity(
+                                          item.id,
+                                          item.quantity + 1
+                                        )
+                                      }
+                                      className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600 font-medium"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveItem(item.id)}
+                                    className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Item Total */}
+                              <div className="text-right">
+                                <p className="font-bold text-gray-900 text-lg">
+                                  Rp {item.totalPrice.toLocaleString("id-ID")}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )
+                  );
+                }
               )}
             </div>
 

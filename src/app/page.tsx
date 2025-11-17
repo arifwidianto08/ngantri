@@ -5,16 +5,14 @@ import Image from "next/image";
 import {
   getOrCreateBuyerSession,
   updateSessionTableNumber,
-  BuyerSession,
 } from "../lib/session";
-import {
-  getOrCreateCart,
-  addToCart,
-  Cart,
-} from "../lib/cart";
-import OrderStatus from "../components/OrderStatus";
-import CartWidget from "../components/CartWidget";
-import FloatingCart from "../components/FloatingCart";
+import type { BuyerSession } from "../lib/session";
+import { getOrCreateCart, addToCart } from "../lib/cart";
+import type { Cart } from "../lib/cart";
+import OrderStatus from "../components/order-status";
+import CartWidget from "../components/cart-widget";
+import FloatingCart from "../components/floating-cart";
+import Loader from "../components/loader";
 
 interface Merchant {
   id: string;
@@ -109,12 +107,14 @@ export default function Home() {
     }
 
     try {
-      const success = await updateSessionTableNumber(parseInt(tableNumber));
+      const success = await updateSessionTableNumber(
+        Number.parseInt(tableNumber)
+      );
       if (success) {
         // Update session in state
         const updatedSession = {
           ...session,
-          tableNumber: parseInt(tableNumber),
+          tableNumber: Number.parseInt(tableNumber),
         };
         setSession(updatedSession);
         alert("Table number updated successfully!");
@@ -153,11 +153,7 @@ export default function Home() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
-    );
+    return <Loader message="Setting up your session..." />;
   }
 
   return (
@@ -205,6 +201,7 @@ export default function Home() {
               />
             </div>
             <button
+              type="button"
               onClick={handleTableNumberUpdate}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500"
             >
@@ -221,6 +218,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {merchants.map((merchant) => (
               <button
+                type="button"
                 key={merchant.id}
                 onClick={() => setSelectedMerchant(merchant)}
                 className={`p-4 rounded-lg border-2 transition-colors text-left ${
@@ -292,6 +290,7 @@ export default function Home() {
                           Rp {item.price.toLocaleString("id-ID")}
                         </span>
                         <button
+                          type="button"
                           onClick={() => handleAddToCart(item)}
                           disabled={!item.isAvailable}
                           className={`px-4 py-2 rounded-lg font-medium transition-colors ${

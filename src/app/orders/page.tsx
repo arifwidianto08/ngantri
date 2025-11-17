@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Loader from "@/components/loader";
 
 interface OrderItem {
   id: string;
@@ -47,12 +48,18 @@ const STATUS_LABELS = {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchOrders = async (isRefresh = false) => {
+      if (isRefresh) {
+        setRefreshing(true);
+      }
+
       try {
         const orderIds = searchParams.get("ids");
 
@@ -77,29 +84,27 @@ export default function OrdersPage() {
           setError("Failed to load orders");
         } else {
           setOrders(fetchedOrders);
+          setLastUpdate(new Date());
         }
       } catch (err) {
         console.error("Error fetching orders:", err);
         setError("Failed to load orders");
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     };
 
     fetchOrders();
 
-    // Poll for order updates every 10 seconds
-    const interval = setInterval(fetchOrders, 10000);
+    // Short-polling: Poll for order updates every 5 seconds (UC 3.2.8)
+    const interval = setInterval(() => fetchOrders(true), 5000);
 
     return () => clearInterval(interval);
   }, [searchParams]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-xl text-gray-600">Loading orders...</div>
-      </div>
-    );
+    return <Loader message="Loading your orders..." />;
   }
 
   if (error || orders.length === 0) {
@@ -134,9 +139,36 @@ export default function OrdersPage() {
               <h1 className="text-2xl font-bold text-gray-900">
                 📦 Order Status
               </h1>
-              <p className="text-sm text-gray-600">
-                Track your orders in real-time
-              </p>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span>Track your orders in real-time</span>
+                {refreshing && (
+                  <span className="inline-flex items-center gap-1 text-blue-600">
+                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                      <title>Loading</title>
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Updating...
+                  </span>
+                )}
+                {!refreshing && (
+                  <span className="text-xs text-gray-500">
+                    Last updated: {lastUpdate.toLocaleTimeString("id-ID")}
+                  </span>
+                )}
+              </div>
             </div>
             <Link
               href="/"
@@ -301,9 +333,13 @@ export default function OrdersPage() {
                     "completed",
                   ].map((status, index) => {
                     const isActive =
-                      ["pending", "accepted", "preparing", "ready", "completed"].indexOf(
-                        order.status
-                      ) >= index;
+                      [
+                        "pending",
+                        "accepted",
+                        "preparing",
+                        "ready",
+                        "completed",
+                      ].indexOf(order.status) >= index;
                     const isCurrent = order.status === status;
 
                     return (

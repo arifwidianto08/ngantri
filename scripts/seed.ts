@@ -134,6 +134,8 @@ async function seedDatabase() {
         isAvailable: true,
         merchantId: insertedMerchants[0].id,
         categoryId: padangMinumanCategory.id,
+        imageUrl:
+          "https://majalengka.easydes.id/assets/upload-foto/5d31ef90cd6c389e07bc48a08e583122.jpg",
       });
     }
 
@@ -172,7 +174,7 @@ async function seedDatabase() {
         merchantId: insertedMerchants[1].id,
         categoryId: baksoMinumanCategory.id,
         imageUrl:
-          "https://i0.wp.com/i.gojekapi.com/darkroom/gofood-indonesia/v2/images/uploads/8d06f5d8-06e6-48ae-b71b-af70e84da2c3_Go-Biz_20211027_080748.jpeg",
+          "https://d1vbn70lmn1nqe.cloudfront.net/prod/wp-content/uploads/2023/03/09062214/X-Manfaat-Es-Jeruk-dan-Resep-untuk-Membuatnya.jpg",
       });
     }
 

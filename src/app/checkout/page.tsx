@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getOrCreateCart, clearCart, Cart } from "../../lib/cart";
-import { getBuyerSession, BuyerSession } from "../../lib/session";
+import { getOrCreateCart, clearCart } from "../../lib/cart";
+import type { Cart } from "../../lib/cart";
+import { getBuyerSession } from "../../lib/session";
+import type { BuyerSession } from "../../lib/session";
 import Image from "next/image";
+import Loader from "@/components/loader";
 
 export default function CheckoutPage() {
   const [cart, setCart] = useState<Cart | null>(null);
@@ -77,14 +80,16 @@ export default function CheckoutPage() {
   const validateInputs = (): boolean => {
     const newErrors: { name?: string; whatsapp?: string } = {};
 
+    // Validate name
     if (!customerName.trim()) {
-      newErrors.name = "Name is required";
+      newErrors.name = "Username tidak boleh kosong"; // Username cannot be empty
     } else if (customerName.trim().length < 2) {
       newErrors.name = "Name must be at least 2 characters";
     }
 
+    // Validate WhatsApp number
     if (!whatsappNumber.trim()) {
-      newErrors.whatsapp = "WhatsApp number is required";
+      newErrors.whatsapp = "Nomor WhatsApp belum diisi"; // WhatsApp number not filled
     } else {
       // Remove non-digit characters
       const cleaned = whatsappNumber.replace(/\D/g, "");
@@ -159,9 +164,8 @@ export default function CheckoutPage() {
               merchantName,
               orderId: result.data.order.id,
             };
-          } else {
-            return { success: false, merchantName, error: result.error };
           }
+          return { success: false, merchantName, error: result.error };
         }
       );
 
@@ -197,11 +201,7 @@ export default function CheckoutPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-xl text-gray-600">Loading checkout...</div>
-      </div>
-    );
+    return <Loader message="Loading checkout..." />;
   }
 
   return (
@@ -211,14 +211,13 @@ export default function CheckoutPage() {
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                💳 Checkout
-              </h1>
+              <h1 className="text-2xl font-bold text-gray-900">💳 Checkout</h1>
               <p className="text-sm text-gray-600">
                 Complete your order details
               </p>
             </div>
             <button
+              type="button"
               onClick={() => router.push("/cart")}
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
             >
@@ -279,9 +278,7 @@ export default function CheckoutPage() {
                     }}
                     placeholder="Enter your name"
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.name
-                        ? "border-red-500"
-                        : "border-gray-300"
+                      errors.name ? "border-red-500" : "border-gray-300"
                     }`}
                   />
                   {errors.name && (
@@ -314,9 +311,7 @@ export default function CheckoutPage() {
                       }}
                       placeholder="812-3456-7890"
                       className={`w-full pl-14 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.whatsapp
-                          ? "border-red-500"
-                          : "border-gray-300"
+                        errors.whatsapp ? "border-red-500" : "border-gray-300"
                       }`}
                     />
                   </div>
@@ -438,6 +433,7 @@ export default function CheckoutPage() {
 
               {/* Place Order Button */}
               <button
+                type="button"
                 onClick={handlePlaceOrder}
                 disabled={isPlacingOrder}
                 className="w-full px-6 py-4 bg-green-600 text-white text-lg font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"

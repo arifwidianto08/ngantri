@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Loader from "@/components/loader";
 
 interface Merchant {
   id: string;
@@ -45,6 +47,7 @@ export default function MerchantDashboard() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [menuLoading, setMenuLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"orders" | "menu" | "profile">(
     "orders"
@@ -92,7 +95,7 @@ export default function MerchantDashboard() {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/orders`);
+      const response = await fetch("/api/orders");
       if (response.ok) {
         const result = await response.json();
         setOrders(result.data || []);
@@ -110,6 +113,7 @@ export default function MerchantDashboard() {
   const fetchCategories = useCallback(async () => {
     if (!merchant?.id) return; // Don't fetch if no merchant authenticated
 
+    setMenuLoading(true);
     try {
       const response = await fetch(`/api/merchants/${merchant.id}/categories`);
       if (response.ok) {
@@ -120,12 +124,15 @@ export default function MerchantDashboard() {
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
+    } finally {
+      setMenuLoading(false);
     }
   }, [merchant?.id, router]);
 
   const fetchMenuItems = useCallback(async () => {
     if (!merchant?.id) return; // Don't fetch if no merchant authenticated
 
+    setMenuLoading(true);
     try {
       const response = await fetch(`/api/merchants/${merchant.id}/menus`);
       if (response.ok) {
@@ -136,6 +143,8 @@ export default function MerchantDashboard() {
       }
     } catch (error) {
       console.error("Error fetching menu items:", error);
+    } finally {
+      setMenuLoading(false);
     }
   }, [merchant?.id, router]);
 
@@ -165,7 +174,7 @@ export default function MerchantDashboard() {
         // Refresh orders list to show updated status
         fetchOrders();
       } else {
-        alert("Failed to update order status: " + result.error);
+        alert(`Failed to update order status: ${result.error}`);
       }
     } catch (error) {
       console.error("Error updating order status:", error);
@@ -177,8 +186,12 @@ export default function MerchantDashboard() {
   useEffect(() => {
     if (merchant?.id) {
       fetchOrders();
-      fetchCategories();
-      fetchMenuItems();
+      const fetchMenuData = async () => {
+        setMenuLoading(true);
+        await Promise.all([fetchCategories(), fetchMenuItems()]);
+        setMenuLoading(false);
+      };
+      fetchMenuData();
     }
   }, [merchant?.id, fetchOrders, fetchCategories, fetchMenuItems]);
 
@@ -204,6 +217,7 @@ export default function MerchantDashboard() {
           </p>
         </div>
         <button
+          type="button"
           onClick={handleLogout}
           className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
         >
@@ -216,6 +230,7 @@ export default function MerchantDashboard() {
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8 px-6">
             <button
+              type="button"
               onClick={() => setActiveTab("orders")}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "orders"
@@ -226,6 +241,7 @@ export default function MerchantDashboard() {
               📋 Orders
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("menu")}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "menu"
@@ -236,6 +252,7 @@ export default function MerchantDashboard() {
               🍽️ Menu Management
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("profile")}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "profile"
@@ -254,6 +271,7 @@ export default function MerchantDashboard() {
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Incoming Orders</h2>
                 <button
+                  type="button"
                   onClick={fetchOrders}
                   disabled={loading}
                   className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
@@ -326,6 +344,7 @@ export default function MerchantDashboard() {
                         {order.status === "pending" && (
                           <>
                             <button
+                              type="button"
                               onClick={() =>
                                 updateOrderStatus(order.id, "accepted")
                               }
@@ -334,6 +353,7 @@ export default function MerchantDashboard() {
                               Accept
                             </button>
                             <button
+                              type="button"
                               onClick={() =>
                                 updateOrderStatus(order.id, "cancelled")
                               }
@@ -346,6 +366,7 @@ export default function MerchantDashboard() {
 
                         {order.status === "accepted" && (
                           <button
+                            type="button"
                             onClick={() =>
                               updateOrderStatus(order.id, "preparing")
                             }
@@ -357,6 +378,7 @@ export default function MerchantDashboard() {
 
                         {order.status === "preparing" && (
                           <button
+                            type="button"
                             onClick={() => updateOrderStatus(order.id, "ready")}
                             className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
                           >
@@ -366,6 +388,7 @@ export default function MerchantDashboard() {
 
                         {order.status === "ready" && (
                           <button
+                            type="button"
                             onClick={() =>
                               updateOrderStatus(order.id, "completed")
                             }
@@ -388,99 +411,107 @@ export default function MerchantDashboard() {
                 <h2 className="text-xl font-semibold">Menu Management</h2>
                 <div className="space-x-2">
                   <button
-                    onClick={fetchCategories}
-                    disabled={loading}
-                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
-                  >
-                    Refresh Categories
-                  </button>
-                  <button
-                    onClick={fetchMenuItems}
-                    disabled={loading}
+                    type="button"
+                    onClick={async () => {
+                      setMenuLoading(true);
+                      await Promise.all([fetchCategories(), fetchMenuItems()]);
+                      setMenuLoading(false);
+                    }}
+                    disabled={menuLoading}
                     className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
                   >
-                    Refresh Menu
+                    {menuLoading ? "Loading..." : "Refresh All"}
                   </button>
                 </div>
               </div>
 
-              {/* Categories Section */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-medium mb-3">
-                  Categories ({categories.length})
-                </h3>
-                {categories.length === 0 ? (
-                  <p className="text-gray-500 text-sm">
-                    No categories found. Create your first category to organize
-                    your menu.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {categories.map((category) => (
-                      <div
-                        key={category.id}
-                        className="bg-white p-3 rounded border"
-                      >
-                        <div className="font-medium text-sm">
-                          {category.name}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Menu Items Section */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-medium mb-3">
-                  Menu Items ({menuItems.length})
-                </h3>
-                {menuItems.length === 0 ? (
-                  <p className="text-gray-500 text-sm">
-                    No menu items found. Add your first menu item to get
-                    started.
-                  </p>
-                ) : (
-                  <div className="grid gap-4">
-                    {menuItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="bg-white p-4 rounded border flex justify-between items-start"
-                      >
-                        <div className="flex-1">
-                          <h4 className="font-medium">{item.name}</h4>
-                          {item.description && (
-                            <p className="text-sm text-gray-600 mt-1">
-                              {item.description}
-                            </p>
-                          )}
-                          <div className="flex items-center mt-2 space-x-4">
-                            <span className="text-lg font-semibold text-green-600">
-                              {formatCurrency(item.price)}
-                            </span>
-                            <span
-                              className={`text-xs px-2 py-1 rounded ${
-                                item.isAvailable
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {item.isAvailable ? "Available" : "Unavailable"}
-                            </span>
+              {menuLoading ? (
+                <Loader message="Loading menu data..." />
+              ) : (
+                <>
+                  {/* Categories Section */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-lg font-medium mb-3">
+                      Categories ({categories.length})
+                    </h3>
+                    {categories.length === 0 ? (
+                      <p className="text-gray-500 text-sm">
+                        No categories found. Create your first category to
+                        organize your menu.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {categories.map((category) => (
+                          <div
+                            key={category.id}
+                            className="bg-white p-3 rounded border"
+                          >
+                            <div className="font-medium text-sm">
+                              {category.name}
+                            </div>
                           </div>
-                        </div>
-                        {item.imageUrl && (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.name}
-                            className="w-16 h-16 object-cover rounded ml-4"
-                          />
-                        )}
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
+
+                  {/* Menu Items Section */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-lg font-medium mb-3">
+                      Menu Items ({menuItems.length})
+                    </h3>
+                    {menuItems.length === 0 ? (
+                      <p className="text-gray-500 text-sm">
+                        No menu items found. Add your first menu item to get
+                        started.
+                      </p>
+                    ) : (
+                      <div className="grid gap-4">
+                        {menuItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="bg-white p-4 rounded border flex justify-between items-start"
+                          >
+                            <div className="flex-1">
+                              <h4 className="font-medium">{item.name}</h4>
+                              {item.description && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {item.description}
+                                </p>
+                              )}
+                              <div className="flex items-center mt-2 space-x-4">
+                                <span className="text-lg font-semibold text-green-600">
+                                  {formatCurrency(item.price)}
+                                </span>
+                                <span
+                                  className={`text-xs px-2 py-1 rounded ${
+                                    item.isAvailable
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}
+                                >
+                                  {item.isAvailable
+                                    ? "Available"
+                                    : "Unavailable"}
+                                </span>
+                              </div>
+                            </div>
+                            {item.imageUrl && (
+                              <Image
+                                src={item.imageUrl}
+                                alt={item.name}
+                                width={64}
+                                height={64}
+                                className="w-16 h-16 object-cover rounded ml-4"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
