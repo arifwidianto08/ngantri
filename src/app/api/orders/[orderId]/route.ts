@@ -45,19 +45,17 @@ export async function GET(
     const latestPayment = payments[0]; // Most recent payment
 
     return createSuccessResponse({
-      order: {
-        ...order,
-        items,
-        payment: latestPayment
-          ? {
-              id: latestPayment.xenditInvoiceId,
-              url: latestPayment.paymentUrl,
-              status: latestPayment.status,
-              amount: latestPayment.amount,
-              expiresAt: latestPayment.expiresAt,
-            }
-          : null,
-      },
+      ...order,
+      items,
+      payment: latestPayment
+        ? {
+            id: latestPayment.xenditInvoiceId,
+            url: latestPayment.paymentUrl,
+            status: latestPayment.status,
+            amount: latestPayment.amount,
+            expiresAt: latestPayment.expiresAt,
+          }
+        : null,
     });
   } catch (error) {
     console.error("Error fetching order:", error);

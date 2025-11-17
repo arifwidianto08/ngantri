@@ -79,34 +79,45 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/orders
- * Get orders - supports filtering by IDs or fetching merchant orders
+ * Get orders - supports filtering by session_id, status, or merchant auth
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const idsParam = searchParams.get("ids");
+    const sessionId = searchParams.get("session_id");
+    const statusParam = searchParams.get("status");
+    const limitParam = searchParams.get("limit");
+    const cursorParam = searchParams.get("cursor");
+    const directionParam = searchParams.get("direction");
 
-    // If IDs are provided, fetch those specific orders
-    if (idsParam) {
-      const ids = idsParam.split(",").filter((id) => id.trim());
+    const limit = limitParam
+      ? Math.min(Number.parseInt(limitParam, 10), 100)
+      : 50;
+    const direction: "asc" | "desc" =
+      directionParam === "asc" || directionParam === "desc"
+        ? directionParam
+        : "desc";
 
-      if (ids.length === 0) {
-        return createErrorResponse(
-          ERROR_CODES.BAD_REQUEST,
-          "Invalid order IDs",
-          400
-        );
-      }
+    // If session_id is provided, fetch orders for that session (buyer view)
+    if (sessionId) {
+      const result = await orderService.findOrdersBySession(sessionId, {
+        limit,
+        direction,
+        ...(cursorParam && { cursor: cursorParam }),
+        ...(statusParam && { status: statusParam }),
+      });
 
-      const orderPromises = ids.map((id) => orderService.findById(id));
-      const orders = await Promise.all(orderPromises);
-
-      // Filter out null orders (not found)
-      const validOrders = orders.filter((order) => order !== null);
+      // Fetch items for each order
+      const ordersWithItems = await Promise.all(
+        result.data.map(async (order) => {
+          const items = await orderRepository.findOrderItems(order.id);
+          return { ...order, items };
+        })
+      );
 
       return NextResponse.json({
         success: true,
-        data: validOrders,
+        data: ordersWithItems,
       });
     }
 
@@ -115,9 +126,10 @@ export async function GET(request: NextRequest) {
 
     // Get orders for this merchant with pagination
     const paginationParams = {
-      limit: 50, // Default limit
-      cursor: undefined, // No cursor for first page
-      direction: "desc" as const, // Show newest orders first
+      limit,
+      direction,
+      ...(cursorParam && { cursor: cursorParam }),
+      ...(statusParam && { status: statusParam }),
     };
 
     const result = await orderService.findOrdersByMerchant(
@@ -125,9 +137,17 @@ export async function GET(request: NextRequest) {
       paginationParams
     );
 
+    // Fetch items for each order
+    const ordersWithItems = await Promise.all(
+      result.data.map(async (order) => {
+        const items = await orderRepository.findOrderItems(order.id);
+        return { ...order, items };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      data: result.data,
+      data: ordersWithItems,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {

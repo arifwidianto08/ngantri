@@ -6,39 +6,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 export default function PaymentSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const orderId = searchParams.get("order_id");
+  const sessionId = searchParams.get("session_id");
   const [isVerifying, setIsVerifying] = useState(true);
-  const [orderDetails, setOrderDetails] = useState<{
-    id: string;
-    status: string;
-    total_amount: number;
-  } | null>(null);
 
   useEffect(() => {
-    if (!orderId) {
-      router.push("/orders");
+    if (!sessionId) {
+      router.push("/");
       return;
     }
 
-    // Verify payment status with backend
-    const verifyPayment = async () => {
-      try {
-        const response = await fetch(`/api/orders/${orderId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setOrderDetails(data.data);
-        }
-      } catch (error) {
-        console.error("Error verifying payment:", error);
-      } finally {
-        setIsVerifying(false);
-      }
-    };
+    // Small delay for better UX, then redirect to orders
+    const timer = setTimeout(() => {
+      setIsVerifying(false);
+    }, 2000);
 
-    // Small delay to ensure webhook has been processed
-    const timer = setTimeout(verifyPayment, 2000);
     return () => clearTimeout(timer);
-  }, [orderId, router]);
+  }, [sessionId, router]);
 
   if (isVerifying) {
     return (
@@ -79,31 +62,6 @@ export default function PaymentSuccessPage() {
           </p>
         </div>
         <div className="space-y-6 p-6">
-          {orderDetails && (
-            <div className="space-y-4 rounded-lg border bg-gray-50 p-4">
-              <div className="flex justify-between">
-                <span className="text-gray-600">ID Pesanan</span>
-                <span className="font-mono font-medium">
-                  #{orderDetails.id.slice(-8).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Status</span>
-                <span className="font-medium capitalize text-green-600">
-                  {orderDetails.status === "accepted"
-                    ? "Diterima"
-                    : orderDetails.status}
-                </span>
-              </div>
-              <div className="flex justify-between border-t pt-4">
-                <span className="font-medium">Total Pembayaran</span>
-                <span className="text-lg font-bold">
-                  Rp {orderDetails.total_amount.toLocaleString("id-ID")}
-                </span>
-              </div>
-            </div>
-          )}
-
           <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm">
             <p className="font-medium text-blue-900">Langkah Selanjutnya:</p>
             <ul className="list-inside list-disc space-y-1 text-blue-800">
@@ -116,7 +74,7 @@ export default function PaymentSuccessPage() {
           <div className="flex flex-col gap-3 pt-4 sm:flex-row">
             <button
               type="button"
-              onClick={() => router.push("/orders")}
+              onClick={() => router.push(`/orders?session_id=${sessionId}`)}
               className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
             >
               Lihat Pesanan Saya

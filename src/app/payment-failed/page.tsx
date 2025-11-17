@@ -1,67 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function PaymentFailedPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const orderId = searchParams.get("order_id");
-  const [isCreatingPayment, setIsCreatingPayment] = useState(false);
-  const [orderDetails, setOrderDetails] = useState<{
-    id: string;
-    status: string;
-    total_amount: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!orderId) {
-      router.push("/orders");
-      return;
-    }
-
-    // Get order details
-    const fetchOrder = async () => {
-      try {
-        const response = await fetch(`/api/orders/${orderId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setOrderDetails(data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching order:", error);
-      }
-    };
-
-    fetchOrder();
-  }, [orderId, router]);
-
-  const handleRetryPayment = async () => {
-    if (!orderId) return;
-
-    setIsCreatingPayment(true);
-    try {
-      const response = await fetch("/api/payments/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_id: orderId }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Redirect to Xendit payment page
-        window.location.href = data.data.order.payment_url;
-      } else {
-        const error = await response.json();
-        alert(error.error?.message || "Gagal membuat link pembayaran");
-      }
-    } catch (error) {
-      console.error("Error creating payment:", error);
-      alert("Gagal membuat link pembayaran. Silakan coba lagi.");
-    } finally {
-      setIsCreatingPayment(false);
-    }
-  };
+  const sessionId = searchParams.get("session_id");
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-20">
@@ -89,31 +33,6 @@ export default function PaymentFailedPage() {
           </p>
         </div>
         <div className="space-y-6 p-6">
-          {orderDetails && (
-            <div className="space-y-4 rounded-lg border bg-gray-50 p-4">
-              <div className="flex justify-between">
-                <span className="text-gray-600">ID Pesanan</span>
-                <span className="font-mono font-medium">
-                  #{orderDetails.id.slice(-8).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Status</span>
-                <span className="font-medium capitalize text-orange-600">
-                  {orderDetails.status === "pending"
-                    ? "Menunggu Pembayaran"
-                    : orderDetails.status}
-                </span>
-              </div>
-              <div className="flex justify-between border-t pt-4">
-                <span className="font-medium">Total Pembayaran</span>
-                <span className="text-lg font-bold">
-                  Rp {orderDetails.total_amount.toLocaleString("id-ID")}
-                </span>
-              </div>
-            </div>
-          )}
-
           <div className="rounded-lg border border-red-200 bg-red-50 p-4">
             <div className="flex gap-3">
               <svg
@@ -147,7 +66,7 @@ export default function PaymentFailedPage() {
               Apa yang bisa dilakukan?
             </p>
             <ul className="list-inside list-disc space-y-1 text-blue-800">
-              <li>Coba bayar lagi dengan metode yang sama atau berbeda</li>
+              <li>Lihat pesanan Anda dan coba bayar lagi</li>
               <li>Pastikan saldo Anda mencukupi</li>
               <li>Hubungi customer service jika masalah berlanjut</li>
             </ul>
@@ -156,74 +75,21 @@ export default function PaymentFailedPage() {
           <div className="flex flex-col gap-3 pt-4 sm:flex-row">
             <button
               type="button"
-              onClick={handleRetryPayment}
-              disabled={isCreatingPayment || !orderId}
-              className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() =>
+                router.push(
+                  sessionId ? `/orders?session_id=${sessionId}` : "/orders"
+                )
+              }
+              className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
             >
-              {isCreatingPayment ? (
-                <>
-                  <svg
-                    className="mr-2 inline h-4 w-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <title>Loading</title>
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Memproses...
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="mr-2 inline h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <title>Retry</title>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                  Coba Bayar Lagi
-                </>
-              )}
+              Lihat Pesanan Saya
             </button>
             <button
               type="button"
-              onClick={() => router.push("/orders")}
+              onClick={() => router.push("/")}
               className="flex-1 rounded-lg border bg-white px-4 py-2 font-medium hover:bg-gray-50"
             >
-              <svg
-                className="mr-2 inline h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <title>Back</title>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
-              Lihat Pesanan
+              Kembali ke Beranda
             </button>
           </div>
         </div>

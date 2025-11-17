@@ -150,7 +150,6 @@ export default function Home() {
         menuItem.imageUrl
       );
       setCart(updatedCart);
-      alert(`${menuItem.name} added to cart!`);
     } catch (error) {
       console.error("Error adding to cart:", error);
       alert("Failed to add item to cart");

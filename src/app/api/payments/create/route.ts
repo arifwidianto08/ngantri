@@ -113,10 +113,12 @@ const createPaymentHandler = async (request: NextRequest) => {
 
     // Get customer info from first order
     const firstOrder = orders[0];
+    const sessionId = firstOrder?.sessionId;
 
     // Create Xendit invoice
+    const externalId = `PAYMENT-${Date.now()}`;
     const invoice = await createPaymentInvoice({
-      externalId: `PAYMENT-${Date.now()}`,
+      externalId: externalId,
       amount: totalAmount,
       description: `Payment for ${order_ids.length} order(s)`,
       customerName: firstOrder?.customerName || "Customer",
@@ -126,8 +128,8 @@ const createPaymentHandler = async (request: NextRequest) => {
         quantity: item.quantity,
         price: item.unitPrice,
       })),
-      successRedirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-success?payment_id=PENDING`,
-      failureRedirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-failed?payment_id=PENDING`,
+      successRedirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-success?session_id=${sessionId}`,
+      failureRedirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-failed?session_id=${sessionId}`,
     });
 
     // Create payment record

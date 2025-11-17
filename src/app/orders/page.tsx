@@ -49,10 +49,10 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const router = useRouter();
   const searchParams = useSearchParams();
+  const currentView = searchParams.get("view") || "pending";
 
   useEffect(() => {
     const fetchOrders = async (isRefresh = false) => {
@@ -61,34 +61,41 @@ export default function OrdersPage() {
       }
 
       try {
-        const orderIds = searchParams.get("ids");
+        const sessionId = searchParams.get("session_id");
+        const view = searchParams.get("view") || "pending";
 
-        if (!orderIds) {
-          setError("No orders found");
+        if (!sessionId) {
           setLoading(false);
           return;
         }
 
-        const ids = orderIds.split(",");
-        const orderPromises = ids.map((id) =>
-          fetch(`/api/orders/${id}`).then((res) => res.json())
-        );
+        // Build query params
+        const params = new URLSearchParams({
+          session_id: sessionId,
+        });
 
-        const results = await Promise.all(orderPromises);
+        // Filter by view: active or history
+        if (view === "pending") {
+          // Active orders: pending, accepted, preparing, ready
+          params.append("status", "pending,accepted,preparing,ready");
+        } else if (view === "history") {
+          // History: completed, failed, cancelled
+          params.append("status", "completed,failed,cancelled");
+        }
 
-        const fetchedOrders = results
-          .filter((result) => result.success)
-          .map((result) => result.data.order);
+        // Single API call with filters
+        const response = await fetch(`/api/orders?${params.toString()}`);
+        const result = await response.json();
 
-        if (fetchedOrders.length === 0) {
-          setError("Failed to load orders");
+        if (!result.success || !result.data || result.data.length === 0) {
+          setOrders([]);
         } else {
-          setOrders(fetchedOrders);
+          setOrders(result.data);
           setLastUpdate(new Date());
         }
       } catch (err) {
         console.error("Error fetching orders:", err);
-        setError("Failed to load orders");
+        setOrders([]);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -105,25 +112,6 @@ export default function OrdersPage() {
 
   if (loading) {
     return <Loader message="Loading your orders..." />;
-  }
-
-  if (error || orders.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="text-6xl mb-4">📦</div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-            {error || "No orders found"}
-          </h2>
-          <Link
-            href="/"
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors mt-4"
-          >
-            Go to Homepage
-          </Link>
-        </div>
-      </div>
-    );
   }
 
   const allCompleted = orders.every((order) => order.status === "completed");
@@ -181,35 +169,71 @@ export default function OrdersPage() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Success Message */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-          <div className="flex items-start gap-4">
-            <div className="text-4xl">✓</div>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-green-900 mb-2">
-                Order Placed Successfully!
-              </h2>
-              <p className="text-green-800 mb-4">
-                Your order{orders.length > 1 ? "s have" : " has"} been sent to
-                the merchant{orders.length > 1 ? "s" : ""}. Please wait for
-                confirmation.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {orders.map((order) => (
-                  <span
-                    key={order.id}
-                    className="inline-block px-3 py-1 bg-white border border-green-300 rounded-full text-sm font-mono text-green-900"
-                  >
-                    #{order.id.slice(0, 8)}
-                  </span>
-                ))}
+        {/* View Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            type="button"
+            onClick={() => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("view", "pending");
+              router.push(`/orders?${params.toString()}`);
+            }}
+            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+              currentView === "pending"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-700 hover:bg-gray-50 border"
+            }`}
+          >
+            Ongoing
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("view", "history");
+              router.push(`/orders?${params.toString()}`);
+            }}
+            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+              currentView === "history"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-700 hover:bg-gray-50 border"
+            }`}
+          >
+            History
+          </button>
+        </div>
+
+        {/* Success Message - Only show for pending orders */}
+        {currentView === "pending" && orders.length > 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+            <div className="flex items-start gap-4">
+              <div className="text-4xl">✓</div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-green-900 mb-2">
+                  Order Placed Successfully!
+                </h2>
+                <p className="text-green-800 mb-4">
+                  Your order{orders.length > 1 ? "s have" : " has"} been sent to
+                  the merchant{orders.length > 1 ? "s" : ""}. Please wait for
+                  confirmation.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {orders.map((order) => (
+                    <span
+                      key={order.id}
+                      className="inline-block px-3 py-1 bg-white border border-green-300 rounded-full text-sm font-mono text-green-900"
+                    >
+                      #{order.id.slice(0, 8)}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Status Banner */}
-        {anyReady && !allCompleted && (
+        {currentView === "pending" && anyReady && !allCompleted && (
           <div className="bg-green-100 border border-green-300 rounded-lg p-4 mb-6">
             <p className="text-green-900 font-semibold">
               🎉 Some of your orders are ready for pickup!
@@ -226,172 +250,64 @@ export default function OrdersPage() {
         )}
 
         {/* Orders List */}
-        <div className="space-y-6">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              className="bg-white rounded-lg shadow-sm overflow-hidden"
-            >
-              {/* Order Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xl font-bold">
-                    {order.merchantName || "Merchant"}
-                  </h3>
-                  <span
-                    className={`px-4 py-2 rounded-lg border font-semibold ${
-                      STATUS_COLORS[order.status as keyof typeof STATUS_COLORS]
-                    }`}
-                  >
-                    {STATUS_LABELS[order.status as keyof typeof STATUS_LABELS]}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 text-sm text-blue-100">
-                  <span>Order ID: #{order.id.slice(0, 8)}</span>
-                  <span>•</span>
-                  <span>
-                    {new Date(order.createdAt).toLocaleString("id-ID")}
-                  </span>
-                </div>
-              </div>
-
-              {/* Customer Info */}
-              <div className="px-6 py-4 bg-gray-50 border-b">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Customer</p>
-                    <p className="font-semibold text-gray-900">
-                      {order.customerName}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">WhatsApp</p>
-                    <p className="font-semibold text-gray-900">
-                      +{order.customerPhone}
-                    </p>
-                  </div>
-                </div>
-                {order.notes && (
-                  <div className="mt-3">
-                    <p className="text-sm text-gray-600">Notes</p>
-                    <p className="text-gray-900">{order.notes}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Order Items */}
-              <div className="px-6 py-4">
-                <h4 className="font-semibold text-gray-900 mb-3">
-                  Order Items
-                </h4>
-                <div className="space-y-3">
-                  {order.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">
-                          {item.menuName}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {item.quantity} x Rp{" "}
-                          {item.unitPrice.toLocaleString("id-ID")}
-                        </p>
-                      </div>
-                      <p className="font-semibold text-gray-900">
-                        Rp {item.subtotal.toLocaleString("id-ID")}
+        <div className="space-y-4">
+          {orders.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">📦</div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                No orders found
+              </h2>
+              <p className="text-gray-600">
+                {currentView === "pending"
+                  ? "You don't have any active orders"
+                  : "You don't have any order history"}
+              </p>
+            </div>
+          ) : (
+            orders.map((order) => (
+              <Link
+                key={order.id}
+                href={`/orders/${order.id}`}
+                className="block bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+              >
+                {/* Order Card */}
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-900">
+                        {order.merchantName || "Merchant"}
+                      </h3>
+                      <p className="text-sm text-gray-500 font-mono">
+                        #{order.id.slice(0, 8)}
                       </p>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        STATUS_COLORS[
+                          order.status as keyof typeof STATUS_COLORS
+                        ]
+                      }`}
+                    >
+                      {
+                        STATUS_LABELS[
+                          order.status as keyof typeof STATUS_LABELS
+                        ]
+                      }
+                    </span>
+                  </div>
 
-              {/* Order Total */}
-              <div className="px-6 py-4 bg-gray-50 border-t">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold text-gray-900">
-                    Total
-                  </span>
-                  <span className="text-2xl font-bold text-gray-900">
-                    Rp {order.totalAmount.toLocaleString("id-ID")}
-                  </span>
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <div className="text-sm text-gray-600">
+                      {new Date(order.createdAt).toLocaleString("id-ID")}
+                    </div>
+                    <div className="text-lg font-bold text-gray-900">
+                      Rp {order.totalAmount.toLocaleString("id-ID")}
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              {/* Status Timeline */}
-              <div className="px-6 py-4 border-t">
-                <h4 className="font-semibold text-gray-900 mb-3">
-                  Order Progress
-                </h4>
-                <div className="flex items-center justify-between">
-                  {[
-                    "pending",
-                    "accepted",
-                    "preparing",
-                    "ready",
-                    "completed",
-                  ].map((status, index) => {
-                    const isActive =
-                      [
-                        "pending",
-                        "accepted",
-                        "preparing",
-                        "ready",
-                        "completed",
-                      ].indexOf(order.status) >= index;
-                    const isCurrent = order.status === status;
-
-                    return (
-                      <div key={status} className="flex-1 relative">
-                        <div className="flex flex-col items-center">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                              isCurrent
-                                ? "bg-blue-600 text-white ring-4 ring-blue-200"
-                                : isActive
-                                ? "bg-green-600 text-white"
-                                : "bg-gray-200 text-gray-500"
-                            }`}
-                          >
-                            {isActive ? "✓" : index + 1}
-                          </div>
-                          <p
-                            className={`text-xs mt-2 text-center ${
-                              isCurrent
-                                ? "font-bold text-blue-600"
-                                : isActive
-                                ? "text-gray-900"
-                                : "text-gray-500"
-                            }`}
-                          >
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
-                          </p>
-                        </div>
-                        {index < 4 && (
-                          <div
-                            className={`absolute top-5 left-1/2 w-full h-0.5 ${
-                              isActive ? "bg-green-600" : "bg-gray-200"
-                            }`}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              {order.status === "ready" && (
-                <div className="px-6 py-4 bg-green-50 border-t border-green-200">
-                  <p className="text-green-900 font-semibold text-center">
-                    🎉 Your order is ready! Please pick it up at the merchant
-                    counter.
-                  </p>
-                </div>
-              )}
-            </div>
-          ))}
+              </Link>
+            ))
+          )}
         </div>
 
         {/* Actions */}

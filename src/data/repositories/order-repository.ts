@@ -51,6 +51,16 @@ export class OrderRepositoryImpl implements OrderRepository {
       conditions.push(gt(orders.id, options.cursor));
     }
 
+    // Handle multiple statuses separated by comma
+    if (options?.status) {
+      const statuses = options.status.split(",").map((s) => s.trim());
+      if (statuses.length === 1) {
+        conditions.push(eq(orders.status, statuses[0]));
+      } else {
+        conditions.push(inArray(orders.status, statuses));
+      }
+    }
+
     const results = await db
       .select()
       .from(orders)

@@ -3,13 +3,13 @@
  * Handles business logic for order operations
  */
 
-import { OrderRepository } from "../data/interfaces/order-repository";
-import { Order, NewOrder, OrderItem, NewOrderItem } from "../data/schema";
-import {
+import type { OrderRepository } from "../data/interfaces/order-repository";
+import type { Order, NewOrder, OrderItem, NewOrderItem } from "../data/schema";
+import type {
   PaginatedResult,
   CursorPaginationParams,
-  buildPaginatedResult,
 } from "../lib/pagination";
+import { buildPaginatedResult } from "../lib/pagination";
 import { AppError, errors } from "../lib/errors";
 import { calculateOrderTotal } from "../lib/currency";
 
@@ -193,6 +193,7 @@ export class OrderService implements IOrderService {
       const result = await this.orderRepository.findBySession(sessionId, {
         cursor: params.cursor,
         limit: params.limit,
+        status: params.status,
       });
 
       return buildPaginatedResult(result.data, params);

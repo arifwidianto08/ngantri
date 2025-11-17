@@ -77,6 +77,18 @@ export default function CheckoutPage() {
 
         setCart(currentCart);
         setSession(currentSession);
+
+        // Load cached customer info from localStorage
+        const cachedName = localStorage.getItem("customerName");
+        const cachedWhatsapp = localStorage.getItem("customerWhatsapp");
+
+        if (cachedName) {
+          setCustomerName(cachedName);
+        }
+
+        if (cachedWhatsapp) {
+          setWhatsappNumber(cachedWhatsapp);
+        }
       } catch (error) {
         console.error("Error initializing checkout:", error);
       } finally {
@@ -194,6 +206,10 @@ export default function CheckoutPage() {
     setIsPlacingOrder(true);
 
     try {
+      // Save customer info to localStorage for future use
+      localStorage.setItem("customerName", customerName.trim());
+      localStorage.setItem("customerWhatsapp", whatsappNumber.trim());
+
       // Clean WhatsApp number (remove non-digits)
       const cleanedWhatsapp = whatsappNumber.replace(/\D/g, "");
 
