@@ -38,45 +38,48 @@ export async function PATCH(
 
   try {
     const { orderId } = await params;
-
     const now = new Date();
+    const { order } = await db.transaction(async (tx) => {
+      const [updatedOrder] = await tx
+        .update(orders)
+        .set({
+          status: "completed",
+          updatedAt: now,
+        })
+        .where(and(eq(orders.id, orderId), isNull(orders.deletedAt)))
+        .returning();
 
-    // Update order status to completed
-    const [updatedOrder] = await db
-      .update(orders)
-      .set({
-        status: "completed",
-        updatedAt: now,
-      })
-      .where(and(eq(orders.id, orderId), isNull(orders.deletedAt)))
-      .returning();
+      // Find and update related order_payments
+      const [payment] = await tx
+        .update(orderPayments)
+        .set({
+          status: "paid",
+          paymentMethod: "cash",
+          paidAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(orderPayments.orderId, orderId),
+            isNull(orderPayments.deletedAt)
+          )
+        )
+        .returning();
 
-    if (!updatedOrder) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: { message: "Order not found" },
-        },
-        { status: 404 }
-      );
-    }
+      console.log("Updated Order and Payment : ", {
+        order: updatedOrder,
+        payment,
+      });
 
-    // Find and update related order_payments
-    await db
-      .update(orderPayments)
-      .set({
-        status: "paid",
-        paymentMethod: "cash",
-        paidAt: now,
-        updatedAt: now,
-      })
-      .where(
-        and(eq(orderPayments.orderId, orderId), isNull(orderPayments.deletedAt))
-      );
+      return {
+        order: updatedOrder,
+        payment,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      data: updatedOrder,
+      data: order,
       message: "Order marked as paid and completed",
     });
   } catch (error) {

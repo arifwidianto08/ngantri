@@ -141,7 +141,8 @@ export default function AdminPaymentPage() {
   }
 
   const unpaidOrders = orders.filter(
-    (order) => order.paymentStatus === "pending"
+    (order) =>
+      order.paymentStatus === "pending" || order.paymentStatus === "unpaid"
   );
   const paidOrders = orders.filter((order) => order.paymentStatus === "paid");
 
@@ -208,11 +209,16 @@ export default function AdminPaymentPage() {
                       <button
                         type="button"
                         onClick={() => markAsPaid(order.id)}
-                        disabled={processingOrderId === order.id}
+                        disabled={
+                          processingOrderId === order.id ||
+                          order.paymentStatus === "paid"
+                        }
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
                       >
                         {processingOrderId === order.id
                           ? "Processing..."
+                          : order.paymentStatus === "paid"
+                          ? "Already Paid"
                           : "Mark as Paid"}
                       </button>
                     </div>

@@ -196,6 +196,14 @@ export default function CheckoutPage() {
     return await Promise.all(orderPromises);
   };
 
+  const createPaymentsForOrders = async (orderIds: string[]): Promise<void> => {
+    await fetch("/api/payments/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order_ids: orderIds }),
+    });
+  };
+
   const handlePlaceOrder = async () => {
     if (!validateInputs()) {
       return;
@@ -244,6 +252,17 @@ export default function CheckoutPage() {
         );
         return;
       }
+
+      // Create payment for each order
+      const orderIds = results
+        .filter(
+          (r): r is OrderResult & { orderId: string } =>
+            r.success && typeof r.orderId === "string"
+        )
+        .map((r) => r.orderId);
+
+      // Create payments for all orders
+      await createPaymentsForOrders(orderIds);
 
       clearCart();
       window.dispatchEvent(new Event("cart-updated"));
