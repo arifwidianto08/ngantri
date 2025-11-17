@@ -41,7 +41,7 @@ async function seedDatabase() {
         merchantNumber: 1,
         passwordHash: await hashPassword("password123"),
         imageUrl:
-          "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400",
+          "https://media.istockphoto.com/id/1144682898/photo/nasi-padang-with-green-chilli-chicken-padang-rice.jpg?s=612x612&w=0&k=20&c=ld5DSCzy9c3QgGQbocxSwju7XQ1_2AxRsjov8eMBz3Q=",
         description:
           "Authentic Padang cuisine with rich flavors and traditional recipes",
         isAvailable: true,
@@ -52,7 +52,7 @@ async function seedDatabase() {
         merchantNumber: 2,
         passwordHash: await hashPassword("password123"),
         imageUrl:
-          "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400",
+          "https://images.unsplash.com/photo-1726375748321-c0ab6377e81a?q=80&w=800&h=800&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         description: "Famous Malang meatball soup with various toppings",
         isAvailable: true,
       },
@@ -111,7 +111,7 @@ async function seedDatabase() {
           merchantId: insertedMerchants[0].id,
           categoryId: padangNasiCategory.id,
           imageUrl:
-            "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=300",
+            "https://upload.wikimedia.org/wikipedia/commons/d/d5/Nasi_ramas_rendang.JPG",
         },
         {
           name: "Nasi Gulai Ayam",
@@ -120,6 +120,8 @@ async function seedDatabase() {
           isAvailable: true,
           merchantId: insertedMerchants[0].id,
           categoryId: padangNasiCategory.id,
+          imageUrl:
+            "https://cdn.rri.co.id/berita/Meulaboh/o/1734509527524-1000158686/dgatdppgmu24t1i.jpeg",
         }
       );
     }
@@ -155,6 +157,8 @@ async function seedDatabase() {
           isAvailable: true,
           merchantId: insertedMerchants[1].id,
           categoryId: baksoCategory.id,
+          imageUrl:
+            "https://images.unsplash.com/photo-1726375748321-c0ab6377e81a?q=80&w=800&h=800&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         }
       );
     }
@@ -167,6 +171,8 @@ async function seedDatabase() {
         isAvailable: true,
         merchantId: insertedMerchants[1].id,
         categoryId: baksoMinumanCategory.id,
+        imageUrl:
+          "https://i0.wp.com/i.gojekapi.com/darkroom/gofood-indonesia/v2/images/uploads/8d06f5d8-06e6-48ae-b71b-af70e84da2c3_Go-Biz_20211027_080748.jpeg",
       });
     }
 
