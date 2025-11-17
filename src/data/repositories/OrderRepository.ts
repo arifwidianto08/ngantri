@@ -8,7 +8,7 @@ import {
   OrderItem,
   NewOrderItem,
 } from "../schema";
-import { OrderRepository } from "../interfaces/OrderRepository";
+import { OrderRepository } from "../interfaces/order-repository";
 
 export class OrderRepositoryImpl implements OrderRepository {
   async create(order: NewOrder): Promise<Order> {

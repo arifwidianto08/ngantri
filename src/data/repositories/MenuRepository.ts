@@ -8,7 +8,7 @@ import {
   MenuCategory,
   NewMenuCategory,
 } from "../schema";
-import { MenuRepository } from "../interfaces/MenuRepository";
+import { MenuRepository } from "../interfaces/menu-repository";
 
 export class MenuRepositoryImpl implements MenuRepository {
   // Menu Category operations

@@ -1,7 +1,7 @@
 import { eq, desc, gt, and, isNull, sql } from "drizzle-orm";
 import { db } from "../../lib/db";
 import { merchants, Merchant, NewMerchant } from "../schema";
-import { MerchantRepository } from "../interfaces/MerchantRepository";
+import { MerchantRepository } from "../interfaces/merchant-repository";
 
 export class MerchantRepositoryImpl implements MerchantRepository {
   async create(merchant: NewMerchant): Promise<Merchant> {

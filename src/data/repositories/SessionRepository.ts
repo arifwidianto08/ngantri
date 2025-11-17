@@ -8,7 +8,7 @@ import {
   CartItem,
   NewCartItem,
 } from "../schema";
-import { SessionRepository } from "../interfaces/SessionRepository";
+import { SessionRepository } from "../interfaces/session-repository";
 
 export class SessionRepositoryImpl implements SessionRepository {
   // Buyer Session operations

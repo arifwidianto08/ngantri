@@ -3,7 +3,7 @@
  * Handles business logic for order operations
  */
 
-import { OrderRepository } from "../data/interfaces/OrderRepository";
+import { OrderRepository } from "../data/interfaces/order-repository";
 import { Order, NewOrder, OrderItem, NewOrderItem } from "../data/schema";
 import {
   PaginatedResult,

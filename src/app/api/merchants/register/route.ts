@@ -5,7 +5,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/lib/validation";
-import { MerchantRepositoryImpl } from "@/data/repositories/MerchantRepository";
+import { MerchantRepositoryImpl } from "@/data/repositories/merchant-repository";
 
 const merchantRepo = new MerchantRepositoryImpl();
 

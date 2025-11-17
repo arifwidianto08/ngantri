@@ -127,14 +127,14 @@ Single Next.js project structure:
 
 ### Repository Layer (Data Access)
 
-- [x] T047 [P] Create MerchantRepository interface in src/data/interfaces/MerchantRepository.ts
-- [x] T048 [P] Create MenuRepository interface in src/data/interfaces/MenuRepository.ts
-- [x] T049 [P] Create OrderRepository interface in src/data/interfaces/OrderRepository.ts
-- [x] T050 [P] Create SessionRepository interface in src/data/interfaces/SessionRepository.ts
-- [x] T051 [P] Implement MerchantRepository with cursor pagination in src/data/repositories/MerchantRepository.ts
-- [ ] T052 [P] Implement MenuRepository with cursor pagination in src/data/repositories/MenuRepository.ts
-- [ ] T053 [P] Implement OrderRepository with cursor pagination in src/data/repositories/OrderRepository.ts
-- [ ] T054 [P] Implement SessionRepository in src/data/repositories/SessionRepository.ts
+- [x] T047 [P] Create MerchantRepository interface in src/data/interfaces/merchant-repository.ts
+- [x] T048 [P] Create MenuRepository interface in src/data/interfaces/menu-repository.ts
+- [x] T049 [P] Create OrderRepository interface in src/data/interfaces/order-repository.ts
+- [x] T050 [P] Create SessionRepository interface in src/data/interfaces/session-repository.ts
+- [x] T051 [P] Implement MerchantRepository with cursor pagination in src/data/repositories/merchant-repository.ts
+- [ ] T052 [P] Implement MenuRepository with cursor pagination in src/data/repositories/menu-repository.ts
+- [ ] T053 [P] Implement OrderRepository with cursor pagination in src/data/repositories/order-repository.ts
+- [ ] T054 [P] Implement SessionRepository in src/data/repositories/session-repository.ts
 
 ### Service Layer (Business Logic)
 
@@ -292,10 +292,10 @@ Task: "Contract test GET /api/merchants/profile in tests/contract/merchants-prof
 Task: "Integration test merchant registration flow in tests/integration/merchant-registration.test.ts"
 
 # Launch repository implementations together (Phase 3.3):
-Task: "Implement MerchantRepository with cursor pagination in src/data/repositories/MerchantRepository.ts"
-Task: "Implement MenuRepository with cursor pagination in src/data/repositories/MenuRepository.ts"
-Task: "Implement OrderRepository with cursor pagination in src/data/repositories/OrderRepository.ts"
-Task: "Implement SessionRepository in src/data/repositories/SessionRepository.ts"
+Task: "Implement MerchantRepository with cursor pagination in src/data/repositories/merchant-repository.ts"
+Task: "Implement MenuRepository with cursor pagination in src/data/repositories/menu-repository.ts"
+Task: "Implement OrderRepository with cursor pagination in src/data/repositories/order-repository.ts"
+Task: "Implement SessionRepository in src/data/repositories/session-repository.ts"
 
 # Launch UI components together (Phase 3.4):
 Task: "Create merchant registration form in src/components/forms/MerchantRegistrationForm.tsx"

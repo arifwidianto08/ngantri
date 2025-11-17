@@ -3,7 +3,7 @@
  * Get all active merchants for the buyer interface
  */
 
-import { MerchantRepositoryImpl } from "../../../data/repositories/MerchantRepository";
+import { MerchantRepositoryImpl } from "../../../data/repositories/merchant-repository";
 import { MerchantService } from "../../../services/merchant-service";
 import {
   createSuccessResponse,

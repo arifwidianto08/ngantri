@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OrderRepositoryImpl } from "../../../data/repositories/OrderRepository";
+import { OrderRepositoryImpl } from "../../../data/repositories/order-repository";
 import { OrderService } from "../../../services/order-service";
 import {
   createSuccessResponse,

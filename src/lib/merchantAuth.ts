@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { MerchantRepositoryImpl } from "@/data/repositories/MerchantRepository";
+import { MerchantRepositoryImpl } from "@/data/repositories/merchant-repository";
 
 const merchantRepository = new MerchantRepositoryImpl();
 

@@ -3,7 +3,7 @@
  * Handles business logic for buyer session operations
  */
 
-import { SessionRepository } from "../data/interfaces/SessionRepository";
+import { SessionRepository } from "../data/interfaces/session-repository";
 import { BuyerSession, NewBuyerSession } from "../data/schema";
 import { AppError, errors } from "../lib/errors";
 

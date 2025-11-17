@@ -3,7 +3,7 @@
  * Handles business logic for merchant operations
  */
 
-import { MerchantRepository } from "../data/interfaces/MerchantRepository";
+import { MerchantRepository } from "../data/interfaces/merchant-repository";
 import { Merchant, NewMerchant } from "../data/schema";
 import {
   PaginatedResult,

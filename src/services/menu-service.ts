@@ -3,7 +3,7 @@
  * Handles business logic for menu operations
  */
 
-import { MenuRepository } from "../data/interfaces/MenuRepository";
+import { MenuRepository } from "../data/interfaces/menu-repository";
 import { Menu, NewMenu, MenuCategory, NewMenuCategory } from "../data/schema";
 import {
   PaginatedResult,
