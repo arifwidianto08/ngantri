@@ -4,8 +4,8 @@
  */
 
 import { NextRequest } from "next/server";
-import { SessionRepositoryImpl } from "../../../data/repositories/SessionRepository";
-import { SessionService } from "../../../services/SessionService";
+import { SessionRepositoryImpl } from "../../../data/repositories/session-repository";
+import { SessionService } from "../../../services/session-service";
 import { createSuccessResponse, withErrorHandler } from "../../../lib/errors";
 
 const sessionRepository = new SessionRepositoryImpl();

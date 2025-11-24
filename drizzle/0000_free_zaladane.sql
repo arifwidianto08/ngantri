@@ -5,6 +5,7 @@ CREATE TABLE "buyer_sessions" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone
 );
+
 --> statement-breakpoint
 CREATE TABLE "cart_items" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
@@ -17,6 +18,7 @@ CREATE TABLE "cart_items" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone
 );
+
 --> statement-breakpoint
 CREATE TABLE "menu_categories" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
@@ -25,8 +27,9 @@ CREATE TABLE "menu_categories" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
-	CONSTRAINT "menu_categories_merchant_id_name_unique" UNIQUE("merchant_id","name")
+	CONSTRAINT "menu_categories_merchant_id_name_unique" UNIQUE("merchant_id", "name")
 );
+
 --> statement-breakpoint
 CREATE TABLE "menus" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
@@ -41,6 +44,7 @@ CREATE TABLE "menus" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone
 );
+
 --> statement-breakpoint
 CREATE TABLE "merchants" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
@@ -57,6 +61,7 @@ CREATE TABLE "merchants" (
 	CONSTRAINT "merchants_phone_number_unique" UNIQUE("phone_number"),
 	CONSTRAINT "merchants_merchant_number_unique" UNIQUE("merchant_number")
 );
+
 --> statement-breakpoint
 CREATE TABLE "order_items" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
@@ -71,6 +76,7 @@ CREATE TABLE "order_items" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone
 );
+
 --> statement-breakpoint
 CREATE TABLE "orders" (
 	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
@@ -85,14 +91,83 @@ CREATE TABLE "orders" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone
 );
+
 --> statement-breakpoint
-ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_session_id_buyer_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."buyer_sessions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_merchant_id_merchants_id_fk" FOREIGN KEY ("merchant_id") REFERENCES "public"."merchants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_menu_id_menus_id_fk" FOREIGN KEY ("menu_id") REFERENCES "public"."menus"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "menu_categories" ADD CONSTRAINT "menu_categories_merchant_id_merchants_id_fk" FOREIGN KEY ("merchant_id") REFERENCES "public"."merchants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "menus" ADD CONSTRAINT "menus_merchant_id_merchants_id_fk" FOREIGN KEY ("merchant_id") REFERENCES "public"."merchants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "menus" ADD CONSTRAINT "menus_category_id_menu_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."menu_categories"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "order_items" ADD CONSTRAINT "order_items_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "order_items" ADD CONSTRAINT "order_items_menu_id_menus_id_fk" FOREIGN KEY ("menu_id") REFERENCES "public"."menus"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_session_id_buyer_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."buyer_sessions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "orders" ADD CONSTRAINT "orders_merchant_id_merchants_id_fk" FOREIGN KEY ("merchant_id") REFERENCES "public"."merchants"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE
+	"cart_items"
+ADD
+	CONSTRAINT "cart_items_session_id_buyer_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."buyer_sessions"("id") ON DELETE no action ON
+UPDATE
+	no action;
+
+--> statement-breakpoint
+ALTER TABLE
+	"cart_items"
+ADD
+	CONSTRAINT "cart_items_merchant_id_merchants_id_fk" FOREIGN KEY ("merchant_id") REFERENCES "public"."merchants"("id") ON DELETE no action ON
+UPDATE
+	no action;
+
+--> statement-breakpoint
+ALTER TABLE
+	"cart_items"
+ADD
+	CONSTRAINT "cart_items_menu_id_menus_id_fk" FOREIGN KEY ("menu_id") REFERENCES "public"."menus"("id") ON DELETE no action ON
+UPDATE
+	no action;
+
+--> statement-breakpoint
+ALTER TABLE
+	"menu_categories"
+ADD
+	CONSTRAINT "menu_categories_merchant_id_merchants_id_fk" FOREIGN KEY ("merchant_id") REFERENCES "public"."merchants"("id") ON DELETE no action ON
+UPDATE
+	no action;
+
+--> statement-breakpoint
+ALTER TABLE
+	"menus"
+ADD
+	CONSTRAINT "menus_merchant_id_merchants_id_fk" FOREIGN KEY ("merchant_id") REFERENCES "public"."merchants"("id") ON DELETE no action ON
+UPDATE
+	no action;
+
+--> statement-breakpoint
+ALTER TABLE
+	"menus"
+ADD
+	CONSTRAINT "menus_category_id_menu_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."menu_categories"("id") ON DELETE no action ON
+UPDATE
+	no action;
+
+--> statement-breakpoint
+ALTER TABLE
+	"order_items"
+ADD
+	CONSTRAINT "order_items_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE no action ON
+UPDATE
+	no action;
+
+--> statement-breakpoint
+ALTER TABLE
+	"order_items"
+ADD
+	CONSTRAINT "order_items_menu_id_menus_id_fk" FOREIGN KEY ("menu_id") REFERENCES "public"."menus"("id") ON DELETE no action ON
+UPDATE
+	no action;
+
+--> statement-breakpoint
+ALTER TABLE
+	"orders"
+ADD
+	CONSTRAINT "orders_session_id_buyer_sessions_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."buyer_sessions"("id") ON DELETE no action ON
+UPDATE
+	no action;
+
+--> statement-breakpoint
+ALTER TABLE
+	"orders"
+ADD
+	CONSTRAINT "orders_merchant_id_merchants_id_fk" FOREIGN KEY ("merchant_id") REFERENCES "public"."merchants"("id") ON DELETE no action ON
+UPDATE
+	no action;

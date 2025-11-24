@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { OrderRepositoryImpl } from "../../../data/repositories/OrderRepository";
-import { OrderService } from "../../../services/OrderService";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { OrderRepositoryImpl } from "../../../data/repositories/order-repository";
+import { OrderService } from "../../../services/order-service";
 import {
   createSuccessResponse,
   createErrorResponse,
   ERROR_CODES,
 } from "../../../lib/errors";
-import { requireMerchantAuth } from "../../../lib/merchantAuth";
+import { requireMerchantAuth } from "../../../lib/merchant-auth";
 
 const orderRepository = new OrderRepositoryImpl();
 const orderService = new OrderService(orderRepository);
@@ -78,18 +79,64 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/orders
- * Get orders for the authenticated merchant
+ * Get orders - supports filtering by session_id, status, or merchant auth
  */
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate merchant from session
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get("session_id");
+    const statusParam = searchParams.get("status");
+    const limitParam = searchParams.get("limit");
+    const cursorParam = searchParams.get("cursor");
+    const directionParam = searchParams.get("direction");
+
+    const limit = limitParam
+      ? Math.min(Number.parseInt(limitParam, 10), 100)
+      : 50;
+    const direction: "asc" | "desc" =
+      directionParam === "asc" || directionParam === "desc"
+        ? directionParam
+        : "desc";
+
+    // If session_id is provided, fetch orders for that session (buyer view)
+    if (sessionId) {
+      const result = await orderService.findOrdersBySession(sessionId, {
+        limit,
+        direction,
+        ...(cursorParam && { cursor: cursorParam }),
+        ...(statusParam && { status: statusParam }),
+      });
+
+      // Fetch items and payment status for all orders in one query
+      const orderIds = result.data.map((o) => o.id);
+      const ordersWithDetails =
+        await orderRepository.findOrdersWithItemsAndPaymentStatus(orderIds);
+
+      // Merge with original order data to preserve pagination info
+      const ordersWithItems = result.data.map((order) => {
+        const details = ordersWithDetails.find((d) => d.order.id === order.id);
+        return {
+          ...order,
+          items: details?.items || [],
+          paymentStatus: details?.paymentStatus || "pending",
+        };
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: ordersWithItems,
+      });
+    }
+
+    // Otherwise, get orders for authenticated merchant
     const authenticatedMerchant = await requireMerchantAuth(request);
 
     // Get orders for this merchant with pagination
     const paginationParams = {
-      limit: 50, // Default limit
-      cursor: undefined, // No cursor for first page
-      direction: "desc" as const, // Show newest orders first
+      limit,
+      direction,
+      ...(cursorParam && { cursor: cursorParam }),
+      ...(statusParam && { status: statusParam }),
     };
 
     const result = await orderService.findOrdersByMerchant(
@@ -97,9 +144,24 @@ export async function GET(request: NextRequest) {
       paginationParams
     );
 
+    // Fetch items and payment status for all orders in one query
+    const orderIds = result.data.map((o) => o.id);
+    const ordersWithDetails =
+      await orderRepository.findOrdersWithItemsAndPaymentStatus(orderIds);
+
+    // Merge with original order data to preserve pagination info
+    const ordersWithItems = result.data.map((order) => {
+      const details = ordersWithDetails.find((d) => d.order.id === order.id);
+      return {
+        ...order,
+        items: details?.items || [],
+        paymentStatus: details?.paymentStatus || "pending",
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      data: result.data,
+      data: ordersWithItems,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
