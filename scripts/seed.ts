@@ -184,7 +184,7 @@ async function seedDatabase() {
           merchantId: insertedMerchants[1].id,
           categoryId: baksoCategory.id,
           imageUrl:
-            "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=300",
+            "https://i.pinimg.com/736x/50/ce/b1/50ceb19ed7fd656aee7e2b8b519d7a4f.jpg",
         },
         {
           name: "Bakso Urat",
