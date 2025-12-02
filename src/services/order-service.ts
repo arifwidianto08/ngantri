@@ -124,20 +124,18 @@ export class OrderService implements IOrderService {
     try {
       const order = await this.orderRepository.create(orderData);
 
-      // Create order items
-      for (const item of data.items) {
-        const orderItemData: NewOrderItem = {
-          orderId: order.id,
-          menuId: item.menuId,
-          menuName: item.menuName,
-          menuImageUrl: item.menuImageUrl || null,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          subtotal: item.quantity * item.unitPrice,
-        };
+      // Create order items in bulk
+      const orderItemsData: NewOrderItem[] = data.items.map((item) => ({
+        orderId: order.id,
+        menuId: item.menuId,
+        menuName: item.menuName,
+        menuImageUrl: item.menuImageUrl || null,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        subtotal: item.quantity * item.unitPrice,
+      }));
 
-        await this.orderRepository.addOrderItem(orderItemData);
-      }
+      await this.orderRepository.addOrderItems(orderItemsData);
 
       return order;
     } catch (error) {

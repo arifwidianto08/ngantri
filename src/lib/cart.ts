@@ -109,7 +109,7 @@ export async function addToCart(
   merchantId: string,
   merchantName: string,
   unitPrice: number,
-  quantity: number = 1,
+  quantity = 1,
   notes?: string,
   imageUrl?: string
 ): Promise<Cart | null> {
@@ -237,16 +237,18 @@ async function syncCartWithServer(cart: Cart): Promise<void> {
       method: "DELETE",
     });
 
-    // Add all current cart items to server
-    for (const item of cart.items) {
-      await fetch(`/api/sessions/${session.id}/cart`, {
+    // Add all current cart items to server in bulk
+    if (cart.items.length > 0) {
+      await fetch(`/api/sessions/${session.id}/cart/bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          menu_id: item.menuId,
-          quantity: item.quantity,
-          unit_price: item.unitPrice,
-          notes: item.notes,
+          items: cart.items.map((item) => ({
+            menu_id: item.menuId,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+            notes: item.notes,
+          })),
         }),
       });
     }

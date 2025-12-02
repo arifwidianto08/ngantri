@@ -1,14 +1,13 @@
 import { eq, desc, gt, and, isNull, sql, lt } from "drizzle-orm";
 import { db } from "../../lib/db";
-import {
-  buyerSessions,
-  cartItems,
+import { buyerSessions, cartItems } from "../schema";
+import type {
   BuyerSession,
   NewBuyerSession,
   CartItem,
   NewCartItem,
 } from "../schema";
-import { SessionRepository } from "../interfaces/session-repository";
+import type { SessionRepository } from "../interfaces/session-repository";
 
 export class SessionRepositoryImpl implements SessionRepository {
   // Buyer Session operations
@@ -62,6 +61,11 @@ export class SessionRepositoryImpl implements SessionRepository {
   // Cart operations
   async addCartItem(cartItem: NewCartItem): Promise<CartItem> {
     const [created] = await db.insert(cartItems).values(cartItem).returning();
+    return created;
+  }
+
+  async addCartItems(items: NewCartItem[]): Promise<CartItem[]> {
+    const created = await db.insert(cartItems).values(items).returning();
     return created;
   }
 
@@ -239,7 +243,7 @@ export class SessionRepositoryImpl implements SessionRepository {
       }
     > = {};
 
-    items.forEach((item) => {
+    for (const item of items) {
       if (!groupedByMerchant[item.merchantId]) {
         groupedByMerchant[item.merchantId] = {
           merchantId: item.merchantId,
@@ -253,7 +257,7 @@ export class SessionRepositoryImpl implements SessionRepository {
       groupedByMerchant[item.merchantId].total +=
         item.quantity * item.priceSnapshot;
       groupedByMerchant[item.merchantId].itemCount += item.quantity;
-    });
+    }
 
     return groupedByMerchant;
   }

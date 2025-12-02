@@ -48,6 +48,7 @@ export interface OrderRepository {
 
   // Order Items operations
   addOrderItem(orderItem: NewOrderItem): Promise<OrderItem>;
+  addOrderItems(orderItems: NewOrderItem[]): Promise<OrderItem[]>;
   findOrderItems(orderId: string): Promise<OrderItem[]>;
   updateOrderItem(
     id: string,
