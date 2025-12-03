@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 *.txt
+
+# tests 
+playwright-report
+/playwright-report
+test-results
+/test-results

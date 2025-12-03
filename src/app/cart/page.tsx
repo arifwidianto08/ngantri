@@ -137,6 +137,7 @@ export default function CartPage() {
               <button
                 type="button"
                 onClick={handleClearCart}
+                data-testid="clear-cart-btn"
                 className="text-red-600 hover:text-red-700 text-xs sm:text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition-colors"
               >
                 Clear All
@@ -203,7 +204,10 @@ export default function CartPage() {
 
         {/* Empty Cart */}
         {!cart || cart.items.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm p-12 sm:p-16 text-center">
+          <div
+            className="bg-white rounded-2xl shadow-sm p-12 sm:p-16 text-center"
+            data-testid="empty-cart-message"
+          >
             <div className="mb-6 flex justify-center">
               <ShoppingCart
                 className="w-24 h-24 sm:w-32 sm:h-32 text-gray-300"
@@ -282,7 +286,11 @@ export default function CartPage() {
                       {/* Items */}
                       <div className="divide-y">
                         {items.map((item) => (
-                          <div key={item.id} className="p-4 sm:p-6">
+                          <div
+                            key={item.id}
+                            data-testid="cart-item"
+                            className="p-4 sm:p-6"
+                          >
                             <div className="flex gap-3 sm:gap-4">
                               {/* Item Image */}
                               {item.imageUrl && (
@@ -323,7 +331,10 @@ export default function CartPage() {
                                     >
                                       −
                                     </button>
-                                    <span className="w-10 text-center font-bold text-sm sm:text-base">
+                                    <span
+                                      className="w-10 text-center font-bold text-sm sm:text-base"
+                                      data-testid="item-quantity-input"
+                                    >
                                       {item.quantity}
                                     </span>
                                     <button
@@ -343,6 +354,7 @@ export default function CartPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveItem(item.id)}
+                                    data-testid="remove-item-btn"
                                     className="text-red-600 hover:text-red-700 text-xs sm:text-sm font-semibold hover:bg-red-50 px-4 py-2.5 rounded-lg transition-colors active:scale-95"
                                   >
                                     Remove
@@ -352,7 +364,10 @@ export default function CartPage() {
 
                               {/* Item Total */}
                               <div className="text-right">
-                                <p className="font-bold text-gray-900 text-base sm:text-lg">
+                                <p
+                                  className="font-bold text-gray-900 text-base sm:text-lg"
+                                  data-testid="item-total"
+                                >
                                   Rp {item.totalPrice.toLocaleString("id-ID")}
                                 </p>
                               </div>
@@ -389,6 +404,7 @@ export default function CartPage() {
               {/* Proceed to Checkout Button */}
               <Link
                 href={session?.tableNumber ? "/checkout" : "/"}
+                data-testid="checkout-btn"
                 className={`w-full py-4 px-6 text-center rounded-xl font-bold text-base sm:text-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 ${
                   session?.tableNumber
                     ? "bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]"

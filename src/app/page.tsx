@@ -278,6 +278,7 @@ export default function Home() {
                 type="button"
                 key={merchant.id}
                 onClick={() => setSelectedMerchant(merchant)}
+                data-testid="merchant-card"
                 className={`group relative p-4 sm:p-5 rounded-xl border-2 transition-all text-left shadow-md hover:shadow-lg ${
                   selectedMerchant?.id === merchant.id
                     ? "border-blue-600 bg-blue-100 shadow-lg scale-[1.02]"
@@ -369,6 +370,7 @@ export default function Home() {
                 {menuItems.map((item) => (
                   <div
                     key={item.id}
+                    data-testid="menu-item"
                     className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200"
                   >
                     {/* Image */}
@@ -397,7 +399,10 @@ export default function Home() {
 
                     {/* Content */}
                     <div className="p-4">
-                      <h3 className="font-bold text-gray-900 mb-1 text-base sm:text-lg line-clamp-1">
+                      <h3
+                        className="font-bold text-gray-900 mb-1 text-base sm:text-lg line-clamp-1"
+                        data-testid="menu-name"
+                      >
                         {item.name}
                       </h3>
                       {item.description && (
@@ -410,7 +415,10 @@ export default function Home() {
                       <div className="flex items-center justify-between gap-2 mt-auto pt-3 border-t">
                         <div>
                           <p className="text-xs text-gray-500">Price</p>
-                          <p className="text-lg sm:text-xl font-bold text-gray-900">
+                          <p
+                            className="text-lg sm:text-xl font-bold text-gray-900"
+                            data-testid="menu-price"
+                          >
                             Rp {item.price.toLocaleString("id-ID")}
                           </p>
                         </div>
@@ -418,6 +426,7 @@ export default function Home() {
                           type="button"
                           onClick={() => handleAddToCart(item)}
                           disabled={!item.isAvailable}
+                          data-testid="add-to-cart-btn"
                           className={`px-4 py-2.5 rounded-lg font-bold transition-all shadow-md hover:shadow-lg text-sm ${
                             item.isAvailable
                               ? "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"

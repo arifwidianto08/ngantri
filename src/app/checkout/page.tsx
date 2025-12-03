@@ -392,6 +392,7 @@ export default function CheckoutPage() {
                   <input
                     type="text"
                     id="customerName"
+                    data-testid="customer-name"
                     value={customerName}
                     onChange={(e) => {
                       setCustomerName(e.target.value);
@@ -427,6 +428,7 @@ export default function CheckoutPage() {
                     <input
                       type="tel"
                       id="whatsappNumber"
+                      data-testid="customer-phone"
                       value={whatsappNumber}
                       onChange={(e) => {
                         setWhatsappNumber(e.target.value);
@@ -571,6 +573,7 @@ export default function CheckoutPage() {
                 type="button"
                 onClick={handlePlaceOrder}
                 disabled={isPlacingOrder}
+                data-testid="place-order-btn"
                 className="w-full px-6 py-4 bg-green-600 text-white text-base sm:text-lg font-bold rounded-xl hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-98"
               >
                 {isPlacingOrder ? (

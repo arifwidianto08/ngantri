@@ -228,6 +228,10 @@ export class OrderRepositoryImpl implements OrderRepository {
     return this.createOrderItem(orderItem);
   }
 
+  async addOrderItems(orderItems: NewOrderItem[]): Promise<OrderItem[]> {
+    return this.createOrderItems(orderItems);
+  }
+
   async removeOrderItem(id: string): Promise<boolean> {
     try {
       await db.delete(orderItems).where(eq(orderItems.id, id));

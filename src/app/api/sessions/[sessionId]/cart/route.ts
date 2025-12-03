@@ -1,9 +1,13 @@
 /**
  * POST /api/sessions/[sessionId]/cart
  * Add item to cart for a specific session
+ *
+ * DELETE /api/sessions/[sessionId]/cart
+ * Clear cart for a specific session
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { SessionRepositoryImpl } from "../../../../../data/repositories/session-repository";
 import { SessionService } from "../../../../../services/session-service";
 import { MenuRepositoryImpl } from "../../../../../data/repositories/menu-repository";
@@ -27,7 +31,7 @@ const addToCartHandler = async (
 
   try {
     const body = await request.json();
-    const { menu_id, quantity = 1, notes } = body;
+    const { menu_id, quantity = 1 } = body;
 
     // Validate required fields
     if (!menu_id) {
@@ -59,23 +63,14 @@ const addToCartHandler = async (
       );
     }
 
-    // For now, just return success - in a real implementation,
-    // you would store cart items in the database
-    const cartItem = {
-      id: `${sessionId}_${menu_id}`,
+    // Save cart item to database
+    const cartItem = await sessionRepository.addCartItem({
       sessionId,
+      merchantId: menuItem.merchantId,
       menuId: menu_id,
       quantity,
-      notes: notes || null,
-      menuItem: {
-        id: menuItem.id,
-        name: menuItem.name,
-        price: menuItem.price,
-        imageUrl: menuItem.imageUrl,
-      },
-      subtotal: menuItem.price * quantity,
-      createdAt: new Date().toISOString(),
-    };
+      priceSnapshot: menuItem.price,
+    });
 
     return NextResponse.json(createSuccessResponse({ cartItem }));
   } catch (error) {
@@ -88,4 +83,28 @@ const addToCartHandler = async (
   }
 };
 
-export { addToCartHandler as POST };
+const deleteCartHandler = async (
+  request: NextRequest,
+  { params }: { params: Promise<{ sessionId: string }> }
+) => {
+  const { sessionId } = await params;
+
+  try {
+    // Verify session exists
+    await sessionService.findSessionById(sessionId);
+
+    // Clear all cart items for this session
+    await sessionRepository.clearCart(sessionId);
+
+    return NextResponse.json(createSuccessResponse({ cleared: true }));
+  } catch (error) {
+    console.error("Error clearing cart:", error);
+    return createErrorResponse(
+      ERROR_CODES.INTERNAL_SERVER_ERROR,
+      "Failed to clear cart",
+      500
+    );
+  }
+};
+
+export { addToCartHandler as POST, deleteCartHandler as DELETE };

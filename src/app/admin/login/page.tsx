@@ -82,6 +82,7 @@ export default function AdminLoginPage() {
             <input
               type="text"
               id="username"
+              data-testid="admin-username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
@@ -101,6 +102,7 @@ export default function AdminLoginPage() {
             <input
               type="password"
               id="password"
+              data-testid="admin-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
@@ -112,6 +114,7 @@ export default function AdminLoginPage() {
 
           <button
             type="submit"
+            data-testid="admin-login-btn"
             disabled={loading}
             className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
           >

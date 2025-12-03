@@ -366,7 +366,7 @@ export default function AdminOrdersPage() {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Order #{selectedOrder.id.slice(0, 8)}
+                  Order #{selectedOrder.id}
                 </h2>
                 <button
                   type="button"

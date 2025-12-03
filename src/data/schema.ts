@@ -129,6 +129,7 @@ export const cartItems = pgTable("cart_items", {
     .references(() => menus.id),
   quantity: integer("quantity").notNull().default(1),
   priceSnapshot: integer("price_snapshot").notNull(), // IDR price at time of adding to cart
+  notes: text("notes"), // Customer notes for this cart item
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
