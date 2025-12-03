@@ -37,6 +37,7 @@ export default function CartWidget() {
   return (
     <Link
       href="/cart"
+      data-testid="cart-widget"
       className="relative inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95"
     >
       <svg
@@ -56,7 +57,10 @@ export default function CartWidget() {
       </svg>
       <span className="hidden sm:inline">Cart</span>
       {itemCount > 0 && (
-        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white shadow-lg animate-pulse">
+        <span
+          className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white shadow-lg animate-pulse"
+          data-testid="cart-count"
+        >
           {itemCount}
         </span>
       )}

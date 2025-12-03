@@ -79,7 +79,10 @@ export default function AdminDashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div
+          className="bg-white rounded-lg shadow p-6"
+          data-testid="total-orders-stat"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Orders</p>
@@ -106,7 +109,10 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div
+          className="bg-white rounded-lg shadow p-6"
+          data-testid="total-revenue-stat"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Revenue</p>

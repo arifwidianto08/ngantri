@@ -156,6 +156,7 @@ export default function FloatingCart({ show = true }: FloatingCartProps) {
                 {cart.items.slice(0, 3).map((item) => (
                   <div
                     key={item.id}
+                    data-testid="cart-item"
                     className="p-4 flex gap-3 hover:bg-gray-50 transition-colors"
                   >
                     {item.imageUrl && (
