@@ -8,119 +8,134 @@ import { test, expect } from "@playwright/test";
 test.describe("Shopping Cart", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    // Wait for page to load
     await page.waitForLoadState("networkidle");
 
-    // Close setup dialog if it appears
-    const dialogBackdrop = page.locator('[aria-label="Close dialog"]');
-    if (await dialogBackdrop.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await dialogBackdrop.click();
-      await page.waitForTimeout(300);
-    }
+    // Fill out setup dialog
+    await page.locator("#table").fill("1");
+    await page.locator("#name").fill("Test Customer");
+    await page.locator("#phone").fill("08123456789");
+
+    // Submit the dialog
+    await page.locator('button[type="submit"]').click();
+    await page.waitForLoadState("networkidle");
   });
 
   test("should add item to cart from menu page", async ({ page }) => {
-    // Navigate to a merchant/menu
-    const menuButton = page.locator("[data-testid='menu-item']").first();
-    if (await menuButton.isVisible()) {
-      await menuButton.click();
-    }
+    // Click first merchant to see menus
+    await page.locator("[data-testid='merchant-card']").first().click();
+    await page.waitForTimeout(500);
 
-    // Click add to cart button
+    // Add first menu item to cart
     const addToCartBtn = page
       .locator("[data-testid='add-to-cart-btn']")
       .first();
-    if (await addToCartBtn.isVisible()) {
-      await addToCartBtn.click();
-    }
+    await expect(addToCartBtn).toBeVisible({ timeout: 5000 });
+    await addToCartBtn.click();
+    await page.waitForTimeout(300);
 
-    // Verify cart widget shows updated count
+    // Verify cart widget shows item count
     const cartCount = page.locator("[data-testid='cart-count']");
-    await expect(cartCount).toHaveText(/1+/);
+    await expect(cartCount).toBeVisible({ timeout: 5000 });
+    await expect(cartCount).toHaveText("1");
   });
 
   test("should view cart items", async ({ page }) => {
-    // Add item to cart first
+    // Click first merchant
+    await page.locator("[data-testid='merchant-card']").first().click();
+    await page.waitForTimeout(500);
+
+    // Add item to cart
     const addToCartBtn = page
       .locator("[data-testid='add-to-cart-btn']")
       .first();
-    if (await addToCartBtn.isVisible()) {
-      await addToCartBtn.click();
-    }
+    await expect(addToCartBtn).toBeVisible({ timeout: 5000 });
+    await addToCartBtn.click();
+    await page.waitForTimeout(300);
 
-    // Click cart widget to view cart
+    // Click cart widget to navigate to cart page
     await page.locator("[data-testid='cart-widget']").click();
 
-    // Verify cart page is displayed
+    // Verify on cart page
     await expect(page).toHaveURL(/\/cart/);
-    const cartItem = page.locator("[data-testid='cart-item']").first();
-    await expect(cartItem).toBeVisible();
+
+    // Verify cart item is displayed
+    const cartItem = page.locator("[data-testid='cart-item']");
+    await expect(cartItem.first()).toBeVisible({ timeout: 5000 });
   });
 
   test("should update item quantity in cart", async ({ page }) => {
-    // Add item to cart
-    const addToCartBtn = page
-      .locator("[data-testid='add-to-cart-btn']")
-      .first();
-    if (await addToCartBtn.isVisible()) {
-      await addToCartBtn.click();
-    }
+    // Add item to cart first
+    await page.locator("[data-testid='merchant-card']").first().click();
+    await page.waitForTimeout(500);
+    await page.locator("[data-testid='add-to-cart-btn']").first().click();
+    await page.waitForTimeout(300);
 
-    // Go to cart
+    // Navigate to cart page
     await page.goto("/cart");
+    await page.waitForLoadState("networkidle");
 
-    // Find quantity input and increase
-    const quantityInput = page
-      .locator("[data-testid='item-quantity-input']")
-      .first();
-    await quantityInput.fill("3");
+    // Increment quantity using + button (click it twice to make qty = 3)
+    const incrementButtons = page.locator("button:has-text('+')");
+    const firstIncrementButton = incrementButtons.first();
+    await expect(firstIncrementButton).toBeVisible({ timeout: 5000 });
+    await firstIncrementButton.click();
+    await page.waitForTimeout(200);
+    await firstIncrementButton.click();
+    await page.waitForTimeout(200);
 
-    // Verify total is updated
+    // Verify item total is displayed
     const itemTotal = page.locator("[data-testid='item-total']").first();
-    await expect(itemTotal).toContainText(/Rp/);
+    await expect(itemTotal).toBeVisible({ timeout: 5000 });
   });
 
   test("should remove item from cart", async ({ page }) => {
-    // Add item to cart
-    const addToCartBtn = page
-      .locator("[data-testid='add-to-cart-btn']")
-      .first();
-    if (await addToCartBtn.isVisible()) {
-      await addToCartBtn.click();
-    }
+    // Add item to cart first
+    await page.locator("[data-testid='merchant-card']").first().click();
+    await page.waitForTimeout(500);
+    await page.locator("[data-testid='add-to-cart-btn']").first().click();
+    await page.waitForTimeout(300);
 
-    // Go to cart
+    // Navigate to cart page
     await page.goto("/cart");
+    await page.waitForLoadState("networkidle");
 
-    // Click remove button
-    const removeBtn = page.locator("[data-testid='remove-item-btn']").first();
-    if (await removeBtn.isVisible()) {
-      await removeBtn.click();
-    }
-
-    // Verify item is removed
+    // Verify item is in cart
     const cartItem = page.locator("[data-testid='cart-item']").first();
-    await expect(cartItem).not.toBeVisible({ timeout: 5000 });
+    await expect(cartItem).toBeVisible({ timeout: 5000 });
+
+    // Remove item
+    const removeBtn = page.locator("[data-testid='remove-item-btn']").first();
+    await expect(removeBtn).toBeVisible({ timeout: 5000 });
+    await removeBtn.click();
+    await page.waitForTimeout(300);
+
+    // Verify empty cart message appears
+    const emptyMessage = page.locator("[data-testid='empty-cart-message']");
+    await expect(emptyMessage).toBeVisible({ timeout: 5000 });
   });
 
   test("should clear entire cart", async ({ page }) => {
-    // Add item to cart
-    const addToCartBtn = page
-      .locator("[data-testid='add-to-cart-btn']")
-      .first();
-    if (await addToCartBtn.isVisible()) {
-      await addToCartBtn.click();
-    }
+    // Add item to cart first
+    await page.locator("[data-testid='merchant-card']").first().click();
+    await page.waitForTimeout(500);
+    await page.locator("[data-testid='add-to-cart-btn']").first().click();
+    await page.waitForTimeout(300);
 
-    // Go to cart
+    // Navigate to cart page
     await page.goto("/cart");
+    await page.waitForLoadState("networkidle");
 
-    // Click clear cart button
+    // Click clear cart button (this triggers browser confirm dialog)
     const clearBtn = page.locator("[data-testid='clear-cart-btn']");
-    if (await clearBtn.isVisible()) {
-      await clearBtn.click();
-      await page.locator("button:has-text('Confirm')").click();
-    }
+    await expect(clearBtn).toBeVisible({ timeout: 5000 });
+
+    // Accept the browser confirmation dialog
+    page.once("dialog", (dialog) => {
+      dialog.accept();
+    });
+
+    await clearBtn.click();
+    await page.waitForTimeout(300);
 
     // Verify cart is empty
     const emptyMessage = page.locator("[data-testid='empty-cart-message']");
