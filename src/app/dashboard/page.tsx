@@ -9,6 +9,21 @@ import {
   CheckCircle,
   Store,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface Merchant {
   id: string;
@@ -232,80 +247,105 @@ export default function MerchantDashboard() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Orders by Status */}
+        {/* Orders by Status - Pie Chart */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Orders by Status
           </h3>
-          <div className="space-y-3">
-            {ordersByStatus.map((item) => (
-              <div key={item.status} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-gray-700 capitalize">
-                      {item.status}
-                    </span>
-                    <span className="text-sm text-gray-600">
-                      {item.count} orders
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${
-                        item.status === "completed"
-                          ? "bg-green-500"
-                          : item.status === "pending"
-                          ? "bg-orange-500"
-                          : item.status === "cancelled"
-                          ? "bg-red-500"
-                          : "bg-blue-500"
-                      }`}
-                      style={{
-                        width: `${
-                          (item.count / (stats?.totalOrders || 1)) * 100
-                        }%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-            {ordersByStatus.length === 0 && (
-              <p className="text-gray-500 text-sm text-center py-4">
-                No order data available
-              </p>
-            )}
-          </div>
+          {ordersByStatus.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={ordersByStatus.map((item) => ({
+                    ...item,
+                    name: item.status,
+                    value: item.count,
+                  }))}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  label
+                >
+                  {ordersByStatus.map((item) => {
+                    const colors: Record<string, string> = {
+                      completed: "#22c55e",
+                      pending: "#f97316",
+                      cancelled: "#ef4444",
+                      accepted: "#3b82f6",
+                      preparing: "#a855f7",
+                      ready: "#06b6d4",
+                    };
+                    return (
+                      <Cell
+                        key={`cell-${item.status}`}
+                        fill={colors[item.status] || "#8b5cf6"}
+                      />
+                    );
+                  })}
+                </Pie>
+                <Tooltip
+                  formatter={(value) => `${value} orders`}
+                  labelFormatter={(label) => `${label}`}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-gray-500 text-sm text-center py-12">
+              No order data available
+            </p>
+          )}
         </div>
 
-        {/* Revenue by Day */}
+        {/* Revenue by Day - Line Chart */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Revenue (Last 7 Days)
           </h3>
-          <div className="space-y-2">
-            {revenueByDay.map((item) => (
-              <div
-                key={item.date}
-                className="flex items-center justify-between text-sm"
-              >
-                <span className="text-gray-600">
-                  {new Date(item.date).toLocaleDateString("id-ID", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-                <span className="font-semibold text-gray-900">
-                  {formatCurrency(item.revenue)}
-                </span>
-              </div>
-            ))}
-            {revenueByDay.length === 0 && (
-              <p className="text-gray-500 text-sm text-center py-4">
-                No revenue data available
-              </p>
-            )}
-          </div>
+          {revenueByDay.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={revenueByDay}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(date) =>
+                    new Date(date).toLocaleDateString("id-ID", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  }
+                />
+                <YAxis
+                  tickFormatter={(value) =>
+                    `Rp${(value / 1000000).toFixed(0)}M`
+                  }
+                />
+                <Tooltip
+                  formatter={(value) =>
+                    `Rp ${Number(value).toLocaleString("id-ID")}`
+                  }
+                  labelFormatter={(label) =>
+                    new Date(label).toLocaleDateString("id-ID")
+                  }
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  dot={{ fill: "#3b82f6", r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name="Revenue"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-gray-500 text-sm text-center py-12">
+              No revenue data available
+            </p>
+          )}
         </div>
       </div>
 
