@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 
 interface Order {
   id: string;
@@ -106,9 +107,17 @@ export default function MerchantOrdersPage() {
               queryKey: ["merchant-orders", filter],
             })
           }
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          disabled={isLoading}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          Refresh
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Refreshing...</span>
+            </>
+          ) : (
+            <span>Refresh</span>
+          )}
         </button>
       </div>
 
