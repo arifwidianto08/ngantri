@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast-provider";
 
 interface OrderItem {
   id: string;
@@ -83,6 +84,8 @@ export default function AdminOrdersPage() {
     orderId: null,
   });
 
+  const { showToast } = useToast();
+
   const {
     data: ordersResponse,
     isLoading,
@@ -142,11 +145,14 @@ export default function AdminOrdersPage() {
         void refetch();
         setConfirmState({ type: null, orderId: null });
       } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        showToast(
+          `Failed: ${result.error?.message || "Unknown error"}`,
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error marking as paid:", error);
-      alert("Failed to mark order as paid");
+      showToast("Failed to mark order as paid", "error");
     } finally {
       setProcessing(false);
     }
@@ -179,11 +185,14 @@ export default function AdminOrdersPage() {
         void refetch();
         setConfirmState({ type: null, orderId: null });
       } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        showToast(
+          `Failed: ${result.error?.message || "Unknown error"}`,
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error updating status:", error);
-      alert("Failed to update order status");
+      showToast("Failed to update order status", "error");
     } finally {
       setProcessing(false);
     }

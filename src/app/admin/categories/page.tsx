@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast-provider";
 
 interface Category {
   id: string;
@@ -23,6 +24,7 @@ export default function AdminCategoriesPage() {
   const [processing, setProcessing] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
   const [categoriesQuery, merchantsQuery] = useQueries({
     queries: [
@@ -69,12 +71,17 @@ export default function AdminCategoriesPage() {
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
         setDeleteId(null);
+
+        showToast("Category deleted successfully", "success");
       } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        showToast(
+          `Failed: ${result.error?.message || "Unknown error"}`,
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error deleting category:", error);
-      alert("Failed to delete category");
+      showToast("Failed to delete category", "error");
     } finally {
       setProcessing(false);
     }

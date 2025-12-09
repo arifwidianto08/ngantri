@@ -15,6 +15,7 @@ import {
   MessageCircle,
   AlertCircle,
 } from "lucide-react";
+import { useToast } from "@/components/toast-provider";
 
 interface ValidationErrors {
   name?: string;
@@ -62,6 +63,8 @@ export default function CheckoutPage() {
   const [countdown, setCountdown] = useState(3);
   const router = useRouter();
 
+  const { toast } = useToast();
+
   useEffect(() => {
     const initializeCheckout = () => {
       try {
@@ -86,17 +89,11 @@ export default function CheckoutPage() {
         setCart(currentCart);
         setSession(currentSession);
 
-        // Load cached customer info from localStorage
         const cachedName = localStorage.getItem("ngantri_customer_name");
         const cachedWhatsapp = localStorage.getItem("ngantri_customer_phone");
 
-        if (cachedName) {
-          setCustomerName(cachedName);
-        }
-
-        if (cachedWhatsapp) {
-          setWhatsappNumber(cachedWhatsapp);
-        }
+        if (cachedName) setCustomerName(cachedName);
+        if (cachedWhatsapp) setWhatsappNumber(cachedWhatsapp);
       } catch (error) {
         console.error("Error initializing checkout:", error);
       } finally {
@@ -107,7 +104,6 @@ export default function CheckoutPage() {
     initializeCheckout();
   }, [router]);
 
-  // Group items by merchant with totals
   const merchantGroups =
     cart?.items.reduce((acc, item) => {
       if (!acc[item.merchantId]) {
@@ -130,18 +126,15 @@ export default function CheckoutPage() {
   const validateInputs = (): boolean => {
     const newErrors: ValidationErrors = {};
 
-    // Validate name
     if (!customerName.trim()) {
       newErrors.name = "Username tidak boleh kosong";
     } else if (customerName.trim().length < 2) {
       newErrors.name = "Name must be at least 2 characters";
     }
 
-    // Validate WhatsApp number
     if (!whatsappNumber.trim()) {
       newErrors.whatsapp = "Nomor WhatsApp belum diisi";
     } else {
-      // Remove non-digit characters
       const cleaned = whatsappNumber.replace(/\D/g, "");
       if (cleaned.length < 10) {
         newErrors.whatsapp = "WhatsApp number must be at least 10 digits";
@@ -211,7 +204,6 @@ export default function CheckoutPage() {
       const result = await response.json();
 
       if (result.success) {
-        // Convert batch response to OrderResult format
         return result.data.orders.map(
           (order: {
             merchantId: string;
@@ -225,14 +217,12 @@ export default function CheckoutPage() {
         );
       }
 
-      // If batch failed, return error for all merchants
       return Object.values(ordersByMerchant).map(({ merchantName }) => ({
         success: false,
         merchantName,
         error: result.error,
       }));
     } catch (error) {
-      // If batch request failed, return error for all merchants
       return Object.values(ordersByMerchant).map(({ merchantName }) => ({
         success: false,
         merchantName,
@@ -255,21 +245,22 @@ export default function CheckoutPage() {
     }
 
     if (!session || !cart || cart.items.length === 0) {
-      alert("No items in cart");
+      toast({
+        title: "Error",
+        description: "No items in cart",
+        variant: "destructive",
+      });
       return;
     }
 
     setIsPlacingOrder(true);
 
     try {
-      // Save customer info to localStorage for future use
       localStorage.setItem("ngantri_customer_name", customerName.trim());
       localStorage.setItem("ngantri_customer_phone", whatsappNumber.trim());
 
-      // Clean WhatsApp number (remove non-digits)
       const cleanedWhatsapp = whatsappNumber.replace(/\D/g, "");
 
-      // Group items by merchant
       const ordersByMerchant = cart.items.reduce((acc, item) => {
         if (!acc[item.merchantId]) {
           acc[item.merchantId] = {
@@ -281,24 +272,24 @@ export default function CheckoutPage() {
         return acc;
       }, {} as Record<string, OrdersByMerchant>);
 
-      // Create orders for each merchant
       const results = await createOrdersForMerchants(
         cleanedWhatsapp,
         ordersByMerchant
       );
 
-      // Check if all orders succeeded
       const failed = results.filter((r) => !r.success);
       if (failed.length > 0) {
-        // Some orders failed
         const failedMerchants = failed.map((r) => r.merchantName).join(", ");
-        alert(
-          `Some orders failed for: ${failedMerchants}\n\nPlease try again or contact support.`
-        );
+
+        toast({
+          title: "Error",
+          description: `Some orders failed for: ${failedMerchants}`,
+          variant: "destructive",
+        });
+
         return;
       }
 
-      // Create payment for each order
       const orderIds = results
         .filter(
           (r): r is OrderResult & { orderId: string } =>
@@ -306,16 +297,13 @@ export default function CheckoutPage() {
         )
         .map((r) => r.orderId);
 
-      // Create payments for all orders
       await createPaymentsForOrders(orderIds);
 
       clearCart();
       window.dispatchEvent(new Event("cart-updated"));
 
-      // Show success dialog
       setShowSuccessDialog(true);
 
-      // Countdown and redirect
       let count = 3;
       setCountdown(count);
       const interval = setInterval(() => {
@@ -327,10 +315,14 @@ export default function CheckoutPage() {
         }
       }, 1000);
     } catch (error) {
-      console.error("Error placing orders:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to place orders";
-      alert(`${errorMessage}. Please try again.`);
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsPlacingOrder(false);
     }

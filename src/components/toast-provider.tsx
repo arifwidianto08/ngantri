@@ -12,9 +12,23 @@ interface Toast {
   duration?: number;
 }
 
+type ToastOptionsObject = {
+  title?: string;
+  description?: string;
+  variant?: ToastType | "destructive";
+  duration?: number;
+};
+
+type ToastParam = string | ToastOptionsObject;
+
 interface ToastContextType {
   toasts: Toast[];
+  /**
+   * Old style: showToast("message", "success", 3000)
+   * New style: toast({ title: "OK", description: "Saved", variant: "success" })
+   */
   showToast: (message: string, type?: ToastType, duration?: number) => void;
+  toast: (param: ToastParam) => void;
   removeToast: (id: string) => void;
 }
 
@@ -27,7 +41,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
-  const showToast = useCallback(
+  // Internal helper to normalize variant values and object -> Toast
+  const normalizeAndPush = useCallback(
     (message: string, type: ToastType = "info", duration = 3000) => {
       const id = Math.random().toString(36).substr(2, 9);
       const newToast: Toast = { id, message, type, duration };
@@ -43,8 +58,45 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [removeToast]
   );
 
+  // showToast keeps the old signature (string, type, duration)
+  const showToast = useCallback(
+    (message: string, type: ToastType = "info", duration = 3000) => {
+      normalizeAndPush(message, type, duration);
+    },
+    [normalizeAndPush]
+  );
+
+  // toast accepts either a string OR an object { title, description, variant, duration }
+  const toast = useCallback(
+    (param: ToastParam) => {
+      if (typeof param === "string") {
+        normalizeAndPush(param, "info", 3000);
+        return;
+      }
+
+      // object path
+      const { title, description, variant, duration } = param;
+      // prefer description, if not present use title, fall back to empty string
+      const messageSource = description ?? title ?? "";
+      // map "destructive" to "error" to match your ToastType
+      const normalizedVariant: ToastType =
+        variant === "destructive" ? "error" : variant ?? "info";
+
+      // If there's no text at all, make a generic fallback
+      const message =
+        messageSource.trim() !== "" ? messageSource : title ?? "Notification";
+
+      normalizeAndPush(
+        message,
+        normalizedVariant as ToastType,
+        duration ?? 3000
+      );
+    },
+    [normalizeAndPush]
+  );
+
   return (
-    <ToastContext.Provider value={{ toasts, showToast, removeToast }}>
+    <ToastContext.Provider value={{ toasts, showToast, removeToast, toast }}>
       {children}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </ToastContext.Provider>
