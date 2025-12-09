@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
@@ -24,29 +24,32 @@ export default function AdminCategoriesPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery<{
-    categories: Category[];
-    merchants: Merchant[];
-  }>({
-    queryKey: ["admin-categories"],
-    queryFn: async () => {
-      const [categoriesRes, merchantsRes] = await Promise.all([
-        fetch("/api/admin/categories"),
-        fetch("/api/merchants"),
-      ]);
-
-      const categoriesResult = await categoriesRes.json();
-      const merchantsResult = await merchantsRes.json();
-
-      return {
-        categories: categoriesResult.data || [],
-        merchants: merchantsResult.data?.merchants || [],
-      };
-    },
+  const [categoriesQuery, merchantsQuery] = useQueries({
+    queries: [
+      {
+        queryKey: ["categories"],
+        queryFn: async (): Promise<{ data: Category[] }> => {
+          const res = await fetch("/api/admin/categories");
+          return res.json();
+        },
+      },
+      {
+        queryKey: ["merchants"],
+        queryFn: async (): Promise<{ data: Merchant[] }> => {
+          const res = await fetch("/api/merchants");
+          return res.json();
+        },
+      },
+    ],
   });
 
-  const categories = data?.categories ?? [];
-  const merchants = data?.merchants ?? [];
+  const categories = categoriesQuery.data?.data ?? [];
+  const merchants = merchantsQuery.data?.data ?? [];
+  const isLoading = categoriesQuery.isLoading || merchantsQuery.isLoading;
+  const isFetching = categoriesQuery.isFetching || merchantsQuery.isFetching;
+  const refetch = async () => {
+    await Promise.all([categoriesQuery.refetch(), merchantsQuery.refetch()]);
+  };
 
   const handleDeleteClick = (categoryId: string) => {
     setDeleteId(categoryId);
@@ -63,11 +66,9 @@ export default function AdminCategoriesPage() {
       });
 
       const result = await response.json();
-
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
         setDeleteId(null);
-        // alert("Category deleted successfully!"); // Optional: replace with toast
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
       }
@@ -107,13 +108,11 @@ export default function AdminCategoriesPage() {
         </div>
         <button
           type="button"
-          onClick={() =>
-            queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
-          }
-          disabled={isLoading}
+          onClick={() => void refetch()}
+          disabled={isFetching}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          {isLoading ? (
+          {isFetching ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Refreshing...</span>

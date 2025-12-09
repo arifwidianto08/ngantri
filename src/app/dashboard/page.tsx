@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -11,8 +10,6 @@ import {
   Store,
 } from "lucide-react";
 import {
-  BarChart,
-  Bar,
   LineChart,
   Line,
   XAxis,
@@ -64,33 +61,34 @@ interface DashboardData {
 }
 
 export default function MerchantDashboard() {
-  const { data, isLoading, error } = useQuery<DashboardData>({
-    queryKey: ["merchant-dashboard"],
-    queryFn: async () => {
-      // Fetch merchant info
-      const merchantResponse = await fetch("/api/merchants/me");
-      const merchantResult = await merchantResponse.json();
+  const { data, isLoading, error, refetch, isFetching } =
+    useQuery<DashboardData>({
+      queryKey: ["merchant-dashboard"],
+      queryFn: async () => {
+        // Fetch merchant info
+        const merchantResponse = await fetch("/api/merchants/me");
+        const merchantResult = await merchantResponse.json();
 
-      if (!merchantResult.success) {
-        throw new Error("Failed to fetch merchant info");
-      }
+        if (!merchantResult.success) {
+          throw new Error("Failed to fetch merchant info");
+        }
 
-      // Fetch stats
-      const statsResponse = await fetch("/api/merchants/dashboard/stats");
-      const statsResult = await statsResponse.json();
+        // Fetch stats
+        const statsResponse = await fetch("/api/merchants/dashboard/stats");
+        const statsResult = await statsResponse.json();
 
-      if (!statsResult.success) {
-        throw new Error("Failed to fetch stats");
-      }
+        if (!statsResult.success) {
+          throw new Error("Failed to fetch stats");
+        }
 
-      return {
-        merchant: merchantResult.data.merchant,
-        stats: statsResult.data.stats,
-        ordersByStatus: statsResult.data.ordersByStatus,
-        revenueByDay: statsResult.data.revenueByDay,
-      };
-    },
-  });
+        return {
+          merchant: merchantResult.data.merchant,
+          stats: statsResult.data.stats,
+          ordersByStatus: statsResult.data.ordersByStatus,
+          revenueByDay: statsResult.data.revenueByDay,
+        };
+      },
+    });
 
   const merchant = data?.merchant;
   const stats = data?.stats;
@@ -128,11 +126,44 @@ export default function MerchantDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">
-          Overview of your business performance
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-1">
+            Overview of your business performance
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+        >
+          {isFetching ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              <span>Refreshing...</span>
+            </>
+          ) : (
+            <>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Refresh</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span>Refresh</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Merchant Profile Card */}

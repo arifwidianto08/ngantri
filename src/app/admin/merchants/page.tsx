@@ -25,12 +25,17 @@ export default function AdminMerchantsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: merchants = [], isLoading } = useQuery<Merchant[]>({
+  const {
+    data = [],
+    isLoading,
+    refetch,
+    isFetching,
+  } = useQuery<Merchant[]>({
     queryKey: ["admin-merchants"],
     queryFn: async () => {
       const response = await fetch("/api/merchants");
       const result = await response.json();
-      return Array.isArray(result.data?.merchants) ? result.data.merchants : [];
+      return Array.isArray(result.data) ? result.data : [];
     },
   });
 
@@ -122,13 +127,11 @@ export default function AdminMerchantsPage() {
         </div>
         <button
           type="button"
-          onClick={() =>
-            queryClient.invalidateQueries({ queryKey: ["admin-merchants"] })
-          }
-          disabled={isLoading}
+          onClick={() => void refetch()}
+          disabled={isFetching}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          {isLoading ? (
+          {isFetching ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Refreshing...</span>
@@ -159,25 +162,25 @@ export default function AdminMerchantsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Total Merchants</p>
-          <p className="text-2xl font-bold text-gray-900">{merchants.length}</p>
+          <p className="text-2xl font-bold text-gray-900">{data.length}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Available</p>
           <p className="text-2xl font-bold text-green-600">
-            {merchants.filter((m) => m.isAvailable).length}
+            {data.filter((m) => m.isAvailable).length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Unavailable</p>
           <p className="text-2xl font-bold text-red-600">
-            {merchants.filter((m) => !m.isAvailable).length}
+            {data.filter((m) => !m.isAvailable).length}
           </p>
         </div>
       </div>
 
       {/* Merchants Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {merchants.map((merchant) => (
+        {data.map((merchant) => (
           <div
             key={merchant.id}
             className="bg-white rounded-lg shadow overflow-hidden"
@@ -270,7 +273,7 @@ export default function AdminMerchantsPage() {
         ))}
       </div>
 
-      {merchants.length === 0 && (
+      {data.length === 0 && (
         <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
           No merchants found
         </div>

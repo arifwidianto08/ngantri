@@ -40,17 +40,7 @@ export interface CursorPaginationParams {
 // Paginated result structure
 export interface PaginatedResult<T> {
   data: T[];
-  pagination: {
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-    nextCursor?: string;
-    previousCursor?: string;
-    totalCount?: number;
-    limit: number;
-    direction: "asc" | "desc";
-    currentPage?: number;
-    totalPages?: number;
-  };
+  pagination: PaginationMeta;
 }
 
 // Metadata for pagination info
@@ -119,7 +109,7 @@ export const buildPaginatedResult = <T extends { id: string }>(
   }
 
   return {
-    data,
+    data: data,
     pagination: {
       hasNextPage,
       hasPreviousPage,
