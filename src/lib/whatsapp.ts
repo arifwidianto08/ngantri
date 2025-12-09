@@ -25,7 +25,7 @@ export const generateOrderConfirmationUrl = (
   const { merchantName, orderId, customerName, totalAmount, orderItems } =
     options;
 
-  let message = `Hello ${merchantName}! 👋\n\n`;
+  let message = `Hello ${merchantName}!\n\n`;
   message += `I have a new order${orderId ? ` (Order #${orderId})` : ""}:\n\n`;
 
   if (customerName) {
@@ -46,7 +46,7 @@ export const generateOrderConfirmationUrl = (
     message += `Total: ${formatIDR(totalAmount)}\n\n`;
   }
 
-  message += `Please confirm the order. Thank you! 🙏`;
+  message += `Please confirm the order. Thank you!`;
 
   return generateWhatsAppUrl(merchantPhone, message);
 };
@@ -60,11 +60,11 @@ export const generateOrderInquiryUrl = (
 ): string => {
   const { merchantName, orderId } = options;
 
-  let message = `Hello ${merchantName}! 👋\n\n`;
+  let message = `Hello ${merchantName}!\n\n`;
   message += `I would like to inquire about ${
     orderId ? `my order #${orderId}` : "placing an order"
   }.\n\n`;
-  message += `Could you please provide more information? Thank you! 🙏`;
+  message += "Could you please provide more information? Thank you!";
 
   return generateWhatsAppUrl(merchantPhone, message);
 };
@@ -78,11 +78,11 @@ export const generateOrderStatusUrl = (
 ): string => {
   const { merchantName, orderId } = options;
 
-  let message = `Hello ${merchantName}! 👋\n\n`;
+  let message = `Hello ${merchantName}!\n\n`;
   message += `Could you please update me on the status of ${
     orderId ? `order #${orderId}` : "my order"
   }?\n\n`;
-  message += `Thank you! 🙏`;
+  message += "Thank you!";
 
   return generateWhatsAppUrl(merchantPhone, message);
 };
@@ -94,7 +94,7 @@ export const generateGeneralContactUrl = (
   merchantPhone: string,
   merchantName: string
 ): string => {
-  const message = `Hello ${merchantName}! 👋\n\nI would like to get in touch regarding your menu. Thank you! 🙏`;
+  const message = `Hello ${merchantName}!\n\nI would like to get in touch regarding your menu. Thank you!`;
   return generateWhatsAppUrl(merchantPhone, message);
 };
 

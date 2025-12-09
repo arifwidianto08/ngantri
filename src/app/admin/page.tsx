@@ -27,6 +27,24 @@ interface DashboardStats {
   }>;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready: "Ready for Pickup",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  completed: "bg-green-100 text-green-800",
+  pending: "bg-yellow-100 text-yellow-800",
+  cancelled: "bg-red-100 text-red-800",
+  accepted: "bg-blue-100 text-blue-800",
+  preparing: "bg-purple-100 text-purple-800",
+  ready: "bg-green-100 text-green-800",
+};
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -389,16 +407,11 @@ export default function AdminDashboardPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        order.status === "completed"
-                          ? "bg-green-100 text-green-800"
-                          : order.status === "pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : order.status === "cancelled"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-blue-100 text-blue-800"
+                        STATUS_COLORS[order.status] ||
+                        "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {order.status}
+                      {STATUS_LABELS[order.status] || order.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

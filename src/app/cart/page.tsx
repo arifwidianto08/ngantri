@@ -124,7 +124,7 @@ export default function CartPage() {
               </Link>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  🛒 Your Cart
+                  Your Cart
                 </h1>
                 {cart && cart.items.length > 0 && (
                   <p className="text-xs sm:text-sm text-gray-600">

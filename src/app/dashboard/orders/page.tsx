@@ -312,13 +312,11 @@ export default function MerchantOrdersPage() {
                 )}
 
                 {order.status === "completed" && (
-                  <div className="text-sm text-gray-600">
-                    ✅ Order completed
-                  </div>
+                  <div className="text-sm text-gray-600">Order completed</div>
                 )}
 
                 {order.status === "cancelled" && (
-                  <div className="text-sm text-red-600">❌ Order cancelled</div>
+                  <div className="text-sm text-red-600">Order cancelled</div>
                 )}
               </div>
             </div>

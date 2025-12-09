@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import {
+  ShoppingCart,
+  DollarSign,
+  Clock,
+  CheckCircle,
+  Store,
+} from "lucide-react";
 
 interface Merchant {
   id: string;
@@ -97,10 +104,10 @@ export default function MerchantDashboard() {
 
       {/* Merchant Profile Card */}
       {merchant && (
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+        <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
           <div className="flex items-start gap-6">
             {merchant.imageUrl ? (
-              <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border-4 border-white/20">
+              <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border-2 border-gray-200">
                 <Image
                   src={merchant.imageUrl}
                   alt={merchant.name}
@@ -109,41 +116,43 @@ export default function MerchantDashboard() {
                 />
               </div>
             ) : (
-              <div className="w-24 h-24 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0 border-4 border-white/20">
-                <span className="text-4xl">🏪</span>
+              <div className="w-24 h-24 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 border-2 border-gray-200">
+                <Store className="w-12 h-12 text-gray-400" />
               </div>
             )}
 
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-2xl font-bold">{merchant.name}</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {merchant.name}
+                </h2>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-semibold ${
                     merchant.isAvailable
-                      ? "bg-green-500 text-white"
-                      : "bg-red-500 text-white"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
                   }`}
                 >
-                  {merchant.isAvailable ? "🟢 Available" : "🔴 Unavailable"}
+                  {merchant.isAvailable ? "Available" : "Unavailable"}
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <div>
-                  <p className="text-sm text-white/80">Merchant Number</p>
-                  <p className="text-lg font-semibold">
+                  <p className="text-sm text-gray-600">Merchant Number</p>
+                  <p className="text-lg font-semibold text-gray-900">
                     #{merchant.merchantNumber}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-white/80">Phone Number</p>
-                  <p className="text-lg font-semibold">
+                  <p className="text-sm text-gray-600">Phone Number</p>
+                  <p className="text-lg font-semibold text-gray-900">
                     {merchant.phoneNumber}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-white/80">Merchant ID</p>
-                  <p className="text-sm font-mono">
+                  <p className="text-sm text-gray-600">Merchant ID</p>
+                  <p className="text-lg font-semibold font-mono text-gray-900">
                     {merchant.id.slice(0, 8)}...
                   </p>
                 </div>
@@ -151,8 +160,10 @@ export default function MerchantDashboard() {
 
               {merchant.description && (
                 <div className="mt-4">
-                  <p className="text-sm text-white/80">Description</p>
-                  <p className="text-base">{merchant.description}</p>
+                  <p className="text-sm text-gray-600">Description</p>
+                  <p className="text-base text-gray-900">
+                    {merchant.description}
+                  </p>
                 </div>
               )}
             </div>
@@ -171,7 +182,7 @@ export default function MerchantDashboard() {
               </p>
             </div>
             <div className="bg-blue-100 p-3 rounded-lg">
-              <span className="text-2xl">📦</span>
+              <ShoppingCart className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
@@ -185,7 +196,7 @@ export default function MerchantDashboard() {
               </p>
             </div>
             <div className="bg-green-100 p-3 rounded-lg">
-              <span className="text-2xl">💰</span>
+              <DollarSign className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>
@@ -199,7 +210,7 @@ export default function MerchantDashboard() {
               </p>
             </div>
             <div className="bg-orange-100 p-3 rounded-lg">
-              <span className="text-2xl">⏳</span>
+              <Clock className="w-6 h-6 text-orange-600" />
             </div>
           </div>
         </div>
@@ -213,7 +224,7 @@ export default function MerchantDashboard() {
               </p>
             </div>
             <div className="bg-green-100 p-3 rounded-lg">
-              <span className="text-2xl">✅</span>
+              <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>

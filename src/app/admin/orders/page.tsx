@@ -33,6 +33,25 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready: "Ready for Pickup",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  paid: "Paid",
+  unpaid: "Unpaid",
+};
+
+const PAYMENT_STATUS_COLORS: Record<string, string> = {
+  paid: "bg-green-100 text-green-800",
+  unpaid: "bg-red-100 text-red-800",
+};
+
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -320,18 +339,20 @@ export default function AdminOrdersPage() {
                         "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {order.status}
+                      {STATUS_LABELS[order.status] || order.status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <span
                       className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        order.paymentStatus === "paid"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                        PAYMENT_STATUS_COLORS[
+                          order.paymentStatus || "unpaid"
+                        ] || "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {order.paymentStatus || "unpaid"}
+                      {PAYMENT_STATUS_LABELS[order.paymentStatus || "unpaid"] ||
+                        order.paymentStatus ||
+                        "Unpaid"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
@@ -421,19 +442,24 @@ export default function AdminOrdersPage() {
                         "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {selectedOrder.status}
+                      {STATUS_LABELS[selectedOrder.status] ||
+                        selectedOrder.status}
                     </span>
                   </div>
                   <div>
                     <p className="text-gray-600">Payment Status</p>
                     <span
                       className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                        selectedOrder.paymentStatus === "paid"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                        PAYMENT_STATUS_COLORS[
+                          selectedOrder.paymentStatus || "unpaid"
+                        ] || "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {selectedOrder.paymentStatus || "unpaid"}
+                      {PAYMENT_STATUS_LABELS[
+                        selectedOrder.paymentStatus || "unpaid"
+                      ] ||
+                        selectedOrder.paymentStatus ||
+                        "Unpaid"}
                     </span>
                   </div>
                   {selectedOrder.notes && (

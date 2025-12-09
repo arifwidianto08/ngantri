@@ -8,7 +8,13 @@ import { getBuyerSession } from "../../lib/session";
 import type { BuyerSession } from "../../lib/session";
 import Image from "next/image";
 import Loader from "@/components/loader";
-import { CheckCircle, CreditCard, Loader2, MessageCircle } from "lucide-react";
+import {
+  CheckCircle,
+  CreditCard,
+  Loader2,
+  MessageCircle,
+  AlertCircle,
+} from "lucide-react";
 
 interface ValidationErrors {
   name?: string;
@@ -407,7 +413,7 @@ export default function CheckoutPage() {
                   />
                   {errors.name && (
                     <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
-                      <span>⚠️</span>
+                      <AlertCircle className="w-4 h-4" />
                       <span>{errors.name}</span>
                     </p>
                   )}
@@ -447,7 +453,7 @@ export default function CheckoutPage() {
                   </div>
                   {errors.whatsapp && (
                     <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
-                      <span>⚠️</span>
+                      <AlertCircle className="w-4 h-4" />
                       <span>{errors.whatsapp}</span>
                     </p>
                   )}

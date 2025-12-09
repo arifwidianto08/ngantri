@@ -356,7 +356,7 @@ export class OrderRepositoryImpl implements OrderRepository {
     const paymentStatuses = await db
       .select({
         orderId: orderPaymentItems.orderId,
-        paymentStatus: sql<string>`COALESCE(${orderPayments.status}, 'pending')`,
+        paymentStatus: sql<string>`COALESCE(${orderPayments.status}, 'unpaid')`,
       })
       .from(orderPaymentItems)
       .leftJoin(
@@ -384,7 +384,7 @@ export class OrderRepositoryImpl implements OrderRepository {
     return ordersData.map((order) => ({
       order,
       items: itemsByOrderId[order.id] || [],
-      paymentStatus: paymentStatusByOrderId[order.id] || "pending",
+      paymentStatus: paymentStatusByOrderId[order.id] || "unpaid",
     }));
   }
 }

@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import {
+  getMerchantIdFromStorage,
+  setMerchantIdInStorage,
+} from "@/lib/merchant-client";
+import { useToast } from "@/components/toast-provider";
 
 interface Menu {
   id: string;
@@ -19,25 +24,72 @@ export default function MerchantMenusPage() {
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [merchantId, setMerchantId] = useState<string>("");
+  const [categories, setCategories] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    price: "",
+    categoryId: "",
+  });
   const router = useRouter();
+  const { showToast } = useToast();
 
   useEffect(() => {
-    fetchMenus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const initializeMerchantId = async () => {
+      // Try to get from storage first (no network call)
+      let id = getMerchantIdFromStorage();
 
-  const fetchMenus = async () => {
-    try {
-      const merchantResponse = await fetch("/api/merchants/me");
-      const merchantResult = await merchantResponse.json();
+      if (!id) {
+        // If not in storage, fetch and cache it
+        try {
+          const response = await fetch("/api/merchants/me");
+          const result = await response.json();
 
-      if (!merchantResult.success) {
-        router.push("/login");
-        return;
+          if (result.success && result.data.merchant?.id) {
+            id = result.data.merchant.id;
+            setMerchantIdInStorage(id);
+          } else {
+            router.push("/login");
+            return;
+          }
+        } catch (error) {
+          console.error("Error fetching merchant:", error);
+          router.push("/login");
+          return;
+        }
       }
 
-      const merchantId = merchantResult.data.merchant.id;
-      const response = await fetch(`/api/merchants/${merchantId}/menus`);
+      if (id) {
+        setMerchantId(id);
+        await fetchMenus(id);
+        await fetchCategories(id);
+      }
+    };
+
+    initializeMerchantId();
+  }, [router]);
+
+  const fetchCategories = async (id: string) => {
+    try {
+      const response = await fetch(`/api/merchants/${id}/categories`);
+      const result = await response.json();
+
+      if (result.success) {
+        setCategories(result.data.categories || []);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  const fetchMenus = async (id: string) => {
+    try {
+      const response = await fetch(`/api/merchants/${id}/menus`);
       const result = await response.json();
 
       if (result.success) {
@@ -53,10 +105,6 @@ export default function MerchantMenusPage() {
   const toggleAvailability = async (menuId: string, isAvailable: boolean) => {
     setProcessing(true);
     try {
-      const merchantResponse = await fetch("/api/merchants/me");
-      const merchantResult = await merchantResponse.json();
-      const merchantId = merchantResult.data.merchant.id;
-
       const response = await fetch(
         `/api/merchants/${merchantId}/menus/${menuId}`,
         {
@@ -69,30 +117,26 @@ export default function MerchantMenusPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchMenus();
-        alert("Menu availability updated!");
+        await fetchMenus(merchantId);
+        showToast("Menu availability updated!", "success");
       } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        showToast(
+          `Failed: ${result.error?.message || "Unknown error"}`,
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error updating menu:", error);
-      alert("Failed to update menu");
+      showToast("Failed to update menu", "error");
     } finally {
       setProcessing(false);
     }
   };
 
   const deleteMenu = async (menuId: string) => {
-    if (!confirm("Are you sure you want to delete this menu item?")) {
-      return;
-    }
-
+    showToast("Deleting menu item...", "info", 0);
     setProcessing(true);
     try {
-      const merchantResponse = await fetch("/api/merchants/me");
-      const merchantResult = await merchantResponse.json();
-      const merchantId = merchantResult.data.merchant.id;
-
       const response = await fetch(
         `/api/merchants/${merchantId}/menus/${menuId}`,
         {
@@ -103,17 +147,84 @@ export default function MerchantMenusPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchMenus();
-        alert("Menu deleted successfully!");
+        await fetchMenus(merchantId);
+        showToast("Menu deleted successfully!", "success");
       } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        showToast(
+          `Failed: ${result.error?.message || "Unknown error"}`,
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error deleting menu:", error);
-      alert("Failed to delete menu");
+      showToast("Failed to delete menu", "error");
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.price || !formData.categoryId) {
+      showToast("Name, price, and category are required", "warning");
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const method = editingId ? "PATCH" : "POST";
+      const url = editingId
+        ? `/api/merchants/${merchantId}/menus/${editingId}`
+        : `/api/merchants/${merchantId}/menus`;
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.description || null,
+          price: Number.parseFloat(formData.price),
+          categoryId: formData.categoryId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await fetchMenus(merchantId);
+        setShowForm(false);
+        setEditingId(null);
+        setFormData({ name: "", description: "", price: "", categoryId: "" });
+        showToast(editingId ? "Menu updated!" : "Menu created!", "success");
+      } else {
+        showToast(
+          `Failed: ${result.error?.message || "Unknown error"}`,
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      showToast("Failed to save menu", "error");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleEdit = (menu: Menu) => {
+    setEditingId(menu.id);
+    setFormData({
+      name: menu.name,
+      description: menu.description || "",
+      price: menu.price.toString(),
+      categoryId: menu.categoryId,
+    });
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData({ name: "", description: "", price: "", categoryId: "" });
   };
 
   const formatCurrency = (amount: number) => {
@@ -141,12 +252,106 @@ export default function MerchantMenusPage() {
         </div>
         <button
           type="button"
-          onClick={fetchMenus}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          onClick={() => setShowForm(true)}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
         >
-          Refresh
+          + Add Menu
         </button>
       </div>
+
+      {/* Create/Edit Form */}
+      {showForm && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold mb-4">
+            {editingId ? "Edit Menu" : "Create New Menu"}
+          </h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Menu Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="e.g., Nasi Goreng"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price (IDR)
+                </label>
+                <input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) =>
+                    setFormData({ ...formData, price: e.target.value })
+                  }
+                  placeholder="e.g., 25000"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <select
+                value={formData.categoryId}
+                onChange={(e) =>
+                  setFormData({ ...formData, categoryId: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="">Select a category</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description (Optional)
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="Describe your menu item..."
+                rows={3}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={processing}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
+              >
+                {editingId ? "Update" : "Create"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={processing}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:opacity-50 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -186,7 +391,9 @@ export default function MerchantMenusPage() {
               </div>
             ) : (
               <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                <span className="text-4xl">🍽️</span>
+                <span className="text-gray-400 text-sm">
+                  No image available
+                </span>
               </div>
             )}
 
@@ -222,6 +429,14 @@ export default function MerchantMenusPage() {
               </p>
 
               <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleEdit(menu)}
+                  disabled={processing}
+                  className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+                >
+                  Edit
+                </button>
                 <button
                   type="button"
                   onClick={() => toggleAvailability(menu.id, !menu.isAvailable)}
