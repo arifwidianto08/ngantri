@@ -3,16 +3,15 @@
  * Handles business logic for merchant operations
  */
 
-import { MerchantRepository } from "../data/interfaces/merchant-repository";
-import { Merchant, NewMerchant } from "../data/schema";
-import {
+import type { MerchantRepository } from "../data/interfaces/merchant-repository";
+import type { Merchant, NewMerchant } from "../data/schema";
+import type {
   PaginatedResult,
   CursorPaginationParams,
-  buildPaginatedResult,
 } from "../lib/pagination";
+import { buildPaginatedResult } from "../lib/pagination";
 import { AppError, errors } from "../lib/errors";
 import bcrypt from "bcryptjs";
-import { z } from "zod";
 
 // Service-specific types
 export interface MerchantLoginData {
@@ -211,7 +210,6 @@ export class MerchantService implements IMerchantService {
       const result = await this.merchantRepository.findAll({
         cursor: params.cursor,
         limit: params.limit,
-        isAvailable: true, // Only return available merchants by default
       });
 
       // Convert repository result to paginated result

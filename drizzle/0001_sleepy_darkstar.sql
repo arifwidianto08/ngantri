@@ -3,7 +3,7 @@ CREATE TABLE "order_payments" (
 	"order_id" uuid NOT NULL,
 	"payment_url" varchar(500),
 	"amount" integer NOT NULL,
-	"status" varchar(20) DEFAULT 'pending' NOT NULL,
+	"status" varchar(20) DEFAULT 'unpaid' NOT NULL,
 	"payment_method" varchar(50),
 	"paid_at" timestamp with time zone,
 	"expires_at" timestamp with time zone,

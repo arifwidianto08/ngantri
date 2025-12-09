@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface OrderItem {
   id: string;
@@ -24,6 +27,21 @@ interface Order {
   paymentStatus: string;
 }
 
+interface OrdersResponse {
+  success: boolean;
+  data: Order[];
+  stats?: {
+    total: number;
+    pending: number;
+    accepted: number;
+    preparing: number;
+    ready: number;
+    completed: number;
+    cancelled: number;
+    unpaid: number;
+  };
+}
+
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
   accepted: "bg-blue-100 text-blue-800",
@@ -33,54 +51,46 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready: "Ready for Pickup",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  paid: "Paid",
+  unpaid: "Unpaid",
+};
+
+const PAYMENT_STATUS_COLORS: Record<string, string> = {
+  paid: "bg-green-100 text-green-800",
+  unpaid: "bg-red-100 text-red-800",
+};
+
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    accepted: 0,
-    preparing: 0,
-    ready: 0,
-    completed: 0,
-    cancelled: 0,
-    unpaid: 0,
+  const [confirmState, setConfirmState] = useState<{
+    type: "mark-paid" | "update-status" | "cancel" | null;
+    orderId: string | null;
+    newStatus?: string;
+  }>({
+    type: null,
+    orderId: null,
   });
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      setLoading(true);
-      try {
-        const url =
-          filterStatus === "all"
-            ? "/api/admin/orders"
-            : `/api/admin/orders?status=${filterStatus}`;
-
-        const response = await fetch(url);
-        const result = await response.json();
-
-        if (result.success) {
-          setOrders(result.data);
-          if (result.stats) {
-            setStats(result.stats);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
-  }, [filterStatus]);
-
-  const refetchOrders = async () => {
-    setLoading(true);
-    try {
+  const {
+    data: ordersResponse,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<OrdersResponse>({
+    queryKey: ["admin-orders", filterStatus],
+    queryFn: async () => {
       const url =
         filterStatus === "all"
           ? "/api/admin/orders"
@@ -89,36 +99,48 @@ export default function AdminOrdersPage() {
       const response = await fetch(url);
       const result = await response.json();
 
-      if (result.success) {
-        setOrders(result.data);
-        if (result.stats) {
-          setStats(result.stats);
-        }
+      if (!result.success) {
+        throw new Error("Failed to fetch orders");
       }
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-    } finally {
-      setLoading(false);
-    }
+
+      return result;
+    },
+  });
+
+  const orders = ordersResponse?.data || [];
+  const stats = ordersResponse?.stats || {
+    total: 0,
+    pending: 0,
+    accepted: 0,
+    preparing: 0,
+    ready: 0,
+    completed: 0,
+    cancelled: 0,
+    unpaid: 0,
   };
 
   const markAsPaid = async (orderId: string) => {
-    if (!confirm("Mark this order as PAID?")) {
-      return;
-    }
+    setConfirmState({ type: "mark-paid", orderId });
+  };
+
+  const confirmMarkAsPaid = async () => {
+    if (!confirmState.orderId) return;
 
     setProcessing(true);
 
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}/payment`, {
-        method: "PATCH",
-      });
+      const response = await fetch(
+        `/api/admin/orders/${confirmState.orderId}/payment`,
+        {
+          method: "PATCH",
+        }
+      );
 
       const result = await response.json();
 
       if (result.success) {
-        refetchOrders();
-        alert("Order marked as paid!");
+        void refetch();
+        setConfirmState({ type: null, orderId: null });
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
       }
@@ -131,26 +153,31 @@ export default function AdminOrdersPage() {
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    if (!confirm(`Change order status to ${newStatus.toUpperCase()}?`)) {
-      return;
-    }
+    setConfirmState({ type: "update-status", orderId, newStatus });
+  };
+
+  const confirmUpdateStatus = async () => {
+    if (!confirmState.orderId || !confirmState.newStatus) return;
 
     setProcessing(true);
 
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}/status`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const response = await fetch(
+        `/api/admin/orders/${confirmState.orderId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: confirmState.newStatus }),
+        }
+      );
 
       const result = await response.json();
 
       if (result.success) {
-        refetchOrders();
-        alert("Order status updated!");
+        void refetch();
+        setConfirmState({ type: null, orderId: null });
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
       }
@@ -163,19 +190,34 @@ export default function AdminOrdersPage() {
   };
 
   const cancelOrder = async (orderId: string) => {
-    if (!confirm("Are you sure you want to CANCEL this order?")) {
-      return;
-    }
-
-    updateOrderStatus(orderId, "cancelled");
+    setConfirmState({ type: "cancel", orderId });
   };
 
-  if (loading) {
+  const confirmCancelOrder = async () => {
+    if (!confirmState.orderId) return;
+
+    await confirmUpdateStatus();
+  };
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading orders...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 font-medium">Error loading orders</p>
+          <p className="text-gray-600 text-sm mt-1">
+            Please try refreshing the page
+          </p>
         </div>
       </div>
     );
@@ -193,24 +235,34 @@ export default function AdminOrdersPage() {
         </div>
         <button
           type="button"
-          onClick={refetchOrders}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+          onClick={() => void refetch()}
+          disabled={isLoading}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <title>Refresh</title>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          Refresh
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Refreshing...</span>
+            </>
+          ) : (
+            <>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Refresh</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span>Refresh</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -320,18 +372,20 @@ export default function AdminOrdersPage() {
                         "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {order.status}
+                      {STATUS_LABELS[order.status] || order.status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <span
                       className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        order.paymentStatus === "paid"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                        PAYMENT_STATUS_COLORS[
+                          order.paymentStatus || "unpaid"
+                        ] || "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {order.paymentStatus || "unpaid"}
+                      {PAYMENT_STATUS_LABELS[order.paymentStatus || "unpaid"] ||
+                        order.paymentStatus ||
+                        "Unpaid"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
@@ -421,19 +475,24 @@ export default function AdminOrdersPage() {
                         "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {selectedOrder.status}
+                      {STATUS_LABELS[selectedOrder.status] ||
+                        selectedOrder.status}
                     </span>
                   </div>
                   <div>
                     <p className="text-gray-600">Payment Status</p>
                     <span
                       className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                        selectedOrder.paymentStatus === "paid"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                        PAYMENT_STATUS_COLORS[
+                          selectedOrder.paymentStatus || "unpaid"
+                        ] || "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {selectedOrder.paymentStatus || "unpaid"}
+                      {PAYMENT_STATUS_LABELS[
+                        selectedOrder.paymentStatus || "unpaid"
+                      ] ||
+                        selectedOrder.paymentStatus ||
+                        "Unpaid"}
                     </span>
                   </div>
                   {selectedOrder.notes && (
@@ -544,6 +603,49 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmState.type === "mark-paid"}
+        onOpenChange={(open) =>
+          !open && setConfirmState({ type: null, orderId: null })
+        }
+        title="Mark Order as Paid"
+        description="Are you sure you want to mark this order as PAID?"
+        onConfirm={confirmMarkAsPaid}
+        isLoading={processing}
+        variant="primary"
+        confirmText="Mark as Paid"
+      />
+
+      <ConfirmDialog
+        open={confirmState.type === "update-status"}
+        onOpenChange={(open) =>
+          !open && setConfirmState({ type: null, orderId: null })
+        }
+        title="Update Order Status"
+        description={`Are you sure you want to change the order status to ${
+          confirmState.newStatus
+            ? confirmState.newStatus.toUpperCase()
+            : "pending"
+        }?`}
+        onConfirm={confirmUpdateStatus}
+        isLoading={processing}
+        variant="primary"
+        confirmText="Update Status"
+      />
+
+      <ConfirmDialog
+        open={confirmState.type === "cancel"}
+        onOpenChange={(open) =>
+          !open && setConfirmState({ type: null, orderId: null })
+        }
+        title="Cancel Order"
+        description="Are you sure you want to CANCEL this order? This action cannot be undone."
+        onConfirm={confirmCancelOrder}
+        isLoading={processing}
+        variant="danger"
+        confirmText="Cancel Order"
+      />
     </div>
   );
 }

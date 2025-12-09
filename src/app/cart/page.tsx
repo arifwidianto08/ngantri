@@ -15,11 +15,13 @@ import { getBuyerSession } from "../../lib/session";
 import type { BuyerSession } from "../../lib/session";
 import Image from "next/image";
 import Loader from "@/components/loader";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 export default function CartPage() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [session, setSession] = useState<BuyerSession | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isClearCartConfirmOpen, setClearCartConfirmOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -67,10 +69,13 @@ export default function CartPage() {
   };
 
   const handleClearCart = () => {
-    if (confirm("Are you sure you want to clear your entire cart?")) {
-      clearCart();
-      setCart(getOrCreateCart());
-    }
+    setClearCartConfirmOpen(true);
+  };
+
+  const confirmClearCart = () => {
+    clearCart();
+    setCart(getOrCreateCart());
+    setClearCartConfirmOpen(false);
   };
 
   // Group items by merchant for better display
@@ -97,6 +102,15 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ConfirmDialog
+        open={isClearCartConfirmOpen}
+        onOpenChange={setClearCartConfirmOpen}
+        title="Clear Cart"
+        description="Are you sure you want to clear your entire cart? This action cannot be undone."
+        onConfirm={confirmClearCart}
+        variant="danger"
+        confirmText="Clear Cart"
+      />
       {/* Sticky Header */}
       <header className="bg-white shadow-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-3 sm:py-4">
@@ -124,7 +138,7 @@ export default function CartPage() {
               </Link>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  🛒 Your Cart
+                  Your Cart
                 </h1>
                 {cart && cart.items.length > 0 && (
                   <p className="text-xs sm:text-sm text-gray-600">

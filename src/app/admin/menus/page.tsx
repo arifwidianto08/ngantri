@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Plus } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface Menu {
   id: string;
@@ -21,105 +25,104 @@ interface Merchant {
   name: string;
 }
 
+const fetchMenus = async (): Promise<{ data: Menu[] }> => {
+  const res = await fetch("/api/admin/menus");
+  return res.json();
+};
+
+const fetchMerchants = async (): Promise<{ data: Merchant[] }> => {
+  const res = await fetch("/api/merchants");
+  return res.json();
+};
+
 export default function AdminMenusPage() {
-  const [menus, setMenus] = useState<Menu[]>([]);
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedMerchant, setSelectedMerchant] = useState<string>("all");
-  const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const [selectedMerchant, setSelectedMerchant] = useState("all");
   const [processing, setProcessing] = useState(false);
+  const [deleteMenuId, setDeleteMenuId] = useState<number | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const [menusQuery, merchantsQuery] = useQueries({
+    queries: [
+      {
+        queryKey: ["admin-menus"],
+        queryFn: fetchMenus,
+      },
+      {
+        queryKey: ["merchants"],
+        queryFn: fetchMerchants,
+      },
+    ],
+  });
 
-  const fetchData = async () => {
-    try {
-      const [menusRes, merchantsRes] = await Promise.all([
-        fetch("/api/admin/menus"),
-        fetch("/api/merchants"),
-      ]);
+  const menus = menusQuery.data?.data ?? [];
+  const merchants = merchantsQuery.data?.data ?? [];
 
-      const menusResult = await menusRes.json();
-      const merchantsResult = await merchantsRes.json();
+  const isLoading = menusQuery.isLoading || merchantsQuery.isLoading;
+  const isFetching = menusQuery.isFetching || merchantsQuery.isFetching;
 
-      if (menusResult.success) {
-        setMenus(menusResult.data);
-      }
-
-      if (merchantsResult.success) {
-        setMerchants(merchantsResult.data);
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const refetch = () =>
+    Promise.all([menusQuery.refetch(), merchantsQuery.refetch()]);
 
   const toggleAvailability = async (menuId: string, isAvailable: boolean) => {
-    setProcessing(true);
-
     try {
-      const response = await fetch(`/api/admin/menus/${menuId}/availability`, {
+      setProcessing(true);
+
+      const res = await fetch(`/api/admin/menus/${menuId}/availability`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isAvailable }),
       });
 
-      const result = await response.json();
-
+      const result = await res.json();
       if (result.success) {
-        fetchData();
-        alert("Menu availability updated!");
-      } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        queryClient.invalidateQueries({ queryKey: ["admin-menus"] });
       }
-    } catch (error) {
-      console.error("Error updating availability:", error);
-      alert("Failed to update menu availability");
+    } catch (err) {
+      console.error("Error updating availability:", err);
     } finally {
       setProcessing(false);
     }
   };
 
-  const deleteMenu = async (menuId: string) => {
-    if (!confirm("Are you sure you want to DELETE this menu?")) {
-      return;
-    }
+  const handleDelete = async () => {
+    if (!deleteMenuId) return;
 
-    setProcessing(true);
+    setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/admin/menus/${menuId}`, {
+      const res = await fetch(`/api/admin/menus/${deleteMenuId}`, {
         method: "DELETE",
       });
 
-      const result = await response.json();
-
+      const result = await res.json();
       if (result.success) {
-        fetchData();
-        setSelectedMenu(null);
-        alert("Menu deleted successfully!");
-      } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        queryClient.invalidateQueries({ queryKey: ["admin-menus"] });
+        setShowDeleteDialog(false);
+        setDeleteMenuId(null);
       }
-    } catch (error) {
-      console.error("Error deleting menu:", error);
-      alert("Failed to delete menu");
+    } catch (err) {
+      console.error("Error deleting menu:", err);
     } finally {
-      setProcessing(false);
+      setIsSubmitting(false);
     }
   };
 
+  /* --------------------------------
+     Merchant Filter
+  ----------------------------------*/
   const filteredMenus =
     selectedMerchant === "all"
       ? menus
       : menus.filter((m) => m.merchantId === selectedMerchant);
 
-  if (loading) {
+  /* --------------------------------
+     Loading State
+  ----------------------------------*/
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -140,27 +143,47 @@ export default function AdminMenusPage() {
             Manage all menus across all merchants
           </p>
         </div>
-        <button
-          type="button"
-          onClick={fetchData}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => router.push("/admin/menus/create")}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
-            <title>Refresh</title>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          Refresh
-        </button>
+            <Plus className="w-5 h-5" />
+            <span>Create Menu</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            {isFetching ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Refreshing...</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <title>Refresh</title>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span>Refresh</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -273,7 +296,7 @@ export default function AdminMenusPage() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedMenu(menu)}
+                  onClick={() => router.push(`/admin/menus/${menu.id}`)}
                   className="flex-1 px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
                 >
                   Details
@@ -302,126 +325,16 @@ export default function AdminMenusPage() {
         </div>
       )}
 
-      {/* Menu Details Modal */}
-      {selectedMenu && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {selectedMenu.name}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setSelectedMenu(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <title>Close</title>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {selectedMenu.imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={selectedMenu.imageUrl}
-                  alt={selectedMenu.name}
-                  className="w-full h-64 object-cover rounded-lg"
-                />
-              )}
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-600">Merchant</p>
-                  <p className="font-medium text-gray-900">
-                    {selectedMenu.merchantName}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-gray-600">Category</p>
-                  <p className="font-medium text-gray-900">
-                    {selectedMenu.categoryName}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-gray-600">Price</p>
-                  <p className="text-2xl font-bold text-indigo-600">
-                    Rp {selectedMenu.price.toLocaleString("id-ID")}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-gray-600">Status</p>
-                  <span
-                    className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                      selectedMenu.isAvailable
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {selectedMenu.isAvailable ? "Available" : "Unavailable"}
-                  </span>
-                </div>
-                {selectedMenu.description && (
-                  <div className="col-span-2">
-                    <p className="text-gray-600">Description</p>
-                    <p className="font-medium text-gray-900">
-                      {selectedMenu.description}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-gray-900">Actions</h3>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    toggleAvailability(
-                      selectedMenu.id,
-                      !selectedMenu.isAvailable
-                    );
-                    setSelectedMenu(null);
-                  }}
-                  disabled={processing}
-                  className={`w-full px-4 py-2 rounded-lg font-medium disabled:opacity-50 ${
-                    selectedMenu.isAvailable
-                      ? "bg-orange-600 text-white hover:bg-orange-700"
-                      : "bg-green-600 text-white hover:bg-green-700"
-                  }`}
-                >
-                  {selectedMenu.isAvailable
-                    ? "Set as Unavailable"
-                    : "Set as Available"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => deleteMenu(selectedMenu.id)}
-                  disabled={processing}
-                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
-                >
-                  Delete Menu
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Delete Menu"
+        description="Are you sure you want to delete this menu? This action cannot be undone."
+        onConfirm={handleDelete}
+        isLoading={isSubmitting}
+        variant="danger"
+      />
     </div>
   );
 }

@@ -3,13 +3,18 @@
  * Handles business logic for menu operations
  */
 
-import { MenuRepository } from "../data/interfaces/menu-repository";
-import { Menu, NewMenu, MenuCategory, NewMenuCategory } from "../data/schema";
-import {
+import type { MenuRepository } from "../data/interfaces/menu-repository";
+import type {
+  Menu,
+  NewMenu,
+  MenuCategory,
+  NewMenuCategory,
+} from "../data/schema";
+import type {
   PaginatedResult,
   CursorPaginationParams,
-  buildPaginatedResult,
 } from "../lib/pagination";
+import { buildPaginatedResult } from "../lib/pagination";
 import { AppError, errors } from "../lib/errors";
 import { validateCurrencyAmount } from "../lib/currency";
 
@@ -142,7 +147,6 @@ export class MenuService implements IMenuService {
       const result = await this.menuRepository.findByMerchant(merchantId, {
         cursor: params.cursor,
         limit: params.limit,
-        isAvailable: true, // Only return available items by default
       });
 
       return buildPaginatedResult(result.data, params);
@@ -162,7 +166,6 @@ export class MenuService implements IMenuService {
       const result = await this.menuRepository.findByCategory(categoryId, {
         cursor: params.cursor,
         limit: params.limit,
-        isAvailable: true,
       });
 
       return buildPaginatedResult(result.data, params);
@@ -182,7 +185,9 @@ export class MenuService implements IMenuService {
     if (data.price !== undefined) {
       const validation = validateCurrencyAmount(data.price, "item");
       if (!validation.valid) {
-        throw errors.validation(validation.error!);
+        throw errors.validation(
+          validation?.error || "Validation Error on Update Menu Item"
+        );
       }
     }
 
@@ -338,7 +343,9 @@ export class MenuService implements IMenuService {
     // Validate price
     const priceValidation = validateCurrencyAmount(data.price, "item");
     if (!priceValidation.valid) {
-      throw errors.validation(priceValidation.error!);
+      throw errors.validation(
+        priceValidation.error || "Validation Error on Update Menu Item Price"
+      );
     }
 
     // Validate name length

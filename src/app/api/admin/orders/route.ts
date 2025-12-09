@@ -47,7 +47,7 @@ export async function GET(request: Request) {
         notes: orders.notes,
         createdAt: orders.createdAt,
         paymentStatus:
-          sql<string>`COALESCE(${orderPayments.status}, 'pending')`.as(
+          sql<string>`COALESCE(${orderPayments.status}, 'unpaid')`.as(
             "payment_status"
           ),
       })
@@ -103,7 +103,7 @@ export async function GET(request: Request) {
 
     const paymentStats = await db
       .select({
-        unpaidCount: sql<number>`count(CASE WHEN COALESCE(${orderPayments.status}, 'pending') != 'paid' THEN 1 END)::int`,
+        unpaidCount: sql<number>`count(CASE WHEN COALESCE(${orderPayments.status}, 'unpaid') != 'paid' THEN 1 END)::int`,
       })
       .from(orders)
       .leftJoin(orderPaymentItems, eq(orders.id, orderPaymentItems.orderId))

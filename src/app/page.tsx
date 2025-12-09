@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { UtensilsCrossed, Store, CheckCircle2 } from "lucide-react";
+import { UtensilsCrossed, Store } from "lucide-react";
 import {
   getOrCreateBuyerSession,
   updateSessionTableNumber,
-  setBuyerSession,
 } from "../lib/session";
 import type { BuyerSession } from "../lib/session";
 import { getOrCreateCart, addToCart } from "../lib/cart";
@@ -16,6 +15,7 @@ import CartWidget from "../components/cart-widget";
 import FloatingCart from "../components/floating-cart";
 import Loader from "../components/loader";
 import SetupDialog from "../components/setup-dialog";
+import { useQueries } from "@tanstack/react-query";
 
 interface Merchant {
   id: string;
@@ -37,84 +37,86 @@ interface MenuItem {
 }
 
 export default function Home() {
+  // unchanged
   const [session, setSession] = useState<BuyerSession | null>(null);
   const [cart, setCart] = useState<Cart | null>(null);
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(
     null
   );
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [menuLoading, setMenuLoading] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [showSetupDialog, setShowSetupDialog] = useState(false);
   const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
 
-  // Initialize session and cart on component mount
+  const [loading, setLoading] = useState(true);
+
+  // =============================
+  // INITIALIZATION (same as before)
+  // =============================
   useEffect(() => {
-    const initializeApp = async () => {
+    const init = async () => {
       try {
-        // Get or create buyer session
         const buyerSession = await getOrCreateBuyerSession();
         if (buyerSession) {
           setSession(buyerSession);
 
-          // Show setup dialog if table number not set
-          if (!buyerSession.tableNumber) {
-            setShowSetupDialog(true);
-          }
+          if (!buyerSession.tableNumber) setShowSetupDialog(true);
 
-          // Initialize cart
           const buyerCart = getOrCreateCart();
           setCart(buyerCart);
         }
 
-        // Load merchants
-        const response = await fetch("/api/merchants");
-        const result = await response.json();
-        if (result.success) {
-          setMerchants(result.data.merchants);
-        }
-
         setLoading(false);
-      } catch (error) {
-        console.error("Error initializing app:", error);
+      } catch (err) {
+        console.error(err);
         setLoading(false);
       }
     };
-
-    initializeApp();
+    init();
   }, []);
 
-  // Load menu items when merchant is selected
-  useEffect(() => {
-    const loadMenuItems = async () => {
-      if (!selectedMerchant) {
-        setMenuItems([]);
-        setMenuLoading(false);
-        return;
-      }
+  // =============================
+  // FETCH USING useQueries
+  // =============================
+  const results = useQueries({
+    queries: [
+      {
+        queryKey: ["merchants"],
+        queryFn: async (): Promise<{ success: boolean; data: Merchant[] }> => {
+          const res = await fetch("/api/merchants");
+          return res.json();
+        },
+        enabled: !loading,
+      },
+      {
+        queryKey: ["menus", selectedMerchant?.id],
+        enabled: !!selectedMerchant && !loading,
+        queryFn: async (): Promise<{
+          success: boolean;
+          data: { menus: MenuItem[] };
+        }> => {
+          const merchantId = selectedMerchant?.id;
+          if (!merchantId) throw new Error("No merchant selected");
 
-      setMenuLoading(true);
-      try {
-        const response = await fetch(
-          `/api/merchants/${selectedMerchant.id}/menus`
-        );
-        const result = await response.json();
-        if (result.success) {
-          setMenuItems(result.data.menus || []);
-        }
-      } catch (error) {
-        console.error("Error loading menu items:", error);
-      } finally {
-        setMenuLoading(false);
-      }
-    };
+          const res = await fetch(`/api/merchants/${merchantId}/menus`);
+          return res.json();
+        },
+      },
+    ],
+  });
 
-    loadMenuItems();
-  }, [selectedMerchant]);
+  const merchantsQuery = results[0];
+  const menusQuery = results[1];
 
+  const merchants = merchantsQuery.data?.data ?? [];
+  const menuItems = menusQuery.data?.data.menus ?? [];
+
+  const merchantsLoading =
+    merchantsQuery.isLoading || merchantsQuery.isFetching;
+  const menuLoading = menusQuery.isLoading || menusQuery.isFetching;
+
+  // =============================
+  // Setup handler (unchanged)
+  // =============================
   const handleSetupComplete = async (data: {
     tableNumber: string;
     customerName: string;
@@ -132,24 +134,22 @@ export default function Home() {
           tableNumber: Number.parseInt(data.tableNumber),
         });
         setCustomerName(data.customerName);
-        setCustomerPhone(data.whatsappNumber);
         setShowSetupDialog(false);
 
-        // Store customer info in localStorage
         localStorage.setItem("ngantri_customer_name", data.customerName);
         localStorage.setItem("ngantri_customer_phone", data.whatsappNumber);
       }
-    } catch (error) {
-      console.error("Error during setup:", error);
+    } catch (err) {
+      console.error(err);
     }
   };
 
+  // =============================
+  // Add to cart (unchanged)
+  // =============================
   const handleAddToCart = async (menuItem: MenuItem) => {
-    if (!session || !cart) {
-      return;
-    }
+    if (!session || !cart) return;
 
-    // Check if setup is complete
     if (!session.tableNumber) {
       setShowSetupDialog(true);
       return;
@@ -166,13 +166,14 @@ export default function Home() {
         undefined,
         menuItem.imageUrl
       );
+
       setCart(updatedCart);
-    } catch (error) {
-      console.error("Error adding to cart:", error);
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  if (loading) {
+  if (loading || merchantsLoading) {
     return <Loader message="Setting up your session..." fullScreen />;
   }
 

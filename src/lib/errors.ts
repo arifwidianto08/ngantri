@@ -4,6 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import type { PaginationMeta } from "./pagination";
 
 // Standard error codes for the application
 export const ERROR_CODES = {
@@ -58,6 +59,7 @@ export interface ErrorResponse {
 export interface SuccessResponse<T = unknown> {
   success: true;
   data: T;
+  pagination?: PaginationMeta;
   message?: string;
   timestamp: string;
 }
@@ -121,12 +123,14 @@ export const createErrorResponse = (
  */
 export const createSuccessResponse = <T>(
   data: T,
+  pagination?: PaginationMeta,
   message?: string,
   statusCode = 200
 ): NextResponse<SuccessResponse<T>> => {
   const successResponse: SuccessResponse<T> = {
-    success: true,
     data,
+    pagination,
+    success: true,
     message,
     timestamp: new Date().toISOString(),
   };

@@ -2,23 +2,30 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireMerchantAuth } from "@/lib/merchant-auth";
 import { db } from "@/lib/db";
-import { orders, orderItems, menus } from "@/data/schema";
-import { eq, and, isNull, desc, sql } from "drizzle-orm";
+import { orders } from "@/data/schema";
+import { eq, and, isNull, desc, sql, gt } from "drizzle-orm";
 
 /**
  * GET /api/merchants/dashboard/orders
- * Get all orders for the authenticated merchant
- * Query params: ?status=pending|accepted|preparing|ready|completed
+ * Get all orders for the authenticated merchant with pagination
+ * Query params: ?status=pending|accepted|preparing|ready|completed&limit=20&cursor=orderId
  */
 export async function GET(request: NextRequest) {
   try {
     const merchant = await requireMerchantAuth(request);
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get("status");
+    const limitParam = searchParams.get("limit");
+    const cursorParam = searchParams.get("cursor");
+
+    const limit = Math.min(
+      limitParam ? Number.parseInt(limitParam, 10) : 20,
+      100
+    );
 
     // Build the where conditions
     const whereConditions = [
-      eq(menus.merchantId, merchant.id),
+      eq(orders.merchantId, merchant.id),
       isNull(orders.deletedAt),
     ];
 
@@ -27,9 +34,14 @@ export async function GET(request: NextRequest) {
       whereConditions.push(eq(orders.status, statusFilter));
     }
 
-    // Get orders with merchant's items
+    // Add cursor for pagination
+    if (cursorParam) {
+      whereConditions.push(gt(orders.id, cursorParam));
+    }
+
+    // Get orders for this merchant with pagination
     const merchantOrders = await db
-      .selectDistinct({
+      .select({
         orderId: orders.id,
         status: orders.status,
         totalAmount: orders.totalAmount,
@@ -37,21 +49,18 @@ export async function GET(request: NextRequest) {
         sessionId: orders.sessionId,
       })
       .from(orders)
-      .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
-      .innerJoin(menus, eq(orderItems.menuId, menus.id))
       .where(and(...whereConditions))
-      .orderBy(desc(orders.createdAt));
+      .orderBy(desc(orders.createdAt))
+      .limit(limit + 1);
 
     // Get status counts for all statuses
     const statusCounts = await db
       .select({
         status: orders.status,
-        count: sql<number>`count(distinct ${orders.id})::int`,
+        count: sql<number>`count(${orders.id})::int`,
       })
       .from(orders)
-      .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
-      .innerJoin(menus, eq(orderItems.menuId, menus.id))
-      .where(and(eq(menus.merchantId, merchant.id), isNull(orders.deletedAt)))
+      .where(and(eq(orders.merchantId, merchant.id), isNull(orders.deletedAt)))
       .groupBy(orders.status);
 
     // Calculate total count
@@ -67,10 +76,15 @@ export async function GET(request: NextRequest) {
       completed: statusCounts.find((s) => s.status === "completed")?.count || 0,
     };
 
+    // Check if there are more results
+    const hasMore = merchantOrders.length > limit;
+    const data = hasMore ? merchantOrders.slice(0, -1) : merchantOrders;
+    const nextCursor = hasMore ? data[data.length - 1]?.orderId : undefined;
+
     return NextResponse.json({
       success: true,
       data: {
-        orders: merchantOrders.map((order) => ({
+        orders: data.map((order) => ({
           id: order.orderId,
           status: order.status,
           totalAmount: order.totalAmount,
@@ -78,6 +92,11 @@ export async function GET(request: NextRequest) {
           sessionId: order.sessionId,
         })),
         statusCounts: counts,
+        pagination: {
+          limit,
+          cursor: nextCursor,
+          hasMore,
+        },
       },
     });
   } catch (error) {

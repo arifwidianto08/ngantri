@@ -1,6 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from "recharts";
 
 interface DashboardStats {
   totalOrders: number;
@@ -27,35 +40,64 @@ interface DashboardStats {
   }>;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready: "Ready for Pickup",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  completed: "bg-green-100 text-green-800",
+  pending: "bg-yellow-100 text-yellow-800",
+  cancelled: "bg-red-100 text-red-800",
+  accepted: "bg-blue-100 text-blue-800",
+  preparing: "bg-purple-100 text-purple-800",
+  ready: "bg-green-100 text-green-800",
+};
+
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
-
-  const fetchDashboardStats = async () => {
-    try {
+  const {
+    data: stats,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery<DashboardStats>({
+    queryKey: ["admin-dashboard-stats"],
+    queryFn: async () => {
       const response = await fetch("/api/admin/dashboard/stats");
       const result = await response.json();
 
-      if (result.success) {
-        setStats(result.data);
+      if (!result.success) {
+        throw new Error("Failed to fetch dashboard stats");
       }
-    } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  if (loading) {
+      return result.data;
+    },
+  });
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 font-medium">Error loading dashboard</p>
+          <p className="text-gray-600 text-sm mt-1">
+            Please try refreshing the page
+          </p>
         </div>
       </div>
     );
@@ -72,9 +114,44 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Overview of your food court system</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-1">
+            Overview of your food court system
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+        >
+          {isFetching ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              <span>Refreshing...</span>
+            </>
+          ) : (
+            <>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Refresh</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span>Refresh</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Stats Grid */}
@@ -285,66 +362,71 @@ export default function AdminDashboardPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Orders by Status
           </h2>
-          <div className="space-y-3">
-            {stats.ordersByStatus.map((item) => {
-              const percentage =
-                stats.totalOrders > 0
-                  ? (item.count / stats.totalOrders) * 100
-                  : 0;
-              return (
-                <div key={item.status}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-700 capitalize">
-                      {item.status}
-                    </span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {item.count}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-indigo-600 h-2 rounded-full"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={stats.ordersByStatus}
+                dataKey="count"
+                nameKey="status"
+                cx="50%"
+                cy="50%"
+                outerRadius={80}
+                label
+              >
+                {stats.ordersByStatus.map((entry, index) => (
+                  <Cell
+                    key={`${entry.status}-${index}`}
+                    fill={
+                      [
+                        "#3b82f6",
+                        "#fbbf24",
+                        "#10b981",
+                        "#ef4444",
+                        "#8b5cf6",
+                        "#6b7280",
+                      ][index % 6]
+                    }
+                  />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
 
-        {/* Revenue Chart (Simple Bar) */}
+        {/* Revenue Chart (Line) */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Revenue (Last 7 Days)
           </h2>
-          <div className="space-y-3">
-            {stats.revenueByDay.slice(0, 7).map((item) => {
-              const maxRevenue = Math.max(
-                ...stats.revenueByDay.map((r) => r.revenue)
-              );
-              const percentage =
-                maxRevenue > 0 ? (item.revenue / maxRevenue) * 100 : 0;
-              return (
-                <div key={item.date}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-700">
-                      {new Date(item.date).toLocaleDateString("id-ID")}
-                    </span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      Rp {item.revenue.toLocaleString("id-ID")}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-green-600 h-2 rounded-full"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart
+              data={stats.revenueByDay.slice(0, 7).map((item) => ({
+                date: new Date(item.date).toLocaleDateString("id-ID", {
+                  day: "2-digit",
+                  month: "short",
+                }),
+                revenue: item.revenue,
+              }))}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip
+                formatter={(value) =>
+                  `Rp ${(value as number).toLocaleString("id-ID")}`
+                }
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#10b981"
+                strokeWidth={2}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -389,16 +471,11 @@ export default function AdminDashboardPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        order.status === "completed"
-                          ? "bg-green-100 text-green-800"
-                          : order.status === "pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : order.status === "cancelled"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-blue-100 text-blue-800"
+                        STATUS_COLORS[order.status] ||
+                        "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {order.status}
+                      {STATUS_LABELS[order.status] || order.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

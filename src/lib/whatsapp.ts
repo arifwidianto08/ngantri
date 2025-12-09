@@ -25,7 +25,7 @@ export const generateOrderConfirmationUrl = (
   const { merchantName, orderId, customerName, totalAmount, orderItems } =
     options;
 
-  let message = `Hello ${merchantName}! 👋\n\n`;
+  let message = `Hello ${merchantName}!\n\n`;
   message += `I have a new order${orderId ? ` (Order #${orderId})` : ""}:\n\n`;
 
   if (customerName) {
@@ -33,7 +33,7 @@ export const generateOrderConfirmationUrl = (
   }
 
   if (orderItems && orderItems.length > 0) {
-    message += `Order Details:\n`;
+    message += "Order Details:\n";
     orderItems.forEach((item, index) => {
       message += `${index + 1}. ${item.name} x${item.quantity} - ${formatIDR(
         item.price * item.quantity
@@ -46,7 +46,7 @@ export const generateOrderConfirmationUrl = (
     message += `Total: ${formatIDR(totalAmount)}\n\n`;
   }
 
-  message += `Please confirm the order. Thank you! 🙏`;
+  message += "Please confirm the order. Thank you!";
 
   return generateWhatsAppUrl(merchantPhone, message);
 };
@@ -60,11 +60,11 @@ export const generateOrderInquiryUrl = (
 ): string => {
   const { merchantName, orderId } = options;
 
-  let message = `Hello ${merchantName}! 👋\n\n`;
+  let message = `Hello ${merchantName}!\n\n`;
   message += `I would like to inquire about ${
     orderId ? `my order #${orderId}` : "placing an order"
   }.\n\n`;
-  message += `Could you please provide more information? Thank you! 🙏`;
+  message += "Could you please provide more information? Thank you!";
 
   return generateWhatsAppUrl(merchantPhone, message);
 };
@@ -78,11 +78,11 @@ export const generateOrderStatusUrl = (
 ): string => {
   const { merchantName, orderId } = options;
 
-  let message = `Hello ${merchantName}! 👋\n\n`;
+  let message = `Hello ${merchantName}!\n\n`;
   message += `Could you please update me on the status of ${
     orderId ? `order #${orderId}` : "my order"
   }?\n\n`;
-  message += `Thank you! 🙏`;
+  message += "Thank you!";
 
   return generateWhatsAppUrl(merchantPhone, message);
 };
@@ -94,7 +94,7 @@ export const generateGeneralContactUrl = (
   merchantPhone: string,
   merchantName: string
 ): string => {
-  const message = `Hello ${merchantName}! 👋\n\nI would like to get in touch regarding your menu. Thank you! 🙏`;
+  const message = `Hello ${merchantName}!\n\nI would like to get in touch regarding your menu. Thank you!`;
   return generateWhatsAppUrl(merchantPhone, message);
 };
 
@@ -137,14 +137,14 @@ export const formatWhatsAppNumber = (phoneNumber: string): string => {
 
   // Add + if not present and doesn't start with 0
   if (!formatted.startsWith("+") && !formatted.startsWith("0")) {
-    formatted = "+" + formatted;
+    formatted = `+${formatted}`;
   }
 
   // Handle Indonesian numbers specifically (common case for food court)
   if (formatted.startsWith("0")) {
-    formatted = "+62" + formatted.slice(1);
+    formatted = `+62${formatted.slice(1)}`;
   } else if (formatted.startsWith("62") && !formatted.startsWith("+")) {
-    formatted = "+" + formatted;
+    formatted = `+${formatted}`;
   }
 
   return formatted;

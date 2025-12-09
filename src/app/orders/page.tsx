@@ -40,12 +40,12 @@ const STATUS_COLORS = {
 };
 
 const STATUS_LABELS = {
-  pending: "⏳ Pending",
-  accepted: "✓ Accepted",
-  preparing: "🍳 Preparing",
-  ready: "✓ Ready for Pickup",
-  completed: "✓ Completed",
-  cancelled: "✗ Cancelled",
+  pending: "Pending",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready: "Ready for Pickup",
+  completed: "Completed",
+  cancelled: "Cancelled",
 };
 
 export default function OrdersPage() {
@@ -321,9 +321,7 @@ export default function OrdersPage() {
                               : "bg-orange-50 text-orange-700 border-orange-200"
                           }`}
                         >
-                          {order.paymentStatus === "paid"
-                            ? "💵 Paid"
-                            : "⏳ Unpaid"}
+                          {order.paymentStatus === "paid" ? "Paid" : "Unpaid"}
                         </span>
                       )}
                     </div>

@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface Category {
   id: string;
@@ -16,57 +19,56 @@ interface Merchant {
 }
 
 export default function AdminCategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedMerchant, setSelectedMerchant] = useState<string>("all");
   const [processing, setProcessing] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const [categoriesQuery, merchantsQuery] = useQueries({
+    queries: [
+      {
+        queryKey: ["categories"],
+        queryFn: async (): Promise<{ data: Category[] }> => {
+          const res = await fetch("/api/admin/categories");
+          return res.json();
+        },
+      },
+      {
+        queryKey: ["merchants"],
+        queryFn: async (): Promise<{ data: Merchant[] }> => {
+          const res = await fetch("/api/merchants");
+          return res.json();
+        },
+      },
+    ],
+  });
 
-  const fetchData = async () => {
-    try {
-      const [categoriesRes, merchantsRes] = await Promise.all([
-        fetch("/api/admin/categories"),
-        fetch("/api/merchants"),
-      ]);
-
-      const categoriesResult = await categoriesRes.json();
-      const merchantsResult = await merchantsRes.json();
-
-      if (categoriesResult.success) {
-        setCategories(categoriesResult.data);
-      }
-
-      if (merchantsResult.success) {
-        setMerchants(merchantsResult.data);
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
+  const categories = categoriesQuery.data?.data ?? [];
+  const merchants = merchantsQuery.data?.data ?? [];
+  const isLoading = categoriesQuery.isLoading || merchantsQuery.isLoading;
+  const isFetching = categoriesQuery.isFetching || merchantsQuery.isFetching;
+  const refetch = async () => {
+    await Promise.all([categoriesQuery.refetch(), merchantsQuery.refetch()]);
   };
 
-  const deleteCategory = async (categoryId: string) => {
-    if (!confirm("Are you sure you want to DELETE this category?")) {
-      return;
-    }
+  const handleDeleteClick = (categoryId: string) => {
+    setDeleteId(categoryId);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
 
     setProcessing(true);
 
     try {
-      const response = await fetch(`/api/admin/categories/${categoryId}`, {
+      const response = await fetch(`/api/admin/categories/${deleteId}`, {
         method: "DELETE",
       });
 
       const result = await response.json();
-
       if (result.success) {
-        fetchData();
-        alert("Category deleted successfully!");
+        queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
+        setDeleteId(null);
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
       }
@@ -83,7 +85,7 @@ export default function AdminCategoriesPage() {
       ? categories
       : categories.filter((c) => c.merchantId === selectedMerchant);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -106,24 +108,34 @@ export default function AdminCategoriesPage() {
         </div>
         <button
           type="button"
-          onClick={fetchData}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <title>Refresh</title>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          Refresh
+          {isFetching ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Refreshing...</span>
+            </>
+          ) : (
+            <>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Refresh</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span>Refresh</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -199,7 +211,7 @@ export default function AdminCategoriesPage() {
                   <td className="px-6 py-4">
                     <button
                       type="button"
-                      onClick={() => deleteCategory(category.id)}
+                      onClick={() => handleDeleteClick(category.id)}
                       disabled={processing}
                       className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
                     >
@@ -218,6 +230,17 @@ export default function AdminCategoriesPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Category"
+        description="Are you sure you want to DELETE this category? This action cannot be undone."
+        onConfirm={confirmDelete}
+        isLoading={processing}
+        variant="danger"
+        confirmText="Delete"
+      />
     </div>
   );
 }

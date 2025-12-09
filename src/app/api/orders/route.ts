@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
         return {
           ...order,
           items: details?.items || [],
-          paymentStatus: details?.paymentStatus || "pending",
+          paymentStatus: details?.paymentStatus || "unpaid",
         };
       });
 
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
       return {
         ...order,
         items: details?.items || [],
-        paymentStatus: details?.paymentStatus || "pending",
+        paymentStatus: details?.paymentStatus || "unpaid",
       };
     });
 

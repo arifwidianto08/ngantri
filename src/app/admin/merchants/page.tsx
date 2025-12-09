@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface Merchant {
   id: string;
@@ -15,34 +18,26 @@ interface Merchant {
 }
 
 export default function AdminMerchantsPage() {
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(
     null
   );
   const [processing, setProcessing] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchMerchants();
-  }, []);
-
-  const fetchMerchants = async () => {
-    try {
+  const {
+    data = [],
+    isLoading,
+    refetch,
+    isFetching,
+  } = useQuery<Merchant[]>({
+    queryKey: ["admin-merchants"],
+    queryFn: async () => {
       const response = await fetch("/api/merchants");
       const result = await response.json();
-
-      if (result.success && Array.isArray(result.data)) {
-        setMerchants(result.data);
-      } else {
-        setMerchants([]);
-      }
-    } catch (error) {
-      console.error("Error fetching merchants:", error);
-      setMerchants([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return Array.isArray(result.data) ? result.data : [];
+    },
+  });
 
   const toggleAvailability = async (
     merchantId: string,
@@ -65,7 +60,7 @@ export default function AdminMerchantsPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchMerchants();
+        queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
         alert("Merchant availability updated!");
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
@@ -78,28 +73,26 @@ export default function AdminMerchantsPage() {
     }
   };
 
-  const deleteMerchant = async (merchantId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to DELETE this merchant? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
+  const handleDeleteClick = (merchantId: string) => {
+    setDeleteId(merchantId);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
 
     setProcessing(true);
 
     try {
-      const response = await fetch(`/api/admin/merchants/${merchantId}`, {
+      const response = await fetch(`/api/admin/merchants/${deleteId}`, {
         method: "DELETE",
       });
 
       const result = await response.json();
 
       if (result.success) {
-        fetchMerchants();
+        queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
         setSelectedMerchant(null);
-        alert("Merchant deleted successfully!");
+        setDeleteId(null);
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
       }
@@ -111,7 +104,7 @@ export default function AdminMerchantsPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -134,24 +127,34 @@ export default function AdminMerchantsPage() {
         </div>
         <button
           type="button"
-          onClick={fetchMerchants}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <title>Refresh</title>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          Refresh
+          {isFetching ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Refreshing...</span>
+            </>
+          ) : (
+            <>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Refresh</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span>Refresh</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -159,25 +162,25 @@ export default function AdminMerchantsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Total Merchants</p>
-          <p className="text-2xl font-bold text-gray-900">{merchants.length}</p>
+          <p className="text-2xl font-bold text-gray-900">{data.length}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Available</p>
           <p className="text-2xl font-bold text-green-600">
-            {merchants.filter((m) => m.isAvailable).length}
+            {data.filter((m) => m.isAvailable).length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Unavailable</p>
           <p className="text-2xl font-bold text-red-600">
-            {merchants.filter((m) => !m.isAvailable).length}
+            {data.filter((m) => !m.isAvailable).length}
           </p>
         </div>
       </div>
 
       {/* Merchants Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {merchants.map((merchant) => (
+        {data.map((merchant) => (
           <div
             key={merchant.id}
             className="bg-white rounded-lg shadow overflow-hidden"
@@ -270,7 +273,7 @@ export default function AdminMerchantsPage() {
         ))}
       </div>
 
-      {merchants.length === 0 && (
+      {data.length === 0 && (
         <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
           No merchants found
         </div>
@@ -389,7 +392,7 @@ export default function AdminMerchantsPage() {
 
                 <button
                   type="button"
-                  onClick={() => deleteMerchant(selectedMerchant.id)}
+                  onClick={() => handleDeleteClick(selectedMerchant.id)}
                   disabled={processing}
                   className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
                 >
@@ -400,6 +403,17 @@ export default function AdminMerchantsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Merchant"
+        description="Are you sure you want to DELETE this merchant? This action cannot be undone."
+        onConfirm={confirmDelete}
+        isLoading={processing}
+        variant="danger"
+        confirmText="Delete"
+      />
     </div>
   );
 }

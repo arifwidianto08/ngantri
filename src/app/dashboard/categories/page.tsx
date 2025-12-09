@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  getMerchantIdFromStorage,
+  setMerchantIdInStorage,
+} from "@/lib/merchant-client";
+import { useToast } from "@/components/toast-provider";
 
 interface Category {
   id: string;
@@ -13,52 +19,116 @@ export default function MerchantCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ name: "" });
+  const [merchantId, setMerchantId] = useState<string>("");
   const router = useRouter();
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
+  const [initComplete, setInitComplete] = useState(false);
 
   useEffect(() => {
-    fetchCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const initializeMerchantId = async () => {
+      let id = getMerchantIdFromStorage();
 
-  const fetchCategories = async () => {
-    try {
-      const merchantResponse = await fetch("/api/merchants/me");
-      const merchantResult = await merchantResponse.json();
+      if (!id) {
+        try {
+          const response = await fetch("/api/merchants/me");
+          const result = await response.json();
 
-      if (!merchantResult.success) {
-        router.push("/login");
-        return;
+          if (result.success && result.data.merchant?.id) {
+            id = result.data.merchant.id;
+            setMerchantIdInStorage(id);
+          } else {
+            router.push("/login");
+            return;
+          }
+        } catch (error) {
+          console.error("Error fetching merchant:", error);
+          router.push("/login");
+          return;
+        }
       }
 
-      const merchantId = merchantResult.data.merchant.id;
+      setMerchantId(id || "");
+      setInitComplete(true);
+      setLoading(false);
+    };
+
+    initializeMerchantId();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
+
+  const { data: catData } = useQuery({
+    queryKey: ["merchant-categories", merchantId],
+    queryFn: async () => {
+      if (!merchantId) return { categories: [] };
       const response = await fetch(`/api/merchants/${merchantId}/categories`);
       const result = await response.json();
+      return { categories: result.success ? result.data.categories || [] : [] };
+    },
+    enabled: initComplete && !!merchantId,
+  });
 
-      if (result.success) {
-        setCategories(result.data.categories || []);
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    } finally {
+  useEffect(() => {
+    if (catData) {
+      setCategories(catData.categories);
       setLoading(false);
     }
-  };
+  }, [catData]);
 
-  const deleteCategory = async (categoryId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this category? This will also affect all menus in this category."
-      )
-    ) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      showToast("Category name is required", "warning");
       return;
     }
 
     setProcessing(true);
     try {
-      const merchantResponse = await fetch("/api/merchants/me");
-      const merchantResult = await merchantResponse.json();
-      const merchantId = merchantResult.data.merchant.id;
+      const method = editingId ? "PATCH" : "POST";
+      const url = editingId
+        ? `/api/merchants/${merchantId}/categories/${editingId}`
+        : `/api/merchants/${merchantId}/categories`;
 
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: formData.name }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        queryClient.invalidateQueries({
+          queryKey: ["merchant-categories", merchantId],
+        });
+        setShowForm(false);
+        setEditingId(null);
+        setFormData({ name: "" });
+        showToast(
+          editingId ? "Category updated!" : "Category created!",
+          "success"
+        );
+      } else {
+        showToast(
+          `Failed: ${result.error?.message || "Unknown error"}`,
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      showToast("Failed to save category", "error");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const deleteCategory = async (categoryId: string) => {
+    showToast("Deleting category...", "info", 0);
+    setProcessing(true);
+    try {
       const response = await fetch(
         `/api/merchants/${merchantId}/categories/${categoryId}`,
         {
@@ -69,17 +139,34 @@ export default function MerchantCategoriesPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchCategories();
-        alert("Category deleted successfully!");
+        queryClient.invalidateQueries({
+          queryKey: ["merchant-categories", merchantId],
+        });
+        showToast("Category deleted successfully!", "success");
       } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        showToast(
+          `Failed: ${result.error?.message || "Unknown error"}`,
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error deleting category:", error);
-      alert("Failed to delete category");
+      showToast("Failed to delete category", "error");
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleEdit = (category: Category) => {
+    setEditingId(category.id);
+    setFormData({ name: category.name });
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData({ name: "" });
   };
 
   if (loading) {
@@ -99,12 +186,54 @@ export default function MerchantCategoriesPage() {
         </div>
         <button
           type="button"
-          onClick={fetchCategories}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          onClick={() => setShowForm(true)}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
         >
-          Refresh
+          + Add Category
         </button>
       </div>
+
+      {/* Create/Edit Form */}
+      {showForm && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold mb-4">
+            {editingId ? "Edit Category" : "Create New Category"}
+          </h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category Name
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="e.g., Main Courses, Desserts"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={processing}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
+              >
+                {editingId ? "Update" : "Create"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={processing}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:opacity-50 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="bg-white rounded-lg shadow p-4">
@@ -146,7 +275,15 @@ export default function MerchantCategoriesPage() {
                       : "-"}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(category)}
+                    disabled={processing}
+                    className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
+                  >
+                    Edit
+                  </button>
                   <button
                     type="button"
                     onClick={() => deleteCategory(category.id)}
