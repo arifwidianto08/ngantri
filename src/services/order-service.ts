@@ -234,7 +234,7 @@ export class OrderService implements IOrderService {
   /**
    * Cancel order
    */
-  async cancelOrder(id: string, reason?: string): Promise<Order> {
+  async cancelOrder(id: string): Promise<Order> {
     const order = await this.findOrderById(id);
 
     // Check if order can be cancelled

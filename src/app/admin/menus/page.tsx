@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Edit2, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Menu {
   id: string;
@@ -28,10 +35,34 @@ interface AdminMenusData {
   merchants: Merchant[];
 }
 
+interface FormData {
+  merchantId: string;
+  categoryId: string;
+  name: string;
+  description: string;
+  price: string;
+  imageUrl: string;
+}
+
 export default function AdminMenusPage() {
   const [selectedMerchant, setSelectedMerchant] = useState<string>("all");
   const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
+  const [deleteMenuId, setDeleteMenuId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [formData, setFormData] = useState<FormData>({
+    merchantId: "",
+    categoryId: "",
+    name: "",
+    description: "",
+    price: "",
+    imageUrl: "",
+  });
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<AdminMenusData>({
@@ -46,8 +77,8 @@ export default function AdminMenusPage() {
       const merchantsResult = await merchantsRes.json();
 
       return {
-        menus: menusResult.success ? menusResult.data : [],
-        merchants: merchantsResult.success ? merchantsResult.data : [],
+        menus: menusResult.data || [],
+        merchants: merchantsResult.data?.merchants || [],
       };
     },
   });
@@ -71,27 +102,24 @@ export default function AdminMenusPage() {
 
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["admin-menus"] });
-        alert("Menu availability updated!");
       } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        setFormError(`Failed: ${result.error?.message || "Unknown error"}`);
       }
     } catch (error) {
       console.error("Error updating availability:", error);
-      alert("Failed to update menu availability");
+      setFormError("Failed to update menu availability");
     } finally {
       setProcessing(false);
     }
   };
 
-  const deleteMenu = async (menuId: string) => {
-    if (!confirm("Are you sure you want to DELETE this menu?")) {
-      return;
-    }
+  const handleDelete = async () => {
+    if (!deleteMenuId) return;
 
-    setProcessing(true);
+    setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/admin/menus/${menuId}`, {
+      const response = await fetch(`/api/admin/menus/${deleteMenuId}`, {
         method: "DELETE",
       });
 
@@ -100,15 +128,106 @@ export default function AdminMenusPage() {
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["admin-menus"] });
         setSelectedMenu(null);
-        alert("Menu deleted successfully!");
+        setShowDeleteDialog(false);
+        setDeleteMenuId(null);
       } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        setFormError(`Failed: ${result.error?.message || "Unknown error"}`);
       }
     } catch (error) {
       console.error("Error deleting menu:", error);
-      alert("Failed to delete menu");
+      setFormError("Failed to delete menu");
     } finally {
-      setProcessing(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const openDeleteDialog = (menuId: string) => {
+    setDeleteMenuId(Number(menuId));
+    setShowDeleteDialog(true);
+  };
+
+  const openCreateDialog = async () => {
+    setEditingMenu(null);
+    setFormData({
+      merchantId: "",
+      categoryId: "",
+      name: "",
+      description: "",
+      price: "",
+      imageUrl: "",
+    });
+    setFormError("");
+    setShowCreateDialog(true);
+  };
+
+  const openEditDialog = (menu: Menu) => {
+    setEditingMenu(menu);
+    setFormData({
+      merchantId: String(menu.merchantId),
+      categoryId: String(menu.categoryId),
+      name: menu.name,
+      description: menu.description || "",
+      price: String(menu.price),
+      imageUrl: menu.imageUrl || "",
+    });
+    setFormError("");
+    setShowEditDialog(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError("");
+    setIsSubmitting(true);
+
+    try {
+      const price = Number.parseFloat(String(formData.price));
+      if (Number.isNaN(price) || price < 0) {
+        setFormError("Price must be a valid positive number");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const payload = {
+        ...formData,
+        price,
+      };
+
+      const url = editingMenu
+        ? `/api/admin/menus/${editingMenu.id}`
+        : "/api/admin/menus/create";
+      const method = editingMenu ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin-menus"] });
+        setShowCreateDialog(false);
+        setShowEditDialog(false);
+        setFormData({
+          merchantId: "",
+          categoryId: "",
+          name: "",
+          description: "",
+          price: "",
+          imageUrl: "",
+        });
+        setEditingMenu(null);
+      } else {
+        setFormError(`Failed: ${result.error?.message || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error saving menu:", error);
+      setFormError("Failed to save menu");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -138,39 +257,49 @@ export default function AdminMenusPage() {
             Manage all menus across all merchants
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() =>
-            queryClient.invalidateQueries({ queryKey: ["admin-menus"] })
-          }
-          disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Refreshing...</span>
-            </>
-          ) : (
-            <>
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <title>Refresh</title>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              <span>Refresh</span>
-            </>
-          )}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={openCreateDialog}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Create Menu</span>
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              queryClient.invalidateQueries({ queryKey: ["admin-menus"] })
+            }
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Refreshing...</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <title>Refresh</title>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span>Refresh</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -400,6 +529,15 @@ export default function AdminMenusPage() {
 
                 <button
                   type="button"
+                  onClick={() => openEditDialog(selectedMenu)}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit Menu
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     toggleAvailability(
                       selectedMenu.id,
@@ -421,10 +559,11 @@ export default function AdminMenusPage() {
 
                 <button
                   type="button"
-                  onClick={() => deleteMenu(selectedMenu.id)}
+                  onClick={() => openDeleteDialog(selectedMenu.id)}
                   disabled={processing}
-                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
+                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium flex items-center justify-center gap-2"
                 >
+                  <Trash2 className="w-4 h-4" />
                   Delete Menu
                 </button>
               </div>
@@ -432,6 +571,216 @@ export default function AdminMenusPage() {
           </div>
         </div>
       )}
+
+      {/* Create/Edit Dialog */}
+      <Dialog
+        open={showCreateDialog || showEditDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCreateDialog(false);
+            setShowEditDialog(false);
+            setFormError("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingMenu ? "Edit Menu" : "Create New Menu"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingMenu
+                ? "Update the menu details below"
+                : "Add a new menu item to your store"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {formError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                {formError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Merchant
+              </label>
+              <select
+                value={formData.merchantId}
+                onChange={(e) =>
+                  setFormData({ ...formData, merchantId: e.target.value })
+                }
+                required
+                disabled={isSubmitting}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+              >
+                <option value="">Select a merchant</option>
+                {merchants?.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <select
+                value={formData.categoryId}
+                onChange={(e) =>
+                  setFormData({ ...formData, categoryId: e.target.value })
+                }
+                required
+                disabled={isSubmitting}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+              >
+                <option value="">Select a category</option>
+                {/* Categories would be filtered based on selected merchant */}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Name *
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                required
+                disabled={isSubmitting}
+                placeholder="Menu item name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                disabled={isSubmitting}
+                placeholder="Optional description"
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Price (Rp) *
+              </label>
+              <input
+                type="number"
+                value={formData.price}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, price: e.target.value })
+                }
+                required
+                disabled={isSubmitting}
+                placeholder="0"
+                min="0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Image URL
+              </label>
+              <input
+                type="url"
+                value={formData.imageUrl}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, imageUrl: e.target.value })
+                }
+                disabled={isSubmitting}
+                placeholder="https://example.com/image.jpg"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateDialog(false);
+                  setShowEditDialog(false);
+                  setFormError("");
+                }}
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 disabled:opacity-50 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : editingMenu ? (
+                  "Update Menu"
+                ) : (
+                  "Create Menu"
+                )}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Menu</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this menu? This action cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 disabled:opacity-50 font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

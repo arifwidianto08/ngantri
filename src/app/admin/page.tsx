@@ -1,6 +1,21 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from "recharts";
 
 interface DashboardStats {
   totalOrders: number;
@@ -312,66 +327,71 @@ export default function AdminDashboardPage() {
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Orders by Status
           </h2>
-          <div className="space-y-3">
-            {stats.ordersByStatus.map((item) => {
-              const percentage =
-                stats.totalOrders > 0
-                  ? (item.count / stats.totalOrders) * 100
-                  : 0;
-              return (
-                <div key={item.status}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-700 capitalize">
-                      {item.status}
-                    </span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {item.count}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-indigo-600 h-2 rounded-full"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={stats.ordersByStatus}
+                dataKey="count"
+                nameKey="status"
+                cx="50%"
+                cy="50%"
+                outerRadius={80}
+                label
+              >
+                {stats.ordersByStatus.map((entry, index) => (
+                  <Cell
+                    key={`${entry.status}-${index}`}
+                    fill={
+                      [
+                        "#3b82f6",
+                        "#fbbf24",
+                        "#10b981",
+                        "#ef4444",
+                        "#8b5cf6",
+                        "#6b7280",
+                      ][index % 6]
+                    }
+                  />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
 
-        {/* Revenue Chart (Simple Bar) */}
+        {/* Revenue Chart (Line) */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             Revenue (Last 7 Days)
           </h2>
-          <div className="space-y-3">
-            {stats.revenueByDay.slice(0, 7).map((item) => {
-              const maxRevenue = Math.max(
-                ...stats.revenueByDay.map((r) => r.revenue)
-              );
-              const percentage =
-                maxRevenue > 0 ? (item.revenue / maxRevenue) * 100 : 0;
-              return (
-                <div key={item.date}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-700">
-                      {new Date(item.date).toLocaleDateString("id-ID")}
-                    </span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      Rp {item.revenue.toLocaleString("id-ID")}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-green-600 h-2 rounded-full"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart
+              data={stats.revenueByDay.slice(0, 7).map((item) => ({
+                date: new Date(item.date).toLocaleDateString("id-ID", {
+                  day: "2-digit",
+                  month: "short",
+                }),
+                revenue: item.revenue,
+              }))}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip
+                formatter={(value) =>
+                  `Rp ${(value as number).toLocaleString("id-ID")}`
+                }
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#10b981"
+                strokeWidth={2}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

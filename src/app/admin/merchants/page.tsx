@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface Merchant {
   id: string;
@@ -21,6 +22,7 @@ export default function AdminMerchantsPage() {
     null
   );
   const [processing, setProcessing] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: merchants = [], isLoading } = useQuery<Merchant[]>({
@@ -28,7 +30,7 @@ export default function AdminMerchantsPage() {
     queryFn: async () => {
       const response = await fetch("/api/merchants");
       const result = await response.json();
-      return result.success && Array.isArray(result.data) ? result.data : [];
+      return Array.isArray(result.data?.merchants) ? result.data.merchants : [];
     },
   });
 
@@ -66,19 +68,17 @@ export default function AdminMerchantsPage() {
     }
   };
 
-  const deleteMerchant = async (merchantId: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to DELETE this merchant? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
+  const handleDeleteClick = (merchantId: string) => {
+    setDeleteId(merchantId);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
 
     setProcessing(true);
 
     try {
-      const response = await fetch(`/api/admin/merchants/${merchantId}`, {
+      const response = await fetch(`/api/admin/merchants/${deleteId}`, {
         method: "DELETE",
       });
 
@@ -87,7 +87,7 @@ export default function AdminMerchantsPage() {
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
         setSelectedMerchant(null);
-        alert("Merchant deleted successfully!");
+        setDeleteId(null);
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
       }
@@ -389,7 +389,7 @@ export default function AdminMerchantsPage() {
 
                 <button
                   type="button"
-                  onClick={() => deleteMerchant(selectedMerchant.id)}
+                  onClick={() => handleDeleteClick(selectedMerchant.id)}
                   disabled={processing}
                   className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
                 >
@@ -400,6 +400,17 @@ export default function AdminMerchantsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Merchant"
+        description="Are you sure you want to DELETE this merchant? This action cannot be undone."
+        onConfirm={confirmDelete}
+        isLoading={processing}
+        variant="danger"
+        confirmText="Delete"
+      />
     </div>
   );
 }

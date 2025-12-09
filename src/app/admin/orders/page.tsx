@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface OrderItem {
   id: string;
@@ -73,6 +74,14 @@ export default function AdminOrdersPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [confirmState, setConfirmState] = useState<{
+    type: "mark-paid" | "update-status" | "cancel" | null;
+    orderId: string | null;
+    newStatus?: string;
+  }>({
+    type: null,
+    orderId: null,
+  });
 
   const {
     data: ordersResponse,
@@ -111,22 +120,27 @@ export default function AdminOrdersPage() {
   };
 
   const markAsPaid = async (orderId: string) => {
-    if (!confirm("Mark this order as PAID?")) {
-      return;
-    }
+    setConfirmState({ type: "mark-paid", orderId });
+  };
+
+  const confirmMarkAsPaid = async () => {
+    if (!confirmState.orderId) return;
 
     setProcessing(true);
 
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}/payment`, {
-        method: "PATCH",
-      });
+      const response = await fetch(
+        `/api/admin/orders/${confirmState.orderId}/payment`,
+        {
+          method: "PATCH",
+        }
+      );
 
       const result = await response.json();
 
       if (result.success) {
         void refetch();
-        alert("Order marked as paid!");
+        setConfirmState({ type: null, orderId: null });
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
       }
@@ -139,26 +153,31 @@ export default function AdminOrdersPage() {
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    if (!confirm(`Change order status to ${newStatus.toUpperCase()}?`)) {
-      return;
-    }
+    setConfirmState({ type: "update-status", orderId, newStatus });
+  };
+
+  const confirmUpdateStatus = async () => {
+    if (!confirmState.orderId || !confirmState.newStatus) return;
 
     setProcessing(true);
 
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}/status`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const response = await fetch(
+        `/api/admin/orders/${confirmState.orderId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: confirmState.newStatus }),
+        }
+      );
 
       const result = await response.json();
 
       if (result.success) {
         void refetch();
-        alert("Order status updated!");
+        setConfirmState({ type: null, orderId: null });
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
       }
@@ -171,11 +190,13 @@ export default function AdminOrdersPage() {
   };
 
   const cancelOrder = async (orderId: string) => {
-    if (!confirm("Are you sure you want to CANCEL this order?")) {
-      return;
-    }
+    setConfirmState({ type: "cancel", orderId });
+  };
 
-    updateOrderStatus(orderId, "cancelled");
+  const confirmCancelOrder = async () => {
+    if (!confirmState.orderId) return;
+
+    await confirmUpdateStatus();
   };
 
   if (isLoading) {
@@ -582,6 +603,49 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmState.type === "mark-paid"}
+        onOpenChange={(open) =>
+          !open && setConfirmState({ type: null, orderId: null })
+        }
+        title="Mark Order as Paid"
+        description="Are you sure you want to mark this order as PAID?"
+        onConfirm={confirmMarkAsPaid}
+        isLoading={processing}
+        variant="primary"
+        confirmText="Mark as Paid"
+      />
+
+      <ConfirmDialog
+        open={confirmState.type === "update-status"}
+        onOpenChange={(open) =>
+          !open && setConfirmState({ type: null, orderId: null })
+        }
+        title="Update Order Status"
+        description={`Are you sure you want to change the order status to ${
+          confirmState.newStatus
+            ? confirmState.newStatus.toUpperCase()
+            : "pending"
+        }?`}
+        onConfirm={confirmUpdateStatus}
+        isLoading={processing}
+        variant="primary"
+        confirmText="Update Status"
+      />
+
+      <ConfirmDialog
+        open={confirmState.type === "cancel"}
+        onOpenChange={(open) =>
+          !open && setConfirmState({ type: null, orderId: null })
+        }
+        title="Cancel Order"
+        description="Are you sure you want to CANCEL this order? This action cannot be undone."
+        onConfirm={confirmCancelOrder}
+        isLoading={processing}
+        variant="danger"
+        confirmText="Cancel Order"
+      />
     </div>
   );
 }

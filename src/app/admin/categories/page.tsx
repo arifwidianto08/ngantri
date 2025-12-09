@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface Category {
   id: string;
@@ -20,6 +21,7 @@ interface Merchant {
 export default function AdminCategoriesPage() {
   const [selectedMerchant, setSelectedMerchant] = useState<string>("all");
   const [processing, setProcessing] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<{
@@ -37,8 +39,8 @@ export default function AdminCategoriesPage() {
       const merchantsResult = await merchantsRes.json();
 
       return {
-        categories: categoriesResult.success ? categoriesResult.data : [],
-        merchants: merchantsResult.success ? merchantsResult.data : [],
+        categories: categoriesResult.data || [],
+        merchants: merchantsResult.data?.merchants || [],
       };
     },
   });
@@ -46,15 +48,17 @@ export default function AdminCategoriesPage() {
   const categories = data?.categories ?? [];
   const merchants = data?.merchants ?? [];
 
-  const deleteCategory = async (categoryId: string) => {
-    if (!confirm("Are you sure you want to DELETE this category?")) {
-      return;
-    }
+  const handleDeleteClick = (categoryId: string) => {
+    setDeleteId(categoryId);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
 
     setProcessing(true);
 
     try {
-      const response = await fetch(`/api/admin/categories/${categoryId}`, {
+      const response = await fetch(`/api/admin/categories/${deleteId}`, {
         method: "DELETE",
       });
 
@@ -62,7 +66,8 @@ export default function AdminCategoriesPage() {
 
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
-        alert("Category deleted successfully!");
+        setDeleteId(null);
+        // alert("Category deleted successfully!"); // Optional: replace with toast
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
       }
@@ -207,7 +212,7 @@ export default function AdminCategoriesPage() {
                   <td className="px-6 py-4">
                     <button
                       type="button"
-                      onClick={() => deleteCategory(category.id)}
+                      onClick={() => handleDeleteClick(category.id)}
                       disabled={processing}
                       className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
                     >
@@ -226,6 +231,17 @@ export default function AdminCategoriesPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Category"
+        description="Are you sure you want to DELETE this category? This action cannot be undone."
+        onConfirm={confirmDelete}
+        isLoading={processing}
+        variant="danger"
+        confirmText="Delete"
+      />
     </div>
   );
 }
