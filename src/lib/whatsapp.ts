@@ -33,7 +33,7 @@ export const generateOrderConfirmationUrl = (
   }
 
   if (orderItems && orderItems.length > 0) {
-    message += `Order Details:\n`;
+    message += "Order Details:\n";
     orderItems.forEach((item, index) => {
       message += `${index + 1}. ${item.name} x${item.quantity} - ${formatIDR(
         item.price * item.quantity
@@ -46,7 +46,7 @@ export const generateOrderConfirmationUrl = (
     message += `Total: ${formatIDR(totalAmount)}\n\n`;
   }
 
-  message += `Please confirm the order. Thank you!`;
+  message += "Please confirm the order. Thank you!";
 
   return generateWhatsAppUrl(merchantPhone, message);
 };
@@ -137,14 +137,14 @@ export const formatWhatsAppNumber = (phoneNumber: string): string => {
 
   // Add + if not present and doesn't start with 0
   if (!formatted.startsWith("+") && !formatted.startsWith("0")) {
-    formatted = "+" + formatted;
+    formatted = `+${formatted}`;
   }
 
   // Handle Indonesian numbers specifically (common case for food court)
   if (formatted.startsWith("0")) {
-    formatted = "+62" + formatted.slice(1);
+    formatted = `+62${formatted.slice(1)}`;
   } else if (formatted.startsWith("62") && !formatted.startsWith("+")) {
-    formatted = "+" + formatted;
+    formatted = `+${formatted}`;
   }
 
   return formatted;

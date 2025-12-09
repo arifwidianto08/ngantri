@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface OrderItem {
   id: string;
@@ -22,6 +23,21 @@ interface Order {
   items: OrderItem[];
   createdAt: string;
   paymentStatus: string;
+}
+
+interface OrdersResponse {
+  success: boolean;
+  data: Order[];
+  stats?: {
+    total: number;
+    pending: number;
+    accepted: number;
+    preparing: number;
+    ready: number;
+    completed: number;
+    cancelled: number;
+    unpaid: number;
+  };
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -53,53 +69,18 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    accepted: 0,
-    preparing: 0,
-    ready: 0,
-    completed: 0,
-    cancelled: 0,
-    unpaid: 0,
-  });
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      setLoading(true);
-      try {
-        const url =
-          filterStatus === "all"
-            ? "/api/admin/orders"
-            : `/api/admin/orders?status=${filterStatus}`;
-
-        const response = await fetch(url);
-        const result = await response.json();
-
-        if (result.success) {
-          setOrders(result.data);
-          if (result.stats) {
-            setStats(result.stats);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
-  }, [filterStatus]);
-
-  const refetchOrders = async () => {
-    setLoading(true);
-    try {
+  const {
+    data: ordersResponse,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<OrdersResponse>({
+    queryKey: ["admin-orders", filterStatus],
+    queryFn: async () => {
       const url =
         filterStatus === "all"
           ? "/api/admin/orders"
@@ -108,17 +89,24 @@ export default function AdminOrdersPage() {
       const response = await fetch(url);
       const result = await response.json();
 
-      if (result.success) {
-        setOrders(result.data);
-        if (result.stats) {
-          setStats(result.stats);
-        }
+      if (!result.success) {
+        throw new Error("Failed to fetch orders");
       }
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-    } finally {
-      setLoading(false);
-    }
+
+      return result;
+    },
+  });
+
+  const orders = ordersResponse?.data || [];
+  const stats = ordersResponse?.stats || {
+    total: 0,
+    pending: 0,
+    accepted: 0,
+    preparing: 0,
+    ready: 0,
+    completed: 0,
+    cancelled: 0,
+    unpaid: 0,
   };
 
   const markAsPaid = async (orderId: string) => {
@@ -136,7 +124,7 @@ export default function AdminOrdersPage() {
       const result = await response.json();
 
       if (result.success) {
-        refetchOrders();
+        void refetch();
         alert("Order marked as paid!");
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
@@ -168,7 +156,7 @@ export default function AdminOrdersPage() {
       const result = await response.json();
 
       if (result.success) {
-        refetchOrders();
+        void refetch();
         alert("Order status updated!");
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
@@ -189,12 +177,25 @@ export default function AdminOrdersPage() {
     updateOrderStatus(orderId, "cancelled");
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading orders...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 font-medium">Error loading orders</p>
+          <p className="text-gray-600 text-sm mt-1">
+            Please try refreshing the page
+          </p>
         </div>
       </div>
     );
@@ -212,7 +213,7 @@ export default function AdminOrdersPage() {
         </div>
         <button
           type="button"
-          onClick={refetchOrders}
+          onClick={() => void refetch()}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
         >
           <svg

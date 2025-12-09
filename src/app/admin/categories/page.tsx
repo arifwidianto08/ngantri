@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Category {
   id: string;
@@ -16,18 +17,16 @@ interface Merchant {
 }
 
 export default function AdminCategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedMerchant, setSelectedMerchant] = useState<string>("all");
   const [processing, setProcessing] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
+  const { data, isLoading } = useQuery<{
+    categories: Category[];
+    merchants: Merchant[];
+  }>({
+    queryKey: ["admin-categories"],
+    queryFn: async () => {
       const [categoriesRes, merchantsRes] = await Promise.all([
         fetch("/api/admin/categories"),
         fetch("/api/merchants"),
@@ -36,19 +35,15 @@ export default function AdminCategoriesPage() {
       const categoriesResult = await categoriesRes.json();
       const merchantsResult = await merchantsRes.json();
 
-      if (categoriesResult.success) {
-        setCategories(categoriesResult.data);
-      }
+      return {
+        categories: categoriesResult.success ? categoriesResult.data : [],
+        merchants: merchantsResult.success ? merchantsResult.data : [],
+      };
+    },
+  });
 
-      if (merchantsResult.success) {
-        setMerchants(merchantsResult.data);
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const categories = data?.categories ?? [];
+  const merchants = data?.merchants ?? [];
 
   const deleteCategory = async (categoryId: string) => {
     if (!confirm("Are you sure you want to DELETE this category?")) {
@@ -65,7 +60,7 @@ export default function AdminCategoriesPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchData();
+        queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
         alert("Category deleted successfully!");
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
@@ -83,7 +78,7 @@ export default function AdminCategoriesPage() {
       ? categories
       : categories.filter((c) => c.merchantId === selectedMerchant);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -106,7 +101,9 @@ export default function AdminCategoriesPage() {
         </div>
         <button
           type="button"
-          onClick={fetchData}
+          onClick={() =>
+            queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
+          }
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
         >
           <svg

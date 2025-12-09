@@ -209,8 +209,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <nav className="space-y-2">
             {navigation.map((item) => {
               const isActive = pathname === item.href;
-              const testId =
-                item.name.toLowerCase().replace(/\s+/g, "-") + "-link";
+              const testId = `${item.name
+                .toLowerCase()
+                .replace(/\s+/g, "-")}-link`;
               return (
                 <Link
                   key={item.name}

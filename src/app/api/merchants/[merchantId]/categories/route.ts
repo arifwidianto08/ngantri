@@ -38,22 +38,26 @@ export async function GET(
       )
       .orderBy(menuCategories.name);
 
-    // Get menu count for each category
-    const categoriesWithCount = await Promise.all(
-      categories.map(async (category) => {
-        const [result] = await db
-          .select({ menuCount: count(menus.id) })
-          .from(menus)
-          .where(
-            and(eq(menus.categoryId, category.id), isNull(menus.deletedAt))
-          );
-
-        return {
-          ...category,
-          menuCount: result?.menuCount || 0,
-        };
+    // Get menu count for each category in a single query using GROUP BY
+    const categoryCounts = await db
+      .select({
+        categoryId: menus.categoryId,
+        menuCount: count(menus.id),
       })
+      .from(menus)
+      .where(isNull(menus.deletedAt))
+      .groupBy(menus.categoryId);
+
+    // Create a map for quick lookup
+    const countMap = new Map(
+      categoryCounts.map((c) => [c.categoryId, c.menuCount])
     );
+
+    // Merge counts with categories
+    const categoriesWithCount = categories.map((category) => ({
+      ...category,
+      menuCount: countMap.get(category.id) || 0,
+    }));
 
     return NextResponse.json({
       success: true,

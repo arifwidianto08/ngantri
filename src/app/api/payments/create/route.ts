@@ -4,7 +4,7 @@
  */
 
 import type { NextRequest } from "next/server";
-import { OrderRepositoryImpl } from "@/data/repositories/order-repository";
+import { inArray } from "drizzle-orm";
 import {
   createSuccessResponse,
   createErrorResponse,
@@ -12,9 +12,7 @@ import {
   ERROR_CODES,
 } from "@/lib/errors";
 import { db } from "@/lib/db";
-import { orderPayments, orderPaymentItems } from "@/data/schema";
-
-const orderRepository = new OrderRepositoryImpl();
+import { orders, orderPayments, orderPaymentItems } from "@/data/schema";
 
 const createPaymentHandler = async (request: NextRequest) => {
   const body = await request.json();
@@ -28,13 +26,13 @@ const createPaymentHandler = async (request: NextRequest) => {
     );
   }
 
-  // Get all order details
-  const orders = await Promise.all(
-    order_ids.map((id) => orderRepository.findById(id))
-  );
+  // Get all orders in a single query instead of N+1
+  const fetchedOrders = await db
+    .select()
+    .from(orders)
+    .where(inArray(orders.id, order_ids as string[]));
 
-  const notFoundOrders = orders.filter((order) => !order);
-  if (notFoundOrders.length > 0) {
+  if (fetchedOrders.length !== order_ids.length) {
     return createErrorResponse(
       ERROR_CODES.ORDER_NOT_FOUND,
       "One or more orders not found",
@@ -47,11 +45,11 @@ const createPaymentHandler = async (request: NextRequest) => {
       const payments = await tx
         .insert(orderPayments)
         .values(
-          orders.map((order) => ({
-            orderId: order?.id as string,
+          fetchedOrders.map((order) => ({
+            orderId: order.id,
             paymentUrl: "",
-            amount: order?.totalAmount as number,
-            status: "pending",
+            amount: order.totalAmount,
+            status: "unpaid",
             expiresAt: null,
           }))
         )
@@ -76,7 +74,7 @@ const createPaymentHandler = async (request: NextRequest) => {
     });
 
     return createSuccessResponse({
-      orders,
+      orders: fetchedOrders,
       payments,
     });
   } catch (error) {

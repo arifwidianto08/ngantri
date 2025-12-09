@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 
 interface Merchant {
@@ -15,34 +16,20 @@ interface Merchant {
 }
 
 export default function AdminMerchantsPage() {
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(
     null
   );
   const [processing, setProcessing] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchMerchants();
-  }, []);
-
-  const fetchMerchants = async () => {
-    try {
+  const { data: merchants = [], isLoading } = useQuery<Merchant[]>({
+    queryKey: ["admin-merchants"],
+    queryFn: async () => {
       const response = await fetch("/api/merchants");
       const result = await response.json();
-
-      if (result.success && Array.isArray(result.data)) {
-        setMerchants(result.data);
-      } else {
-        setMerchants([]);
-      }
-    } catch (error) {
-      console.error("Error fetching merchants:", error);
-      setMerchants([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return result.success && Array.isArray(result.data) ? result.data : [];
+    },
+  });
 
   const toggleAvailability = async (
     merchantId: string,
@@ -65,7 +52,7 @@ export default function AdminMerchantsPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchMerchants();
+        queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
         alert("Merchant availability updated!");
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
@@ -97,7 +84,7 @@ export default function AdminMerchantsPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchMerchants();
+        queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
         setSelectedMerchant(null);
         alert("Merchant deleted successfully!");
       } else {
@@ -111,7 +98,7 @@ export default function AdminMerchantsPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -134,7 +121,9 @@ export default function AdminMerchantsPage() {
         </div>
         <button
           type="button"
-          onClick={fetchMerchants}
+          onClick={() =>
+            queryClient.invalidateQueries({ queryKey: ["admin-merchants"] })
+          }
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
         >
           <svg

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Menu {
   id: string;
@@ -21,20 +22,20 @@ interface Merchant {
   name: string;
 }
 
+interface AdminMenusData {
+  menus: Menu[];
+  merchants: Merchant[];
+}
+
 export default function AdminMenusPage() {
-  const [menus, setMenus] = useState<Menu[]>([]);
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedMerchant, setSelectedMerchant] = useState<string>("all");
   const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [processing, setProcessing] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
+  const { data, isLoading } = useQuery<AdminMenusData>({
+    queryKey: ["admin-menus"],
+    queryFn: async () => {
       const [menusRes, merchantsRes] = await Promise.all([
         fetch("/api/admin/menus"),
         fetch("/api/merchants"),
@@ -43,19 +44,15 @@ export default function AdminMenusPage() {
       const menusResult = await menusRes.json();
       const merchantsResult = await merchantsRes.json();
 
-      if (menusResult.success) {
-        setMenus(menusResult.data);
-      }
+      return {
+        menus: menusResult.success ? menusResult.data : [],
+        merchants: merchantsResult.success ? merchantsResult.data : [],
+      };
+    },
+  });
 
-      if (merchantsResult.success) {
-        setMerchants(merchantsResult.data);
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const menus = data?.menus ?? [];
+  const merchants = data?.merchants ?? [];
 
   const toggleAvailability = async (menuId: string, isAvailable: boolean) => {
     setProcessing(true);
@@ -72,7 +69,7 @@ export default function AdminMenusPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchData();
+        queryClient.invalidateQueries({ queryKey: ["admin-menus"] });
         alert("Menu availability updated!");
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
@@ -100,7 +97,7 @@ export default function AdminMenusPage() {
       const result = await response.json();
 
       if (result.success) {
-        fetchData();
+        queryClient.invalidateQueries({ queryKey: ["admin-menus"] });
         setSelectedMenu(null);
         alert("Menu deleted successfully!");
       } else {
@@ -119,7 +116,7 @@ export default function AdminMenusPage() {
       ? menus
       : menus.filter((m) => m.merchantId === selectedMerchant);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -142,7 +139,9 @@ export default function AdminMenusPage() {
         </div>
         <button
           type="button"
-          onClick={fetchData}
+          onClick={() =>
+            queryClient.invalidateQueries({ queryKey: ["admin-menus"] })
+          }
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
         >
           <svg

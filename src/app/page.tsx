@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { UtensilsCrossed, Store, CheckCircle2 } from "lucide-react";
+import { UtensilsCrossed, Store } from "lucide-react";
 import {
   getOrCreateBuyerSession,
   updateSessionTableNumber,
-  setBuyerSession,
 } from "../lib/session";
 import type { BuyerSession } from "../lib/session";
 import { getOrCreateCart, addToCart } from "../lib/cart";
@@ -49,7 +48,6 @@ export default function Home() {
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [showSetupDialog, setShowSetupDialog] = useState(false);
   const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
 
   // Initialize session and cart on component mount
   useEffect(() => {
@@ -132,7 +130,6 @@ export default function Home() {
           tableNumber: Number.parseInt(data.tableNumber),
         });
         setCustomerName(data.customerName);
-        setCustomerPhone(data.whatsappNumber);
         setShowSetupDialog(false);
 
         // Store customer info in localStorage

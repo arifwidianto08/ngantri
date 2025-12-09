@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Image from "next/image";
+import { useQuery } from "@tanstack/react-query";
 import {
   ShoppingCart,
   DollarSign,
@@ -55,42 +56,46 @@ interface RevenueDay {
   revenue: number;
 }
 
+interface DashboardData {
+  merchant: Merchant;
+  stats: Stats;
+  ordersByStatus: OrderStatus[];
+  revenueByDay: RevenueDay[];
+}
+
 export default function MerchantDashboard() {
-  const [merchant, setMerchant] = useState<Merchant | null>(null);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [ordersByStatus, setOrdersByStatus] = useState<OrderStatus[]>([]);
-  const [revenueByDay, setRevenueByDay] = useState<RevenueDay[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
+  const { data, isLoading, error } = useQuery<DashboardData>({
+    queryKey: ["merchant-dashboard"],
+    queryFn: async () => {
       // Fetch merchant info
       const merchantResponse = await fetch("/api/merchants/me");
       const merchantResult = await merchantResponse.json();
 
-      if (merchantResult.success) {
-        setMerchant(merchantResult.data.merchant);
+      if (!merchantResult.success) {
+        throw new Error("Failed to fetch merchant info");
       }
 
       // Fetch stats
       const statsResponse = await fetch("/api/merchants/dashboard/stats");
       const statsResult = await statsResponse.json();
 
-      if (statsResult.success) {
-        setStats(statsResult.data.stats);
-        setOrdersByStatus(statsResult.data.ordersByStatus);
-        setRevenueByDay(statsResult.data.revenueByDay);
+      if (!statsResult.success) {
+        throw new Error("Failed to fetch stats");
       }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      return {
+        merchant: merchantResult.data.merchant,
+        stats: statsResult.data.stats,
+        ordersByStatus: statsResult.data.ordersByStatus,
+        revenueByDay: statsResult.data.revenueByDay,
+      };
+    },
+  });
+
+  const merchant = data?.merchant;
+  const stats = data?.stats;
+  const ordersByStatus = data?.ordersByStatus || [];
+  const revenueByDay = data?.revenueByDay || [];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -100,10 +105,23 @@ export default function MerchantDashboard() {
     }).format(amount);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 font-medium">Error loading dashboard</p>
+          <p className="text-gray-600 text-sm mt-1">
+            Please try refreshing the page
+          </p>
+        </div>
       </div>
     );
   }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getMerchantIdFromStorage,
   setMerchantIdInStorage,
@@ -24,14 +25,14 @@ export default function MerchantCategoriesPage() {
   const [merchantId, setMerchantId] = useState<string>("");
   const router = useRouter();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
+  const [initComplete, setInitComplete] = useState(false);
 
   useEffect(() => {
     const initializeMerchantId = async () => {
-      // Try to get from storage first (no network call)
       let id = getMerchantIdFromStorage();
 
       if (!id) {
-        // If not in storage, fetch and cache it
         try {
           const response = await fetch("/api/merchants/me");
           const result = await response.json();
@@ -50,28 +51,32 @@ export default function MerchantCategoriesPage() {
         }
       }
 
-      setMerchantId(id);
-      await fetchCategories(id);
+      setMerchantId(id || "");
+      setInitComplete(true);
+      setLoading(false);
     };
 
     initializeMerchantId();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  const fetchCategories = async (id: string) => {
-    try {
-      const response = await fetch(`/api/merchants/${id}/categories`);
+  const { data: catData } = useQuery({
+    queryKey: ["merchant-categories", merchantId],
+    queryFn: async () => {
+      if (!merchantId) return { categories: [] };
+      const response = await fetch(`/api/merchants/${merchantId}/categories`);
       const result = await response.json();
+      return { categories: result.success ? result.data.categories || [] : [] };
+    },
+    enabled: initComplete && !!merchantId,
+  });
 
-      if (result.success) {
-        setCategories(result.data.categories || []);
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    } finally {
+  useEffect(() => {
+    if (catData) {
+      setCategories(catData.categories);
       setLoading(false);
     }
-  };
+  }, [catData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +101,9 @@ export default function MerchantCategoriesPage() {
       const result = await response.json();
 
       if (result.success) {
-        await fetchCategories(merchantId);
+        queryClient.invalidateQueries({
+          queryKey: ["merchant-categories", merchantId],
+        });
         setShowForm(false);
         setEditingId(null);
         setFormData({ name: "" });
@@ -132,7 +139,9 @@ export default function MerchantCategoriesPage() {
       const result = await response.json();
 
       if (result.success) {
-        await fetchCategories(merchantId);
+        queryClient.invalidateQueries({
+          queryKey: ["merchant-categories", merchantId],
+        });
         showToast("Category deleted successfully!", "success");
       } else {
         showToast(

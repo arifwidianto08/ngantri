@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Order {
   id: string;
@@ -11,8 +12,6 @@ interface Order {
 }
 
 export default function MerchantOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
   const [statusCounts, setStatusCounts] = useState({
     all: 0,
@@ -22,34 +21,36 @@ export default function MerchantOrdersPage() {
     ready: 0,
     completed: 0,
   });
+  const queryClient = useQueryClient();
+
+  const { data: ordersData, isLoading } = useQuery({
+    queryKey: ["merchant-orders", filter],
+    queryFn: async () => {
+      const url =
+        filter === "all"
+          ? "/api/merchants/dashboard/orders"
+          : `/api/merchants/dashboard/orders?status=${filter}`;
+
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (result.success) {
+        return {
+          orders: result.data.orders,
+          statusCounts: result.data.statusCounts || {},
+        };
+      }
+      return { orders: [], statusCounts: {} };
+    },
+  });
+
+  const orders = ordersData?.orders ?? [];
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      setLoading(true);
-      try {
-        const url =
-          filter === "all"
-            ? "/api/merchants/dashboard/orders"
-            : `/api/merchants/dashboard/orders?status=${filter}`;
-
-        const response = await fetch(url);
-        const result = await response.json();
-
-        if (result.success) {
-          setOrders(result.data.orders);
-          if (result.data.statusCounts) {
-            setStatusCounts(result.data.statusCounts);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
-  }, [filter]);
+    if (ordersData) {
+      setStatusCounts(ordersData.statusCounts);
+    }
+  }, [ordersData]);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
@@ -62,22 +63,9 @@ export default function MerchantOrdersPage() {
       const result = await response.json();
 
       if (result.success) {
-        // Refetch orders after status update
-        const url =
-          filter === "all"
-            ? "/api/merchants/dashboard/orders"
-            : `/api/merchants/dashboard/orders?status=${filter}`;
-
-        const refreshResponse = await fetch(url);
-        const refreshResult = await refreshResponse.json();
-
-        if (refreshResult.success) {
-          setOrders(refreshResult.data.orders);
-          if (refreshResult.data.statusCounts) {
-            setStatusCounts(refreshResult.data.statusCounts);
-          }
-        }
-
+        queryClient.invalidateQueries({
+          queryKey: ["merchant-orders", filter],
+        });
         alert("Order status updated!");
       } else {
         alert(`Failed: ${result.error?.message || "Unknown error"}`);
@@ -96,7 +84,7 @@ export default function MerchantOrdersPage() {
     }).format(amount);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
@@ -113,25 +101,11 @@ export default function MerchantOrdersPage() {
         </div>
         <button
           type="button"
-          onClick={() => {
-            setLoading(true);
-            fetch(
-              filter === "all"
-                ? "/api/merchants/dashboard/orders"
-                : `/api/merchants/dashboard/orders?status=${filter}`
-            )
-              .then((res) => res.json())
-              .then((result) => {
-                if (result.success) {
-                  setOrders(result.data.orders);
-                  if (result.data.statusCounts) {
-                    setStatusCounts(result.data.statusCounts);
-                  }
-                }
-              })
-              .catch((error) => console.error("Error fetching orders:", error))
-              .finally(() => setLoading(false));
-          }}
+          onClick={() =>
+            queryClient.invalidateQueries({
+              queryKey: ["merchant-orders", filter],
+            })
+          }
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
         >
           Refresh
@@ -217,7 +191,7 @@ export default function MerchantOrdersPage() {
             No orders found for this filter
           </div>
         ) : (
-          orders.map((order) => (
+          orders.map((order: Order) => (
             <div key={order.id} className="bg-white rounded-lg shadow p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>

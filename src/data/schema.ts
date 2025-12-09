@@ -175,7 +175,7 @@ export const orderPayments = pgTable("order_payments", {
     .references(() => orders.id),
   paymentUrl: varchar("payment_url", { length: 500 }), // Payment URL for customer
   amount: integer("amount").notNull(), // Total amount in IDR for all orders
-  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, paid, expired, failed, cancelled
+  status: varchar("status", { length: 20 }).notNull().default("unpaid"), // unpaid, paid, expired, failed, cancelled
   paymentMethod: varchar("payment_method", { length: 50 }), // e.g., BANK_TRANSFER, E_WALLET, CREDIT_CARD
   paidAt: timestamp("paid_at", { withTimezone: true }), // When payment was confirmed
   expiresAt: timestamp("expires_at", { withTimezone: true }), // Payment link expiration

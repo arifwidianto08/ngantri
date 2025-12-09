@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getMerchantIdFromStorage,
   setMerchantIdInStorage,
 } from "@/lib/merchant-client";
 import { useToast } from "@/components/toast-provider";
+import type { MenuCategory } from "@/data/schema";
 
 interface Menu {
   id: string;
@@ -21,13 +23,9 @@ interface Menu {
 }
 
 export default function MerchantMenusPage() {
-  const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [merchantId, setMerchantId] = useState<string>("");
-  const [categories, setCategories] = useState<
-    Array<{ id: string; name: string }>
-  >([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -38,14 +36,15 @@ export default function MerchantMenusPage() {
   });
   const router = useRouter();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [initComplete, setInitComplete] = useState(false);
 
   useEffect(() => {
     const initializeMerchantId = async () => {
-      // Try to get from storage first (no network call)
       let id = getMerchantIdFromStorage();
 
       if (!id) {
-        // If not in storage, fetch and cache it
         try {
           const response = await fetch("/api/merchants/me");
           const result = await response.json();
@@ -64,43 +63,39 @@ export default function MerchantMenusPage() {
         }
       }
 
-      if (id) {
-        setMerchantId(id);
-        await fetchMenus(id);
-        await fetchCategories(id);
-      }
+      setMerchantId(id || "");
+      setInitComplete(true);
+      setLoading(false);
     };
 
     initializeMerchantId();
   }, [router]);
 
-  const fetchCategories = async (id: string) => {
-    try {
-      const response = await fetch(`/api/merchants/${id}/categories`);
-      const result = await response.json();
+  const { data: menuData } = useQuery({
+    queryKey: ["merchant-menus", merchantId],
+    queryFn: async () => {
+      if (!merchantId) return { menus: [], categories: [] };
 
-      if (result.success) {
-        setCategories(result.data.categories || []);
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    }
-  };
+      const [menusRes, categoriesRes] = await Promise.all([
+        fetch(`/api/merchants/${merchantId}/menus`),
+        fetch(`/api/merchants/${merchantId}/categories`),
+      ]);
 
-  const fetchMenus = async (id: string) => {
-    try {
-      const response = await fetch(`/api/merchants/${id}/menus`);
-      const result = await response.json();
+      const menusResult = await menusRes.json();
+      const categoriesResult = await categoriesRes.json();
 
-      if (result.success) {
-        setMenus(result.data.menus || []);
-      }
-    } catch (error) {
-      console.error("Error fetching menus:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return {
+        menus: menusResult.success ? menusResult.data.menus || [] : [],
+        categories: categoriesResult.success
+          ? categoriesResult.data.categories || []
+          : [],
+      };
+    },
+    enabled: initComplete && !!merchantId,
+  });
+
+  const menus = menuData?.menus ?? [];
+  const categories = menuData?.categories ?? [];
 
   const toggleAvailability = async (menuId: string, isAvailable: boolean) => {
     setProcessing(true);
@@ -117,7 +112,9 @@ export default function MerchantMenusPage() {
       const result = await response.json();
 
       if (result.success) {
-        await fetchMenus(merchantId);
+        queryClient.invalidateQueries({
+          queryKey: ["merchant-menus", merchantId],
+        });
         showToast("Menu availability updated!", "success");
       } else {
         showToast(
@@ -147,7 +144,9 @@ export default function MerchantMenusPage() {
       const result = await response.json();
 
       if (result.success) {
-        await fetchMenus(merchantId);
+        queryClient.invalidateQueries({
+          queryKey: ["merchant-menus", merchantId],
+        });
         showToast("Menu deleted successfully!", "success");
       } else {
         showToast(
@@ -191,7 +190,9 @@ export default function MerchantMenusPage() {
       const result = await response.json();
 
       if (result.success) {
-        await fetchMenus(merchantId);
+        queryClient.invalidateQueries({
+          queryKey: ["merchant-menus", merchantId],
+        });
         setShowForm(false);
         setEditingId(null);
         setFormData({ name: "", description: "", price: "", categoryId: "" });
@@ -309,7 +310,7 @@ export default function MerchantMenusPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="">Select a category</option>
-                {categories.map((cat) => (
+                {categories.map((cat: MenuCategory) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
                   </option>
@@ -362,20 +363,20 @@ export default function MerchantMenusPage() {
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Available</p>
           <p className="text-2xl font-bold text-green-600">
-            {menus.filter((m) => m.isAvailable).length}
+            {menus.filter((m: Menu) => m.isAvailable).length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Unavailable</p>
           <p className="text-2xl font-bold text-red-600">
-            {menus.filter((m) => !m.isAvailable).length}
+            {menus.filter((m: Menu) => !m.isAvailable).length}
           </p>
         </div>
       </div>
 
       {/* Menus Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {menus.map((menu) => (
+        {menus.map((menu: Menu) => (
           <div
             key={menu.id}
             className="bg-white rounded-lg shadow overflow-hidden"

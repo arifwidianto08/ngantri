@@ -158,47 +158,87 @@ export default function CheckoutPage() {
     cleanedWhatsapp: string,
     ordersByMerchant: Record<string, OrdersByMerchant>
   ): Promise<OrderResult[]> => {
-    const orderPromises = Object.entries(ordersByMerchant).map(
-      async ([merchantId, { merchantName, items }]) => {
-        if (!session) {
-          return { success: false, merchantName, error: "No session" };
-        }
+    if (!session) {
+      return Object.entries(ordersByMerchant).map(([, { merchantName }]) => ({
+        success: false,
+        merchantName,
+        error: "No session",
+      }));
+    }
 
-        const orderData = {
-          sessionId: session.id,
-          merchantId: merchantId,
-          customerName: customerName.trim(),
-          customerPhone: cleanedWhatsapp,
-          items: items.map((item) => ({
-            menuId: item.menuId,
-            menuName: item.menuName,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            menuImageUrl: item.imageUrl,
-          })),
-          notes: `Table ${session.tableNumber}`,
-        };
-
-        const response = await fetch("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(orderData),
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          return {
-            success: true,
+    const batchOrderData = {
+      sessionId: session.id,
+      customerName: customerName.trim(),
+      customerPhone: cleanedWhatsapp,
+      notes: `Table ${session.tableNumber}`,
+      ordersByMerchant: Object.entries(ordersByMerchant).reduce(
+        (acc, [merchantId, { merchantName, items }]) => {
+          acc[merchantId] = {
             merchantName,
-            orderId: result.data.order.id,
+            items: items.map((item) => ({
+              menuId: item.menuId,
+              menuName: item.menuName,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              menuImageUrl: item.imageUrl,
+            })),
           };
-        }
-        return { success: false, merchantName, error: result.error };
-      }
-    );
+          return acc;
+        },
+        {} as Record<
+          string,
+          {
+            merchantName: string;
+            items: Array<{
+              menuId: string;
+              menuName: string;
+              quantity: number;
+              unitPrice: number;
+              menuImageUrl?: string;
+            }>;
+          }
+        >
+      ),
+    };
 
-    return await Promise.all(orderPromises);
+    try {
+      const response = await fetch("/api/orders/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(batchOrderData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Convert batch response to OrderResult format
+        return result.data.orders.map(
+          (order: {
+            merchantId: string;
+            merchantName: string;
+            orderId: string;
+          }) => ({
+            success: true,
+            merchantName: order.merchantName,
+            orderId: order.orderId,
+          })
+        );
+      }
+
+      // If batch failed, return error for all merchants
+      return Object.values(ordersByMerchant).map(({ merchantName }) => ({
+        success: false,
+        merchantName,
+        error: result.error,
+      }));
+    } catch (error) {
+      // If batch request failed, return error for all merchants
+      return Object.values(ordersByMerchant).map(({ merchantName }) => ({
+        success: false,
+        merchantName,
+        error: error instanceof Error ? error.message : "Unknown error",
+      }));
+    }
   };
 
   const createPaymentsForOrders = async (orderIds: string[]): Promise<void> => {

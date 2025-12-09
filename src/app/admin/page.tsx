@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface DashboardStats {
   totalOrders: number;
@@ -46,34 +46,43 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
-
-  const fetchDashboardStats = async () => {
-    try {
+  const {
+    data: stats,
+    isLoading,
+    error,
+  } = useQuery<DashboardStats>({
+    queryKey: ["admin-dashboard-stats"],
+    queryFn: async () => {
       const response = await fetch("/api/admin/dashboard/stats");
       const result = await response.json();
 
-      if (result.success) {
-        setStats(result.data);
+      if (!result.success) {
+        throw new Error("Failed to fetch dashboard stats");
       }
-    } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  if (loading) {
+      return result.data;
+    },
+  });
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 font-medium">Error loading dashboard</p>
+          <p className="text-gray-600 text-sm mt-1">
+            Please try refreshing the page
+          </p>
         </div>
       </div>
     );
