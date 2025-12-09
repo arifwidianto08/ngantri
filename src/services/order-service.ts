@@ -103,12 +103,7 @@ export class OrderService implements IOrderService {
     await this.validateOrderData(data);
 
     // Calculate order totals
-    const calculation = calculateOrderTotal(
-      data.items.map((item) => ({
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-      }))
-    );
+    const calculation = calculateOrderTotal(data.items);
 
     // Create order (no minimum order requirement)
     const orderData: NewOrder = {
@@ -321,13 +316,16 @@ export class OrderService implements IOrderService {
     endDate?: Date
   ): Promise<OrderStats> {
     try {
-      // TODO: Implement proper stats calculation
-      // This would require aggregation queries in the repository
+      const stats = await this.orderRepository.getOrderStats(merchantId, {
+        dateFrom: startDate,
+        dateTo: endDate,
+      });
+
       return {
-        totalOrders: 0,
-        totalRevenue: 0,
-        averageOrderValue: 0,
-        statusBreakdown: {},
+        totalOrders: stats.totalOrders,
+        totalRevenue: stats.totalRevenue,
+        averageOrderValue: stats.averageOrderValue,
+        statusBreakdown: stats.ordersByStatus,
       };
     } catch (error) {
       throw errors.internal("Failed to fetch order statistics", error);
