@@ -26,8 +26,7 @@ describe("Merchants API", () => {
 
       const data = await res.json();
       expect(data.success).toBe(true);
-      expect(data.data).toHaveProperty("merchants");
-      expect(Array.isArray(data.data.merchants)).toBe(true);
+      expect(Array.isArray(data.data)).toBe(true);
     });
 
     it("should return merchant objects with required fields", async () => {
@@ -35,8 +34,8 @@ describe("Merchants API", () => {
       const res = await fetch(`${BASE_URL}/merchants`);
       const data = await res.json();
 
-      if (data.data.merchants.length > 0) {
-        const merchant = data.data.merchants[0];
+      if (data.data.length > 0) {
+        const merchant = data.data[0];
         expect(merchant).toHaveProperty("id");
         expect(merchant).toHaveProperty("name");
         expect(merchant).toHaveProperty("phoneNumber");
@@ -52,7 +51,7 @@ describe("Merchants API", () => {
       const res = await fetch(`${BASE_URL}/merchants`);
       const data = await res.json();
 
-      for (const merchant of data.data.merchants) {
+      for (const merchant of data.data) {
         expect(merchant.isAvailable).toBe(true);
       }
     });
@@ -65,8 +64,8 @@ describe("Merchants API", () => {
       if (!serverAvailable) return;
       const res = await fetch(`${BASE_URL}/merchants`);
       const data = await res.json();
-      if (data.data.merchants.length > 0) {
-        merchantId = data.data.merchants[0].id;
+      if (data.data.length > 0) {
+        merchantId = data.data[0].id;
       }
     });
 
