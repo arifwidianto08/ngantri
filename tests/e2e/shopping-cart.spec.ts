@@ -125,16 +125,16 @@ test.describe("Shopping Cart", () => {
     await page.goto("/cart");
     await page.waitForLoadState("networkidle");
 
-    // Click clear cart button (this triggers browser confirm dialog)
+    // Click clear cart button
     const clearBtn = page.locator("[data-testid='clear-cart-btn']");
     await expect(clearBtn).toBeVisible({ timeout: 5000 });
-
-    // Accept the browser confirmation dialog
-    page.once("dialog", (dialog) => {
-      dialog.accept();
-    });
-
     await clearBtn.click();
+    await page.waitForTimeout(300);
+
+    // Find and click the confirm button in the ConfirmDialog
+    const confirmButton = page.locator('button:has-text("Clear Cart")');
+    await expect(confirmButton).toBeVisible({ timeout: 5000 });
+    await confirmButton.click();
     await page.waitForTimeout(300);
 
     // Verify cart is empty

@@ -28,8 +28,18 @@ const bulkAddToCartHandler = async (
   const { sessionId } = await params;
 
   try {
-    const body = await request.json();
-    const { items } = body;
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return createErrorResponse(
+        ERROR_CODES.VALIDATION_ERROR,
+        "Invalid or empty request body",
+        400
+      );
+    }
+
+    const { items } = body as Record<string, unknown>;
 
     // Validate items array
     if (!Array.isArray(items) || items.length === 0) {
