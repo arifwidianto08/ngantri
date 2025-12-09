@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useToast } from "@/components/toast-provider";
 
 interface Merchant {
   id: string;
@@ -24,6 +25,7 @@ export default function AdminMerchantsPage() {
   const [processing, setProcessing] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const {
     data = [],
@@ -61,13 +63,25 @@ export default function AdminMerchantsPage() {
 
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
-        alert("Merchant availability updated!");
+
+        toast({
+          title: "Success",
+          description: "Merchant availability updated!",
+        });
       } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        toast({
+          title: "Error",
+          description: result.error?.message || "Unknown error",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error updating availability:", error);
-      alert("Failed to update merchant availability");
+      toast({
+        title: "Error",
+        description: "Failed to update merchant availability",
+        variant: "destructive",
+      });
     } finally {
       setProcessing(false);
     }
@@ -93,12 +107,25 @@ export default function AdminMerchantsPage() {
         queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
         setSelectedMerchant(null);
         setDeleteId(null);
+
+        toast({
+          title: "Merchant deleted",
+          description: "The merchant has been removed successfully.",
+        });
       } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
+        toast({
+          title: "Error",
+          description: result.error?.message || "Unknown error",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error deleting merchant:", error);
-      alert("Failed to delete merchant");
+      toast({
+        title: "Error",
+        description: "Failed to delete merchant",
+        variant: "destructive",
+      });
     } finally {
       setProcessing(false);
     }

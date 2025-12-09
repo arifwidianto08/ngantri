@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { useToast } from "@/components/toast-provider";
 
 interface Order {
   id: string;
@@ -14,15 +15,8 @@ interface Order {
 
 export default function MerchantOrdersPage() {
   const [filter, setFilter] = useState<string>("all");
-  const [statusCounts, setStatusCounts] = useState({
-    all: 0,
-    pending: 0,
-    accepted: 0,
-    preparing: 0,
-    ready: 0,
-    completed: 0,
-  });
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ["merchant-orders", filter],
@@ -32,50 +26,50 @@ export default function MerchantOrdersPage() {
           ? "/api/merchants/dashboard/orders"
           : `/api/merchants/dashboard/orders?status=${filter}`;
 
-      const response = await fetch(url);
-      const result = await response.json();
+      const res = await fetch(url);
+      const result = await res.json();
 
-      if (result.success) {
-        return {
-          orders: result.data.orders,
-          statusCounts: result.data.statusCounts || {},
-        };
-      }
-      return { orders: [], statusCounts: {} };
+      if (!result.success) throw new Error("Failed to fetch orders");
+
+      return {
+        orders: result.data.orders,
+        statusCounts: result.data.statusCounts || {},
+      };
     },
   });
 
   const orders = ordersData?.orders ?? [];
-
-  useEffect(() => {
-    if (ordersData) {
-      setStatusCounts(ordersData.statusCounts);
-    }
-  }, [ordersData]);
-
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    try {
-      const response = await fetch(`/api/orders/${orderId}/status`, {
+  const updateOrderStatusMutation = useMutation({
+    mutationFn: async ({
+      orderId,
+      newStatus,
+    }: {
+      orderId: string;
+      newStatus: string;
+    }) => {
+      const res = await fetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        queryClient.invalidateQueries({
-          queryKey: ["merchant-orders", filter],
-        });
-        alert("Order status updated!");
-      } else {
-        alert(`Failed: ${result.error?.message || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error("Error updating order:", error);
-      alert("Failed to update order");
-    }
-  };
+      const result = await res.json();
+      if (!result.success)
+        throw new Error(result.error?.message || "Unknown error");
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["merchant-orders", filter] });
+      toast({ title: "Success", description: "Order status updated!" });
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -85,7 +79,7 @@ export default function MerchantOrdersPage() {
     }).format(amount);
   };
 
-  if (isLoading) {
+  if (isLoading || updateOrderStatusMutation.isPending) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
@@ -133,7 +127,7 @@ export default function MerchantOrdersPage() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            All ({statusCounts.all})
+            All ({ordersData?.statusCounts?.all || 0})
           </button>
           <button
             type="button"
@@ -144,7 +138,7 @@ export default function MerchantOrdersPage() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Pending ({statusCounts.pending})
+            Pending ({ordersData?.statusCounts?.pending || 0})
           </button>
           <button
             type="button"
@@ -155,7 +149,7 @@ export default function MerchantOrdersPage() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Accepted ({statusCounts.accepted})
+            Accepted ({ordersData?.statusCounts?.accepted || 0})
           </button>
           <button
             type="button"
@@ -166,7 +160,7 @@ export default function MerchantOrdersPage() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Preparing ({statusCounts.preparing})
+            Preparing ({ordersData?.statusCounts?.preparing || 0})
           </button>
           <button
             type="button"
@@ -177,7 +171,7 @@ export default function MerchantOrdersPage() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Ready ({statusCounts.ready})
+            Ready ({ordersData?.statusCounts?.ready || 0})
           </button>
           <button
             type="button"
@@ -188,7 +182,7 @@ export default function MerchantOrdersPage() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Completed ({statusCounts.completed})
+            Completed ({ordersData?.statusCounts?.completed || 0})
           </button>
         </div>
       </div>
@@ -249,14 +243,24 @@ export default function MerchantOrdersPage() {
                   <>
                     <button
                       type="button"
-                      onClick={() => updateOrderStatus(order.id, "accepted")}
+                      onClick={() =>
+                        updateOrderStatusMutation.mutate({
+                          orderId: order.id,
+                          newStatus: "accepted",
+                        })
+                      }
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
                     >
                       Accept Order
                     </button>
                     <button
                       type="button"
-                      onClick={() => updateOrderStatus(order.id, "cancelled")}
+                      onClick={() =>
+                        updateOrderStatusMutation.mutate({
+                          orderId: order.id,
+                          newStatus: "cancelled",
+                        })
+                      }
                       className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
                     >
                       Cancel
@@ -267,7 +271,12 @@ export default function MerchantOrdersPage() {
                 {order.status === "accepted" && (
                   <button
                     type="button"
-                    onClick={() => updateOrderStatus(order.id, "preparing")}
+                    onClick={() =>
+                      updateOrderStatusMutation.mutate({
+                        orderId: order.id,
+                        newStatus: "preparing",
+                      })
+                    }
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
                   >
                     Start Preparing
@@ -277,7 +286,12 @@ export default function MerchantOrdersPage() {
                 {order.status === "preparing" && (
                   <button
                     type="button"
-                    onClick={() => updateOrderStatus(order.id, "ready")}
+                    onClick={() =>
+                      updateOrderStatusMutation.mutate({
+                        orderId: order.id,
+                        newStatus: "ready",
+                      })
+                    }
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
                   >
                     Mark as Ready
@@ -287,7 +301,12 @@ export default function MerchantOrdersPage() {
                 {order.status === "ready" && (
                   <button
                     type="button"
-                    onClick={() => updateOrderStatus(order.id, "completed")}
+                    onClick={() =>
+                      updateOrderStatusMutation.mutate({
+                        orderId: order.id,
+                        newStatus: "completed",
+                      })
+                    }
                     className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm font-medium"
                   >
                     Complete Order
