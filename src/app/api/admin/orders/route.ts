@@ -7,7 +7,7 @@ import {
   orderPayments,
   orderItems,
 } from "@/data/schema";
-import { desc, isNull, eq, sql, inArray } from "drizzle-orm";
+import { desc, isNull, eq, sql, and } from "drizzle-orm";
 import { getAdminSession } from "@/lib/admin-auth";
 
 export async function GET(request: Request) {
@@ -26,15 +26,29 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get("status");
+    const page = Number.parseInt(searchParams.get("page") || "1", 10);
+    const pageSize = Number.parseInt(searchParams.get("pageSize") || "10", 10);
 
-    // Build where conditions
+    const offset = (page - 1) * pageSize;
+
+    // Build where condition using Drizzle AND
     const whereConditions = [isNull(orders.deletedAt)];
     if (statusFilter && statusFilter !== "all") {
       whereConditions.push(eq(orders.status, statusFilter));
     }
+    const whereCondition = and(...whereConditions);
 
-    // Get all orders with merchant info and payment status
-    const allOrders = await db
+    // Get total count for pagination
+    const countResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(orders)
+      .where(whereCondition);
+
+    const totalCount = countResult[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    // Get paginated orders with all items in a single query using JSON aggregation
+    const ordersWithAllData = await db
       .select({
         id: orders.id,
         sessionId: orders.sessionId,
@@ -50,46 +64,37 @@ export async function GET(request: Request) {
           sql<string>`COALESCE(${orderPayments.status}, 'unpaid')`.as(
             "payment_status"
           ),
+        items: sql<
+          Array<{
+            id: string;
+            menuName: string;
+            quantity: number;
+            unitPrice: number;
+            subtotal: number;
+          }>
+        >`COALESCE(json_agg(json_build_object(
+          'id', ${orderItems.id},
+          'menuName', ${orderItems.menuName},
+          'quantity', ${orderItems.quantity},
+          'unitPrice', ${orderItems.unitPrice},
+          'subtotal', ${orderItems.subtotal}
+        ) ORDER BY ${orderItems.createdAt}) FILTER (WHERE ${orderItems.id} IS NOT NULL), '[]'::json)`,
       })
       .from(orders)
       .leftJoin(merchants, eq(orders.merchantId, merchants.id))
+      .leftJoin(orderItems, eq(orders.id, orderItems.orderId))
       .leftJoin(orderPaymentItems, eq(orders.id, orderPaymentItems.orderId))
       .leftJoin(
         orderPayments,
         eq(orderPaymentItems.paymentId, orderPayments.id)
       )
-      .where(
-        whereConditions.length > 1
-          ? sql`${whereConditions.join(" AND ")}`
-          : whereConditions[0]
-      )
+      .where(whereCondition)
+      .groupBy(orders.id, merchants.id, orderPayments.id)
       .orderBy(desc(orders.createdAt))
-      .limit(100);
+      .limit(pageSize)
+      .offset(offset);
 
-    // Get all order IDs
-    const orderIds = allOrders.map((o) => o.id);
-
-    // Fetch all items for these orders in one query
-    const allItems =
-      orderIds.length > 0
-        ? await db
-            .select()
-            .from(orderItems)
-            .where(inArray(orderItems.orderId, orderIds))
-        : [];
-
-    // Group items by order ID
-    const itemsByOrderId = allItems.reduce((acc, item) => {
-      if (!acc[item.orderId]) acc[item.orderId] = [];
-      acc[item.orderId].push(item);
-      return acc;
-    }, {} as Record<string, typeof allItems>);
-
-    // Combine orders with their items
-    const ordersWithItems = allOrders.map((order) => ({
-      ...order,
-      items: itemsByOrderId[order.id] || [],
-    }));
+    const ordersWithItems = ordersWithAllData;
 
     // Get stats (always return stats for all statuses)
     const statusCounts = await db
@@ -113,10 +118,13 @@ export async function GET(request: Request) {
       )
       .where(isNull(orders.deletedAt));
 
-    const totalCount = statusCounts.reduce((sum, item) => sum + item.count, 0);
+    const totalStatsCount = statusCounts.reduce(
+      (sum, item) => sum + item.count,
+      0
+    );
 
     const stats = {
-      total: totalCount,
+      total: totalStatsCount,
       pending: statusCounts.find((s) => s.status === "pending")?.count || 0,
       accepted: statusCounts.find((s) => s.status === "accepted")?.count || 0,
       preparing: statusCounts.find((s) => s.status === "preparing")?.count || 0,
@@ -129,6 +137,12 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       data: ordersWithItems,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages,
+      },
       stats,
     });
   } catch (error) {

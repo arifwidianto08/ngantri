@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast-provider";
@@ -32,7 +32,13 @@ interface Order {
 
 interface OrdersResponse {
   success: boolean;
-  data: Order[];
+  data?: Order[];
+  pagination?: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+  };
   stats?: {
     total: number;
     pending: number;
@@ -71,7 +77,8 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AdminOrdersPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [processing, setProcessing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [confirmState, setConfirmState] = useState<{
     type: "mark-paid" | "update-status" | "cancel" | null;
     orderId: string | null;
@@ -88,15 +95,18 @@ export default function AdminOrdersPage() {
     isLoading,
     error,
     refetch,
+    isFetching,
   } = useQuery<OrdersResponse>({
-    queryKey: ["admin-orders", filterStatus],
+    queryKey: ["admin-orders", filterStatus, page, pageSize],
     queryFn: async () => {
-      const url =
-        filterStatus === "all"
-          ? "/api/admin/orders"
-          : `/api/admin/orders?status=${filterStatus}`;
+      const url = new URL("/api/admin/orders", window.location.origin);
+      if (filterStatus !== "all") {
+        url.searchParams.append("status", filterStatus);
+      }
+      url.searchParams.append("page", page.toString());
+      url.searchParams.append("pageSize", pageSize.toString());
 
-      const response = await fetch(url);
+      const response = await fetch(url.toString());
       const result = await response.json();
 
       if (!result.success) {
@@ -107,7 +117,77 @@ export default function AdminOrdersPage() {
     },
   });
 
-  const orders = ordersResponse?.data || [];
+  // Mutation for marking order as paid
+  const markAsPaidMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await fetch(`/api/admin/orders/${orderId}/payment`, {
+        method: "PATCH",
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error?.message || "Failed to mark as paid");
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      showToast("Order marked as paid successfully", "success");
+      void refetch();
+      setConfirmState({ type: null, orderId: null });
+    },
+    onError: (error) => {
+      showToast(
+        error instanceof Error ? error.message : "Failed to mark order as paid",
+        "error"
+      );
+    },
+  });
+
+  // Mutation for updating order status
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({
+      orderId,
+      status,
+    }: {
+      orderId: string;
+      status: string;
+    }) => {
+      const response = await fetch(`/api/admin/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(
+          result.error?.message || "Failed to update order status"
+        );
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      showToast("Order status updated successfully", "success");
+      void refetch();
+      setConfirmState({ type: null, orderId: null });
+    },
+    onError: (error) => {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Failed to update order status",
+        "error"
+      );
+    },
+  });
+
+  const orders = Array.isArray(ordersResponse?.data) ? ordersResponse.data : [];
   const stats = ordersResponse?.stats || {
     total: 0,
     pending: 0,
@@ -125,34 +205,7 @@ export default function AdminOrdersPage() {
 
   const confirmMarkAsPaid = async () => {
     if (!confirmState.orderId) return;
-
-    setProcessing(true);
-
-    try {
-      const response = await fetch(
-        `/api/admin/orders/${confirmState.orderId}/payment`,
-        {
-          method: "PATCH",
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.success) {
-        void refetch();
-        setConfirmState({ type: null, orderId: null });
-      } else {
-        showToast(
-          `Failed: ${result.error?.message || "Unknown error"}`,
-          "error"
-        );
-      }
-    } catch (error) {
-      console.error("Error marking as paid:", error);
-      showToast("Failed to mark order as paid", "error");
-    } finally {
-      setProcessing(false);
-    }
+    await markAsPaidMutation.mutateAsync(confirmState.orderId);
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
@@ -161,48 +214,14 @@ export default function AdminOrdersPage() {
 
   const confirmUpdateStatus = async () => {
     if (!confirmState.orderId || !confirmState.newStatus) return;
-
-    setProcessing(true);
-
-    try {
-      const response = await fetch(
-        `/api/admin/orders/${confirmState.orderId}/status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status: confirmState.newStatus }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.success) {
-        void refetch();
-        setConfirmState({ type: null, orderId: null });
-      } else {
-        showToast(
-          `Failed: ${result.error?.message || "Unknown error"}`,
-          "error"
-        );
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
-      showToast("Failed to update order status", "error");
-    } finally {
-      setProcessing(false);
-    }
+    await updateStatusMutation.mutateAsync({
+      orderId: confirmState.orderId,
+      status: confirmState.newStatus,
+    });
   };
 
   const cancelOrder = async (orderId: string) => {
-    setConfirmState({ type: "cancel", orderId });
-  };
-
-  const confirmCancelOrder = async () => {
-    if (!confirmState.orderId) return;
-
-    await confirmUpdateStatus();
+    setConfirmState({ type: "cancel", orderId, newStatus: "cancelled" });
   };
 
   return (
@@ -215,13 +234,14 @@ export default function AdminOrdersPage() {
           </h1>
           <p className="text-gray-600 mt-1">Manage all customer orders</p>
         </div>
+
         <Button
           type="button"
           onClick={() => void refetch()}
-          disabled={isLoading}
+          disabled={isLoading || isFetching}
           variant="outline"
         >
-          {isLoading ? (
+          {isLoading || isFetching ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Refreshing...</span>
@@ -418,6 +438,65 @@ export default function AdminOrdersPage() {
         </Card>
       )}
 
+      {/* Pagination */}
+      {!isLoading && !error && orders.length > 0 && (
+        <div className="flex items-center justify-between px-4 py-4 bg-white rounded-lg shadow flex-wrap gap-4">
+          <div className="text-sm text-gray-600">
+            Page {page} of {ordersResponse?.pagination?.totalPages || 1} (Total:{" "}
+            {ordersResponse?.pagination?.totalCount || 0} orders)
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="page-size" className="text-sm text-gray-600">
+                Per page:
+              </label>
+              <select
+                id="page-size"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                variant="outline"
+                size="sm"
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-gray-600">Page {page}</span>
+              <Button
+                onClick={() =>
+                  setPage(
+                    Math.min(
+                      ordersResponse?.pagination?.totalPages || 1,
+                      page + 1
+                    )
+                  )
+                }
+                disabled={
+                  page === (ordersResponse?.pagination?.totalPages || 1)
+                }
+                variant="outline"
+                size="sm"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Order Details Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -556,7 +635,7 @@ export default function AdminOrdersPage() {
                       markAsPaid(selectedOrder.id);
                       setSelectedOrder(null);
                     }}
-                    disabled={processing}
+                    disabled={markAsPaidMutation.isPending}
                     className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400 font-medium"
                   >
                     Mark as Paid
@@ -578,7 +657,10 @@ export default function AdminOrdersPage() {
                         updateOrderStatus(selectedOrder.id, status);
                         setSelectedOrder(null);
                       }}
-                      disabled={processing || selectedOrder.status === status}
+                      disabled={
+                        updateStatusMutation.isPending ||
+                        selectedOrder.status === status
+                      }
                       className={`px-4 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
                         selectedOrder.status === status
                           ? "bg-gray-300 text-gray-600"
@@ -597,7 +679,7 @@ export default function AdminOrdersPage() {
                       cancelOrder(selectedOrder.id);
                       setSelectedOrder(null);
                     }}
-                    disabled={processing}
+                    disabled={updateStatusMutation.isPending}
                     className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400 font-medium"
                   >
                     Cancel Order
@@ -617,7 +699,7 @@ export default function AdminOrdersPage() {
         title="Mark Order as Paid"
         description="Are you sure you want to mark this order as PAID?"
         onConfirm={confirmMarkAsPaid}
-        isLoading={processing}
+        isLoading={markAsPaidMutation.isPending}
         variant="primary"
         confirmText="Mark as Paid"
       />
@@ -634,7 +716,7 @@ export default function AdminOrdersPage() {
             : "pending"
         }?`}
         onConfirm={confirmUpdateStatus}
-        isLoading={processing}
+        isLoading={updateStatusMutation.isPending}
         variant="primary"
         confirmText="Update Status"
       />
@@ -646,8 +728,8 @@ export default function AdminOrdersPage() {
         }
         title="Cancel Order"
         description="Are you sure you want to CANCEL this order? This action cannot be undone."
-        onConfirm={confirmCancelOrder}
-        isLoading={processing}
+        onConfirm={confirmUpdateStatus}
+        isLoading={updateStatusMutation.isPending}
         variant="danger"
         confirmText="Cancel Order"
       />

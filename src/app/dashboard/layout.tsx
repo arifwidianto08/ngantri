@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   IconDashboard,
   IconPackage,
@@ -37,11 +37,12 @@ export default function MerchantDashboardLayout({
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     try {
       await fetch("/api/merchants/logout", { method: "POST" });
-      router.push("/login");
+      router.push("/dashboard/login");
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -53,14 +54,14 @@ export default function MerchantDashboardLayout({
       const result = await response.json();
 
       if (!result.success || !result.data?.merchant) {
-        router.push("/login");
+        router.push("/dashboard/login");
         return;
       }
 
       setMerchant(result.data.merchant);
     } catch (error) {
       console.error("Auth check failed:", error);
-      router.push("/login");
+      router.push("/dashboard/login");
     } finally {
       setLoading(false);
     }
@@ -69,6 +70,11 @@ export default function MerchantDashboardLayout({
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Don't wrap login page with sidebar
+  if (pathname === "/dashboard/login") {
+    return <div className="min-h-screen w-full">{children}</div>;
+  }
 
   if (loading) {
     return (

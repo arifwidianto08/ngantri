@@ -136,7 +136,7 @@ export default function MerchantLogin() {
           </Card>
 
           <FieldDescription className="px-6 text-center">
-            By clicking continue, you agree to our{" "}
+            By clicking Sign In, you agree to our{" "}
             <Link
               href="/"
               className="underline underline-offset-4 hover:no-underline"

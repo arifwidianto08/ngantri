@@ -8,7 +8,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Merchant Dashboard", () => {
   test.beforeEach(async ({ page }) => {
     // Login as merchant
-    await page.goto("/login");
+    await page.goto("/dashboard/login");
     await page.fill("[data-testid='merchant-phone']", "+6281234567890");
     await page.fill("[data-testid='merchant-password']", "password123");
     await page.click("[data-testid='merchant-login-btn']");

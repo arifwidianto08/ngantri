@@ -1,18 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/toast-provider";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { MenuCategory } from "@/data/schema";
 import {
   getMerchantIdFromStorage,
   setMerchantIdInStorage,
 } from "@/lib/merchant-client";
-import { useToast } from "@/components/toast-provider";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import type { MenuCategory } from "@/data/schema";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Plus } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface Menu {
   id: string;
@@ -34,6 +35,7 @@ export default function MerchantMenusPage() {
     description: "",
     price: "",
     categoryId: "",
+    imageUrl: "",
   });
   const router = useRouter();
   const { showToast } = useToast();
@@ -54,12 +56,12 @@ export default function MerchantMenusPage() {
             id = result.data.merchant.id;
             setMerchantIdInStorage(id);
           } else {
-            router.push("/login");
+            router.push("/dashboard/login");
             return;
           }
         } catch (error) {
           console.error("Error fetching merchant:", error);
-          router.push("/login");
+          router.push("/dashboard/login");
           return;
         }
       }
@@ -107,6 +109,7 @@ export default function MerchantMenusPage() {
       description: string | null;
       price: number;
       categoryId: string;
+      imageUrl?: string;
       id?: string;
     }) => {
       const method = variables.id ? "PATCH" : "POST";
@@ -122,6 +125,7 @@ export default function MerchantMenusPage() {
           description: variables.description,
           price: variables.price,
           categoryId: variables.categoryId,
+          imageUrl: variables.imageUrl || null,
         }),
       });
 
@@ -139,7 +143,13 @@ export default function MerchantMenusPage() {
       });
       setShowForm(false);
       setEditingId(null);
-      setFormData({ name: "", description: "", price: "", categoryId: "" });
+      setFormData({
+        name: "",
+        description: "",
+        price: "",
+        categoryId: "",
+        imageUrl: "",
+      });
       showToast(editingId ? "Menu updated!" : "Menu created!", "success");
     },
     onError: (error) => {
@@ -229,6 +239,7 @@ export default function MerchantMenusPage() {
       description: formData.description || null,
       price: Number.parseFloat(formData.price),
       categoryId: formData.categoryId,
+      imageUrl: formData.imageUrl || undefined,
       id: editingId || undefined,
     });
   };
@@ -240,6 +251,7 @@ export default function MerchantMenusPage() {
       description: menu.description || "",
       price: menu.price.toString(),
       categoryId: menu.categoryId,
+      imageUrl: menu.imageUrl || "",
     });
     setShowForm(true);
   };
@@ -247,7 +259,13 @@ export default function MerchantMenusPage() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ name: "", description: "", price: "", categoryId: "" });
+    setFormData({
+      name: "",
+      description: "",
+      price: "",
+      categoryId: "",
+      imageUrl: "",
+    });
   };
 
   const formatCurrency = (amount: number) => {
@@ -258,7 +276,7 @@ export default function MerchantMenusPage() {
     }).format(amount);
   };
 
-  if (isLoading || isFetching) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
@@ -268,12 +286,57 @@ export default function MerchantMenusPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Menus</h1>
           <p className="text-gray-600 mt-1">Manage your menu items</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>+ Add Menu</Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Create Menu</span>
+          </Button>
+          <Button
+            type="button"
+            onClick={() =>
+              void queryClient.invalidateQueries({
+                queryKey: ["merchant-menus", merchantId],
+              })
+            }
+            disabled={isLoading || isFetching}
+            variant="outline"
+          >
+            {isLoading || isFetching ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Refreshing...</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <title>Refresh</title>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span>Refresh</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Create/Edit Form */}
@@ -348,6 +411,36 @@ export default function MerchantMenusPage() {
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Image URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={formData.imageUrl}
+                  onChange={(e) =>
+                    setFormData({ ...formData, imageUrl: e.target.value })
+                  }
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                />
+                {formData.imageUrl && (
+                  <div className="mt-3 flex justify-center">
+                    <div className="relative w-48 h-48 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+                      <Image
+                        src={formData.imageUrl}
+                        alt="Preview"
+                        fill
+                        className="object-cover"
+                        onError={() => {
+                          console.error("Failed to load image");
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">

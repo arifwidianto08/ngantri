@@ -2,56 +2,68 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireMerchantAuth } from "@/lib/merchant-auth";
 import { db } from "@/lib/db";
-import { orders } from "@/data/schema";
-import { eq, and, isNull, desc, sql, gt } from "drizzle-orm";
+import { orders, orderPaymentItems, orderPayments } from "@/data/schema";
+import { eq, and, isNull, desc, sql } from "drizzle-orm";
 
 /**
  * GET /api/merchants/dashboard/orders
  * Get all orders for the authenticated merchant with pagination
- * Query params: ?status=pending|accepted|preparing|ready|completed&limit=20&cursor=orderId
+ * Query params: ?status=pending|accepted|preparing|ready|completed&page=1&pageSize=10
  */
 export async function GET(request: NextRequest) {
   try {
     const merchant = await requireMerchantAuth(request);
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get("status");
-    const limitParam = searchParams.get("limit");
-    const cursorParam = searchParams.get("cursor");
+    const page = Number.parseInt(searchParams.get("page") || "1", 10);
+    const pageSize = Number.parseInt(searchParams.get("pageSize") || "10", 10);
 
-    const limit = Math.min(
-      limitParam ? Number.parseInt(limitParam, 10) : 20,
-      100
-    );
+    const offset = (page - 1) * pageSize;
 
-    // Build the where conditions
+    // Build where conditions
     const whereConditions = [
       eq(orders.merchantId, merchant.id),
       isNull(orders.deletedAt),
     ];
 
-    // Add status filter if provided
     if (statusFilter && statusFilter !== "all") {
       whereConditions.push(eq(orders.status, statusFilter));
     }
 
-    // Add cursor for pagination
-    if (cursorParam) {
-      whereConditions.push(gt(orders.id, cursorParam));
-    }
+    const whereCondition = and(...whereConditions);
 
-    // Get orders for this merchant with pagination
+    // Get total count for pagination
+    const countResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(orders)
+      .where(whereCondition);
+
+    const totalCount = countResult[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    // Get paginated orders with payment status
     const merchantOrders = await db
       .select({
-        orderId: orders.id,
+        id: orders.id,
         status: orders.status,
         totalAmount: orders.totalAmount,
         createdAt: orders.createdAt,
         sessionId: orders.sessionId,
+        paymentStatus:
+          sql<string>`COALESCE(${orderPayments.status}, 'unpaid')`.as(
+            "payment_status"
+          ),
       })
       .from(orders)
-      .where(and(...whereConditions))
+      .leftJoin(orderPaymentItems, eq(orders.id, orderPaymentItems.orderId))
+      .leftJoin(
+        orderPayments,
+        eq(orderPaymentItems.paymentId, orderPayments.id)
+      )
+      .where(whereCondition)
       .orderBy(desc(orders.createdAt))
-      .limit(limit + 1);
+      .limit(pageSize)
+      .offset(offset);
 
     // Get status counts for all statuses
     const statusCounts = await db
@@ -64,11 +76,14 @@ export async function GET(request: NextRequest) {
       .groupBy(orders.status);
 
     // Calculate total count
-    const totalCount = statusCounts.reduce((sum, item) => sum + item.count, 0);
+    const totalStatsCount = statusCounts.reduce(
+      (sum, item) => sum + item.count,
+      0
+    );
 
     // Convert to object for easier lookup
     const counts = {
-      all: totalCount,
+      all: totalStatsCount,
       pending: statusCounts.find((s) => s.status === "pending")?.count || 0,
       accepted: statusCounts.find((s) => s.status === "accepted")?.count || 0,
       preparing: statusCounts.find((s) => s.status === "preparing")?.count || 0,
@@ -76,26 +91,16 @@ export async function GET(request: NextRequest) {
       completed: statusCounts.find((s) => s.status === "completed")?.count || 0,
     };
 
-    // Check if there are more results
-    const hasMore = merchantOrders.length > limit;
-    const data = hasMore ? merchantOrders.slice(0, -1) : merchantOrders;
-    const nextCursor = hasMore ? data[data.length - 1]?.orderId : undefined;
-
     return NextResponse.json({
       success: true,
       data: {
-        orders: data.map((order) => ({
-          id: order.orderId,
-          status: order.status,
-          totalAmount: order.totalAmount,
-          createdAt: order.createdAt,
-          sessionId: order.sessionId,
-        })),
+        orders: merchantOrders,
         statusCounts: counts,
         pagination: {
-          limit,
-          cursor: nextCursor,
-          hasMore,
+          page,
+          pageSize,
+          totalCount,
+          totalPages,
         },
       },
     });

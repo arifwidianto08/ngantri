@@ -3,7 +3,7 @@
 import Image from "next/image";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Store, Loader2 } from "lucide-react";
+import { Store, Loader2, BadgeCheck } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -212,9 +212,11 @@ export default function MerchantDashboardPage() {
                   <h2 className="text-xl font-semibold text-gray-900">
                     {merchant.name}
                   </h2>
-                  <Badge
-                    variant={merchant.isAvailable ? "default" : "secondary"}
-                  >
+
+                  <Badge variant="default">
+                    {merchant.isAvailable && (
+                      <BadgeCheck className="fill-blue-600" />
+                    )}
                     {merchant.isAvailable ? "Active" : "Inactive"}
                   </Badge>
                 </div>
@@ -338,6 +340,26 @@ export default function MerchantDashboardPage() {
                 className="h-[300px] w-full px-6 pb-6"
               >
                 <AreaChart data={ordersByStatus}>
+                  <defs>
+                    <linearGradient
+                      id="fillOrdersMerchant"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.8}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.1}
+                      />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid vertical={false} />
                   <XAxis
                     dataKey="status"
@@ -357,14 +379,18 @@ export default function MerchantDashboardPage() {
                   <Area
                     dataKey="count"
                     type="natural"
-                    fill="hsl(var(--primary))"
+                    fill="url(#fillOrdersMerchant)"
                     stroke="hsl(var(--primary))"
                     isAnimationActive={true}
                   />
                 </AreaChart>
               </ChartContainer>
             ) : (
-              <p className="text-sm text-gray-500 text-center py-12">No data</p>
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">
+                  No data available
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -391,6 +417,26 @@ export default function MerchantDashboardPage() {
                     revenue: item.revenue,
                   }))}
                 >
+                  <defs>
+                    <linearGradient
+                      id="fillRevenueMerchant"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={1}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.8}
+                      />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid vertical={false} />
                   <XAxis
                     dataKey="date"
@@ -413,14 +459,18 @@ export default function MerchantDashboardPage() {
                   />
                   <Bar
                     dataKey="revenue"
-                    fill="hsl(var(--primary))"
+                    fill="url(#fillRevenueMerchant)"
                     radius={[8, 8, 0, 0]}
                     isAnimationActive={true}
                   />
                 </BarChart>
               </ChartContainer>
             ) : (
-              <p className="text-sm text-gray-500 text-center py-12">No data</p>
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">
+                  No data available
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>

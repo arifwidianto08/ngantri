@@ -268,36 +268,58 @@ export default function AdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ChartContainer
-              config={ordersChartConfig}
-              className="h-[300px] w-full px-6 pb-6"
-            >
-              <AreaChart data={stats.ordersByStatus}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="status"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  tickFormatter={(value) =>
-                    STATUS_LABELS[value as string] || value
-                  }
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent labelKey="status" indicator="dot" />
-                  }
-                />
-                <Area
-                  dataKey="count"
-                  type="natural"
-                  fill="hsl(var(--primary))"
-                  stroke="hsl(var(--primary))"
-                  isAnimationActive={true}
-                />
-              </AreaChart>
-            </ChartContainer>
+            {stats.ordersByStatus && stats.ordersByStatus.length > 0 ? (
+              <ChartContainer
+                config={ordersChartConfig}
+                className="h-[300px] w-full px-6 pb-6"
+              >
+                <AreaChart data={stats.ordersByStatus}>
+                  <defs>
+                    <linearGradient id="fillOrders" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="5%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.8}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.1}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="status"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tickFormatter={(value) =>
+                      STATUS_LABELS[value as string] || value
+                    }
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={
+                      <ChartTooltipContent labelKey="status" indicator="dot" />
+                    }
+                  />
+                  <Area
+                    dataKey="count"
+                    type="natural"
+                    fill="url(#fillOrders)"
+                    stroke="hsl(var(--primary))"
+                    isAnimationActive={true}
+                  />
+                </AreaChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">
+                  No data available
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -309,45 +331,75 @@ export default function AdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ChartContainer
-              config={revenueChartConfig}
-              className="h-[300px] w-full px-6 pb-6"
-            >
-              <BarChart
-                data={stats.revenueByDay.slice(0, 7).map((item) => ({
-                  date: new Date(item.date).toLocaleDateString("id-ID", {
-                    day: "2-digit",
-                    month: "short",
-                  }),
-                  revenue: item.revenue,
-                }))}
+            {stats.revenueByDay && stats.revenueByDay.length > 0 ? (
+              <ChartContainer
+                config={revenueChartConfig}
+                className="h-[300px] w-full px-6 pb-6"
               >
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `Rp ${(value / 1000).toFixed(0)}K`}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent labelKey="date" indicator="dot" />
-                  }
-                />
-                <Bar
-                  dataKey="revenue"
-                  fill="hsl(var(--primary))"
-                  radius={[8, 8, 0, 0]}
-                  isAnimationActive={true}
-                />
-              </BarChart>
-            </ChartContainer>
+                <BarChart
+                  data={stats.revenueByDay.slice(0, 7).map((item) => ({
+                    date: new Date(item.date).toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                    }),
+                    revenue: item.revenue,
+                  }))}
+                >
+                  <defs>
+                    <linearGradient
+                      id="fillRevenue"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={1}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="hsl(var(--primary))"
+                        stopOpacity={0.8}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) =>
+                      `Rp ${(value / 1000).toFixed(0)}K`
+                    }
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={
+                      <ChartTooltipContent labelKey="date" indicator="dot" />
+                    }
+                  />
+                  <Bar
+                    dataKey="revenue"
+                    fill="url(#fillRevenue)"
+                    radius={[8, 8, 0, 0]}
+                    isAnimationActive={true}
+                  />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">
+                  No data available
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
