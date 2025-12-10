@@ -1,36 +1,86 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import * as React from "react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import Link from "next/link";
 import {
-  LayoutDashboard,
-  Package,
-  UtensilsCrossed,
-  Folder,
-  LogOut,
-  Store,
-} from "lucide-react";
+  IconDashboard,
+  IconPackage,
+  IconChefHat,
+  IconFolder,
+  IconBuildingStore,
+} from "@tabler/icons-react";
+
+import { NavMain } from "@/components/nav-main";
+import { NavUser } from "@/components/nav-user";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
+const adminData = {
+  user: {
+    name: "Admin",
+    email: "admin@ngantri.com",
+    avatar: "/avatars/admin.jpg",
+  },
+  navMain: [
+    {
+      title: "Dashboard",
+      url: "/admin",
+      icon: IconDashboard,
+    },
+    {
+      title: "Orders",
+      url: "/admin/orders",
+      icon: IconPackage,
+    },
+    {
+      title: "Merchants",
+      url: "/admin/merchants",
+      icon: IconBuildingStore,
+    },
+    {
+      title: "Menus",
+      url: "/admin/menus",
+      icon: IconChefHat,
+    },
+    {
+      title: "Categories",
+      url: "/admin/categories",
+      icon: IconFolder,
+    },
+  ],
+};
+
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const pathname = usePathname();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [isLoginPage, setIsLoginPage] = useState(false);
 
   useEffect(() => {
-    // Check if on login page
-    if (pathname === "/admin/login") {
-      setLoading(false);
-      return;
-    }
-
-    // Verify authentication for other admin pages
     const checkAuth = async () => {
+      const isLogin =
+        typeof window !== "undefined" &&
+        window.location.pathname === "/admin/login";
+      setIsLoginPage(isLogin);
+
+      if (isLogin) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await fetch("/api/admin/me");
         if (!response.ok) {
@@ -45,23 +95,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     };
 
     checkAuth();
-  }, [pathname, router]);
+  }, [router]);
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/admin/logout", { method: "POST" });
-      router.push("/admin/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
-
-  // Show login page without layout
-  if (pathname === "/admin/login") {
+  if (isLoginPage) {
     return <>{children}</>;
   }
 
-  // Show loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -73,65 +112,38 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     );
   }
 
-  const navigation = [
-    { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
-    { name: "Orders", href: "/admin/orders", icon: Package },
-    { name: "Merchants", href: "/admin/merchants", icon: Store },
-    { name: "Menus", href: "/admin/menus", icon: UtensilsCrossed },
-    { name: "Categories", href: "/admin/categories", icon: Folder },
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
-        <div className="flex flex-col h-full">
-          {/* Logo/Brand */}
-          <div className="p-6 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-gray-900">Ngantri</h1>
-            <p className="text-sm text-gray-600 mt-1">Admin Dashboard</p>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-gray-50 text-gray-900"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Logout Button */}
-          <div className="p-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
+    <SidebarProvider>
+      <Sidebar collapsible="offcanvas">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              >
+                <a href="/admin">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    <span className="font-semibold">N</span>
+                  </div>
+                  <span className="truncate font-semibold">Ngantri Admin</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          <NavMain items={adminData.navMain} />
+        </SidebarContent>
+        <SidebarFooter>
+          <NavUser user={adminData.user} />
+        </SidebarFooter>
+      </Sidebar>
 
       {/* Main Content */}
-      <div className="ml-64">
+      <div className="flex-1">
         <div className="p-8">{children}</div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
