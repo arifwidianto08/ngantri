@@ -86,7 +86,11 @@ export default function AdminDashboardPage() {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error("Failed to fetch dashboard stats");
+        const errorMessage =
+          typeof result.error === "string"
+            ? result.error
+            : result.error?.message || "Failed to fetch dashboard stats";
+        throw new Error(errorMessage);
       }
 
       return result.data;

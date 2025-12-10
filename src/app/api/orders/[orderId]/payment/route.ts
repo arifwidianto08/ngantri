@@ -12,7 +12,7 @@ const orderService = new OrderService(orderRepository);
 
 /**
  * PATCH /api/orders/[orderId]/payment
- * Mark order as paid (merchant only)
+ * Mark order as paid or unpaid (merchant only)
  */
 export async function PATCH(
   request: NextRequest,
@@ -23,29 +23,33 @@ export async function PATCH(
     const { orderId } = await params;
     const authenticatedMerchant = await requireMerchantAuth(request);
 
+    let body = {};
+    try {
+      body = await request.json();
+    } catch {
+      // Empty or invalid body, use defaults
+    }
+    const status = (body as { status?: string }).status || "paid";
+
     // Get order
     const order = await orderService.findOrderById(orderId);
     if (order.merchantId !== authenticatedMerchant.id) {
       return NextResponse.json(
         {
           success: false,
-          error: { message: "You can only mark your own orders as paid" },
+          error: { message: "You can only update your own orders" },
         },
         { status: 403 }
       );
     }
 
-    // Update order status to completed
-    const [updatedOrder] = await db
-      .update(orders)
-      .set({
-        status: "completed",
-        updatedAt: now,
-      })
-      .where(and(eq(orders.id, orderId), isNull(orders.deletedAt)))
-      .returning();
+    // Get current order
+    const [currentOrder] = await db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.id, orderId), isNull(orders.deletedAt)));
 
-    if (!updatedOrder) {
+    if (!currentOrder) {
       return NextResponse.json(
         {
           success: false,
@@ -55,13 +59,13 @@ export async function PATCH(
       );
     }
 
-    // Update order_payments using orderId through junction table
+    // Update only payment status, not order status
     await db
       .update(orderPayments)
       .set({
-        status: "paid",
-        paymentMethod: "cash",
-        paidAt: now,
+        status: status || "paid",
+        paymentMethod: status === "paid" ? "cash" : null,
+        paidAt: status === "paid" ? now : null,
         updatedAt: now,
       })
       .where(
@@ -71,10 +75,15 @@ export async function PATCH(
         )
       );
 
+    const message =
+      status === "paid"
+        ? "Order payment marked as paid"
+        : "Order payment marked as unpaid";
+
     return NextResponse.json({
       success: true,
-      data: updatedOrder,
-      message: "Order marked as paid and completed",
+      data: currentOrder,
+      message,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
@@ -87,11 +96,11 @@ export async function PATCH(
       );
     }
 
-    console.error("Error marking order as paid:", error);
+    console.error("Error updating order payment status:", error);
     return NextResponse.json(
       {
         success: false,
-        error: { message: "Failed to mark order as paid" },
+        error: { message: "Failed to update order payment status" },
       },
       { status: 500 }
     );

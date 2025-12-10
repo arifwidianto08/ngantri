@@ -49,7 +49,7 @@ export async function GET(
       items,
       payment: latestPayment
         ? {
-            id: latestPayment.xenditInvoiceId,
+            id: latestPayment.id,
             url: latestPayment.paymentUrl,
             status: latestPayment.status,
             amount: latestPayment.amount,

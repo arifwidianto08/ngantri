@@ -1,15 +1,8 @@
-import { eq, desc, gt, and, isNull, sql } from "drizzle-orm";
+import { eq, desc, gt, and, isNull, count } from "drizzle-orm";
 import { db } from "../../lib/db";
-import {
-  menus,
-  menuCategories,
-  Menu,
-  NewMenu,
-  MenuCategory,
-  NewMenuCategory,
-} from "../schema";
-import { MenuRepository } from "../interfaces/menu-repository";
-
+import { menus, menuCategories } from "../schema";
+import type { MenuRepository } from "../interfaces/menu-repository";
+import type { Menu, NewMenu, MenuCategory, NewMenuCategory } from "../schema";
 export class MenuRepositoryImpl implements MenuRepository {
   // Menu Category operations
   async createCategory(category: NewMenuCategory): Promise<MenuCategory> {
@@ -266,7 +259,7 @@ export class MenuRepositoryImpl implements MenuRepository {
     }
 
     const [result] = await db
-      .select({ count: sql<number>`COUNT(*)` })
+      .select({ count: count(menus.id) })
       .from(menus)
       .where(and(...conditions));
 

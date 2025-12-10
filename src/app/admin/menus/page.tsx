@@ -106,7 +106,7 @@ export default function AdminMenusPage() {
       const result = await response.json();
       if (!result.success) {
         throw new Error(
-          result.error?.message || "Failed to update availability"
+          result?.error?.message || "Failed to update availability"
         );
       }
       return result;
@@ -136,7 +136,7 @@ export default function AdminMenusPage() {
 
       const result = await response.json();
       if (!result.success) {
-        throw new Error(result.error?.message || "Failed to delete menu");
+        throw new Error(result?.error?.message || "Failed to delete menu");
       }
       return result;
     },

@@ -149,7 +149,7 @@ export default function EditMenuPage() {
         queryClient.invalidateQueries({ queryKey: ["admin-menus"] });
         router.push("/admin/menus");
       } else {
-        setFormError(`Failed: ${result.error?.message || "Unknown error"}`);
+        setFormError(`Failed: ${result?.error?.message || "Unknown error"}`);
       }
     } catch (error) {
       console.error("Error saving menu:", error);

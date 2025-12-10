@@ -80,7 +80,7 @@ export default function AdminOrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [confirmState, setConfirmState] = useState<{
-    type: "mark-paid" | "update-status" | "cancel" | null;
+    type: "mark-paid" | "mark-unpaid" | "update-status" | "cancel" | null;
     orderId: string | null;
     newStatus?: string;
   }>({
@@ -122,12 +122,16 @@ export default function AdminOrdersPage() {
     mutationFn: async (orderId: string) => {
       const response = await fetch(`/api/admin/orders/${orderId}/payment`, {
         method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "paid" }),
       });
 
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(result.error?.message || "Failed to mark as paid");
+        throw new Error(result?.error?.message || "Failed to mark as paid");
       }
 
       return result;
@@ -140,6 +144,39 @@ export default function AdminOrdersPage() {
     onError: (error) => {
       showToast(
         error instanceof Error ? error.message : "Failed to mark order as paid",
+        "error"
+      );
+    },
+  });
+
+  // Mutation for marking order as unpaid
+  const markAsUnpaidMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await fetch(`/api/admin/orders/${orderId}/payment`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "unpaid" }),
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result?.error?.message || "Failed to mark as unpaid");
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      showToast("Order marked as unpaid successfully", "success");
+      void refetch();
+      setConfirmState({ type: null, orderId: null });
+    },
+    onError: (error) => {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Failed to mark order as unpaid",
         "error"
       );
     },
@@ -206,6 +243,15 @@ export default function AdminOrdersPage() {
   const confirmMarkAsPaid = async () => {
     if (!confirmState.orderId) return;
     await markAsPaidMutation.mutateAsync(confirmState.orderId);
+  };
+
+  const markAsUnpaid = async (orderId: string) => {
+    setConfirmState({ type: "mark-unpaid", orderId });
+  };
+
+  const confirmMarkAsUnpaid = async () => {
+    if (!confirmState.orderId) return;
+    await markAsUnpaidMutation.mutateAsync(confirmState.orderId);
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
@@ -628,7 +674,7 @@ export default function AdminOrdersPage() {
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-gray-900">Actions</h3>
 
-                {selectedOrder.paymentStatus !== "paid" && (
+                {selectedOrder.paymentStatus === "unpaid" && (
                   <button
                     type="button"
                     onClick={() => {
@@ -639,6 +685,20 @@ export default function AdminOrdersPage() {
                     className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400 font-medium"
                   >
                     Mark as Paid
+                  </button>
+                )}
+
+                {selectedOrder.paymentStatus === "paid" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markAsUnpaid(selectedOrder.id);
+                      setSelectedOrder(null);
+                    }}
+                    disabled={markAsUnpaidMutation.isPending}
+                    className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400 font-medium"
+                  >
+                    Mark as Unpaid
                   </button>
                 )}
 
@@ -702,6 +762,19 @@ export default function AdminOrdersPage() {
         isLoading={markAsPaidMutation.isPending}
         variant="primary"
         confirmText="Mark as Paid"
+      />
+
+      <ConfirmDialog
+        open={confirmState.type === "mark-unpaid"}
+        onOpenChange={(open) =>
+          !open && setConfirmState({ type: null, orderId: null })
+        }
+        title="Mark Order as Unpaid"
+        description="Are you sure you want to mark this order as UNPAID?"
+        onConfirm={confirmMarkAsUnpaid}
+        isLoading={markAsUnpaidMutation.isPending}
+        variant="primary"
+        confirmText="Mark as Unpaid"
       />
 
       <ConfirmDialog

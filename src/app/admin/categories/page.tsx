@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Plus } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast-provider";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 interface Category {
@@ -43,8 +43,12 @@ export default function AdminCategoriesPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ name: "" });
+  const [formMerchantId, setFormMerchantId] = useState<string>("");
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
+  const { toast } = useToast();
 
   const [categoriesQuery, merchantsQuery] = useQueries({
     queries: [
@@ -86,6 +90,88 @@ export default function AdminCategoriesPage() {
     await Promise.all([categoriesQuery.refetch(), merchantsQuery.refetch()]);
   };
 
+  // Mutation: Save category (create or update)
+  const saveCategoryMutation = useMutation({
+    mutationFn: async (variables: {
+      name: string;
+      merchantId: string;
+      id?: string;
+    }) => {
+      if (variables.id) {
+        // Update existing category
+        const response = await fetch(`/api/admin/categories/${variables.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: variables.name,
+          }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          const errorMessage =
+            typeof result.error === "string"
+              ? result.error
+              : result.error?.message || "Failed to update category";
+          throw new Error(errorMessage);
+        }
+
+        if (!result.success) {
+          throw new Error(
+            result?.error?.message || "Failed to update category"
+          );
+        }
+
+        return result.data;
+      }
+
+      // Create new category
+      const response = await fetch("/api/admin/categories/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: variables.name,
+          merchantId: variables.merchantId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        const errorMessage =
+          typeof result.error === "string"
+            ? result.error
+            : result.error?.message || "Failed to create category";
+        throw new Error(errorMessage);
+      }
+
+      if (!result.success) {
+        throw new Error(result?.error?.message || "Failed to create category");
+      }
+
+      return result.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
+      setShowForm(false);
+      setEditingId(null);
+      setFormData({ name: "" });
+      setFormMerchantId("");
+      toast({
+        title: "Success",
+        description: editingId ? "Category updated!" : "Category created!",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteClick = (categoryId: string) => {
     setDeleteId(categoryId);
   };
@@ -107,19 +193,59 @@ export default function AdminCategoriesPage() {
         });
         setDeleteId(null);
 
-        showToast("Category deleted successfully", "success");
+        toast({
+          title: "Success",
+          description: "Category deleted successfully",
+        });
       } else {
-        showToast(
-          `Failed: ${result.error?.message || "Unknown error"}`,
-          "error"
-        );
+        toast({
+          title: "Error",
+          description: `Failed: ${result.error?.message || "Unknown error"}`,
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error deleting category:", error);
-      showToast("Failed to delete category", "error");
+      toast({
+        title: "Error",
+        description: "Failed to delete category",
+        variant: "destructive",
+      });
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleEdit = (category: Category) => {
+    setEditingId(category.id);
+    setFormData({ name: category.name });
+    setFormMerchantId(category.merchantId);
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData({ name: "" });
+    setFormMerchantId("");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formMerchantId) {
+      toast({
+        title: "Validation Error",
+        description: "Category name and merchant are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    saveCategoryMutation.mutate({
+      name: formData.name,
+      merchantId: formMerchantId,
+      id: editingId || undefined,
+    });
   };
 
   if (isLoading) {
@@ -143,38 +269,107 @@ export default function AdminCategoriesPage() {
             Manage menu categories across all merchants
           </p>
         </div>
-        <Button
-          type="button"
-          onClick={() => void refetch()}
-          disabled={isLoading || isFetching}
-          variant="outline"
-        >
-          {isLoading || isFetching ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Refreshing...</span>
-            </>
-          ) : (
-            <>
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <title>Refresh</title>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              <span>Refresh</span>
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Create Category</span>
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void refetch()}
+            disabled={isLoading || isFetching}
+            variant="outline"
+          >
+            {isLoading || isFetching ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Refreshing...</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <title>Refresh</title>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span>Refresh</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
+
+      {/* Create/Edit Form */}
+      {showForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {editingId ? "Edit Category" : "Create New Category"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Merchant
+                </label>
+                <select
+                  value={formMerchantId}
+                  onChange={(e) => setFormMerchantId(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                >
+                  <option value="">Select a merchant</option>
+                  {merchants.map((merchant) => (
+                    <option key={merchant.id} value={merchant.id}>
+                      {merchant.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ name: e.target.value })}
+                  placeholder="e.g., Main Course"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="submit" disabled={saveCategoryMutation.isPending}>
+                  {editingId ? "Update" : "Create"}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={saveCategoryMutation.isPending}
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -257,14 +452,23 @@ export default function AdminCategoriesPage() {
                       {new Date(category.createdAt).toLocaleString("id-ID")}
                     </td>
                     <td className="px-6 py-4">
-                      <Button
-                        onClick={() => handleDeleteClick(category.id)}
-                        disabled={processing}
-                        variant="destructive"
-                        size="sm"
-                      >
-                        Delete
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => handleEdit(category)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteClick(category.id)}
+                          disabled={processing}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

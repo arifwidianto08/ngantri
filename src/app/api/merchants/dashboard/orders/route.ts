@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireMerchantAuth } from "@/lib/merchant-auth";
 import { db } from "@/lib/db";
 import { orders, orderPaymentItems, orderPayments } from "@/data/schema";
-import { eq, and, isNull, desc, sql } from "drizzle-orm";
+import { eq, and, isNull, desc, sql, count } from "drizzle-orm";
 
 /**
  * GET /api/merchants/dashboard/orders
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     // Get total count for pagination
     const countResult = await db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: count(orders.id) })
       .from(orders)
       .where(whereCondition);
 
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     const statusCounts = await db
       .select({
         status: orders.status,
-        count: sql<number>`count(${orders.id})::int`,
+        count: count(orders.id),
       })
       .from(orders)
       .where(and(eq(orders.merchantId, merchant.id), isNull(orders.deletedAt)))

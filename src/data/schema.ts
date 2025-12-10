@@ -49,29 +49,22 @@ export const merchants = pgTable("merchants", {
 });
 
 // Menu Categories - organizational structure for menu items
-export const menuCategories = pgTable(
-  "menu_categories",
-  {
-    id: uuid("id")
-      .primaryKey()
-      .default(sql`uuidv7()`),
-    merchantId: uuid("merchant_id")
-      .notNull()
-      .references(() => merchants.id),
-    name: varchar("name", { length: 100 }).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-  },
-  (table) => ({
-    // Unique category name per merchant
-    uniqueMerchantCategory: unique().on(table.merchantId, table.name),
-  })
-);
+export const menuCategories = pgTable("menu_categories", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`uuidv7()`),
+  merchantId: uuid("merchant_id")
+    .notNull()
+    .references(() => merchants.id),
+  name: varchar("name", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
 
 // Menus - individual food items with pricing
 export const menus = pgTable("menus", {

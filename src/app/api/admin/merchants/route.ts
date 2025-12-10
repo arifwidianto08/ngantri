@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
 import { merchants } from "@/data/schema";
-import { isNull, eq, count } from "drizzle-orm";
+import { isNull, count } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,32 +21,37 @@ export async function GET(request: NextRequest) {
     );
     const offset = (page - 1) * pageSize;
 
-    // Get total count
-    const [countResult] = await db
-      .select({ total: count(merchants.id) })
-      .from(merchants)
-      .where(isNull(merchants.deletedAt));
+    // Build where clause once
+    const whereClause = isNull(merchants.deletedAt);
+
+    // Run count + paginated list concurrently
+    const [countResult, merchantList] = await Promise.all([
+      db
+        .select({ total: count(merchants.id) })
+        .from(merchants)
+        .where(whereClause)
+        .then(([row]) => row),
+
+      db
+        .select({
+          id: merchants.id,
+          phoneNumber: merchants.phoneNumber,
+          merchantNumber: merchants.merchantNumber,
+          name: merchants.name,
+          imageUrl: merchants.imageUrl,
+          description: merchants.description,
+          isAvailable: merchants.isAvailable,
+          createdAt: merchants.createdAt,
+        })
+        .from(merchants)
+        .where(whereClause)
+        .orderBy(merchants.name)
+        .limit(pageSize)
+        .offset(offset),
+    ]);
 
     const totalCount = countResult?.total || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
-
-    // Fetch paginated merchants
-    const merchantList = await db
-      .select({
-        id: merchants.id,
-        phoneNumber: merchants.phoneNumber,
-        merchantNumber: merchants.merchantNumber,
-        name: merchants.name,
-        imageUrl: merchants.imageUrl,
-        description: merchants.description,
-        isAvailable: merchants.isAvailable,
-        createdAt: merchants.createdAt,
-      })
-      .from(merchants)
-      .where(isNull(merchants.deletedAt))
-      .orderBy(merchants.name)
-      .limit(pageSize)
-      .offset(offset);
 
     return NextResponse.json({
       success: true,

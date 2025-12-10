@@ -304,12 +304,12 @@ export default function MerchantDashboardPage() {
         </Card>
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground mb-1">Available</p>
+            <p className="text-sm text-muted-foreground mb-1">Active Menus</p>
             <p className="text-3xl font-bold mb-4">
               {stats?.availableMenus || 0}
             </p>
             <p className="text-xs text-muted-foreground">
-              Currently active items
+              Currently available menus
             </p>
           </CardContent>
         </Card>
@@ -319,7 +319,7 @@ export default function MerchantDashboardPage() {
             <p className="text-3xl font-bold mb-4">
               {stats?.totalCategories || 0}
             </p>
-            <p className="text-xs text-muted-foreground">Menu organization</p>
+            <p className="text-xs text-muted-foreground">Menu categories</p>
           </CardContent>
         </Card>
       </div>

@@ -24,14 +24,23 @@ export async function PATCH(
   try {
     const { orderId } = await params;
     const now = new Date();
+
+    let body = {};
+    try {
+      body = await request.json();
+    } catch {
+      // Empty or invalid body, use defaults
+    }
+    const status = (body as { status?: string }).status || "paid";
+
     const { payment } = await db.transaction(async (tx) => {
       // Find and update related order_payments
       const [payment] = await tx
         .update(orderPayments)
         .set({
-          status: "paid",
-          paymentMethod: "cash",
-          paidAt: now,
+          status: status || "paid",
+          paymentMethod: status === "paid" ? "cash" : null,
+          paidAt: status === "paid" ? now : null,
           updatedAt: now,
         })
         .where(
@@ -50,10 +59,13 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       data: payment,
-      message: "Order marked as paid",
+      message:
+        status === "paid"
+          ? "Order payment marked as paid"
+          : "Order payment marked as unpaid",
     });
   } catch (error) {
-    console.error("Error marking order as paid:", error);
+    console.error("Error updating order payment status:", error);
     return NextResponse.json(
       {
         success: false,

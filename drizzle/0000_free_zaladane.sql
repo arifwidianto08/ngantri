@@ -26,8 +26,7 @@ CREATE TABLE "menu_categories" (
 	"name" varchar(100) NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"deleted_at" timestamp with time zone,
-	CONSTRAINT "menu_categories_merchant_id_name_unique" UNIQUE("merchant_id", "name")
+	"deleted_at" timestamp with time zone
 );
 
 --> statement-breakpoint

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast-provider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,13 @@ export default function MerchantOrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    type: "mark-paid" | "mark-unpaid" | null;
+    orderId: string | null;
+  }>({
+    type: null,
+    orderId: null,
+  });
 
   const { showToast } = useToast();
 
@@ -152,19 +160,58 @@ export default function MerchantOrdersPage() {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(result.error?.message || "Failed to mark as paid");
+        throw new Error(result?.error?.message || "Failed to mark as paid");
       }
 
       return result;
     },
     onSuccess: () => {
       showToast("Order marked as paid successfully", "success");
-      void refetch();
+      setConfirmState({ type: null, orderId: null });
       setSelectedOrder(null);
+      void refetch();
     },
     onError: (error) => {
       showToast(
         error instanceof Error ? error.message : "Failed to mark order as paid",
+        "error"
+      );
+    },
+  });
+
+  // Mutation for marking order as unpaid
+  const markAsUnpaidMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await fetch(
+        `/api/merchants/dashboard/orders/${orderId}/payment`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: "unpaid" }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result?.error?.message || "Failed to mark as unpaid");
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      showToast("Order marked as unpaid successfully", "success");
+      setConfirmState({ type: null, orderId: null });
+      setSelectedOrder(null);
+      void refetch();
+    },
+    onError: (error) => {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Failed to mark order as unpaid",
         "error"
       );
     },
@@ -331,6 +378,37 @@ export default function MerchantOrdersPage() {
                         >
                           Details
                         </Button>
+                        {order.paymentStatus === "unpaid" && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              setConfirmState({
+                                type: "mark-paid",
+                                orderId: order.id,
+                              });
+                            }}
+                            disabled={markAsPaidMutation.isPending}
+                          >
+                            Mark as Paid
+                          </Button>
+                        )}
+                        {order.paymentStatus === "paid" && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setConfirmState({
+                                type: "mark-unpaid",
+                                orderId: order.id,
+                              });
+                            }}
+                            disabled={markAsUnpaidMutation.isPending}
+                          >
+                            Mark as Unpaid
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -518,16 +596,35 @@ export default function MerchantOrdersPage() {
               <div className="space-y-3">
                 <h3 className="text-lg font-semibold text-gray-900">Actions</h3>
 
-                {selectedOrder.paymentStatus !== "paid" && (
+                {selectedOrder.paymentStatus === "unpaid" && (
                   <button
                     type="button"
                     onClick={() => {
-                      void markAsPaidMutation.mutateAsync(selectedOrder.id);
+                      setConfirmState({
+                        type: "mark-paid",
+                        orderId: selectedOrder.id,
+                      });
                     }}
                     disabled={markAsPaidMutation.isPending}
                     className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400 font-medium"
                   >
                     Mark as Paid
+                  </button>
+                )}
+
+                {selectedOrder.paymentStatus === "paid" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmState({
+                        type: "mark-unpaid",
+                        orderId: selectedOrder.id,
+                      });
+                    }}
+                    disabled={markAsUnpaidMutation.isPending}
+                    className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400 font-medium"
+                  >
+                    Mark as Unpaid
                   </button>
                 )}
 
@@ -568,6 +665,40 @@ export default function MerchantOrdersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmState.type === "mark-paid"}
+        onOpenChange={(open) =>
+          !open && setConfirmState({ type: null, orderId: null })
+        }
+        title="Mark Order as Paid"
+        description="Are you sure you want to mark this order as PAID?"
+        onConfirm={() => {
+          if (confirmState.orderId) {
+            void markAsPaidMutation.mutateAsync(confirmState.orderId);
+          }
+        }}
+        isLoading={markAsPaidMutation.isPending}
+        variant="primary"
+        confirmText="Mark as Paid"
+      />
+
+      <ConfirmDialog
+        open={confirmState.type === "mark-unpaid"}
+        onOpenChange={(open) =>
+          !open && setConfirmState({ type: null, orderId: null })
+        }
+        title="Mark Order as Unpaid"
+        description="Are you sure you want to mark this order as UNPAID?"
+        onConfirm={() => {
+          if (confirmState.orderId) {
+            void markAsUnpaidMutation.mutateAsync(confirmState.orderId);
+          }
+        }}
+        isLoading={markAsUnpaidMutation.isPending}
+        variant="primary"
+        confirmText="Mark as Unpaid"
+      />
     </div>
   );
 }

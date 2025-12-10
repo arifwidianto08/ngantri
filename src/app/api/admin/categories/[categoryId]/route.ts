@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
-import { menuCategories } from "@/data/schema";
-import { eq } from "drizzle-orm";
+import { menuCategories, menus } from "@/data/schema";
+import { and, eq, isNull, sql, count } from "drizzle-orm";
 
 export async function DELETE(
   request: NextRequest,
@@ -12,6 +12,40 @@ export async function DELETE(
     await requireAdminAuth();
 
     const { categoryId } = await params;
+
+    // Check if category exists
+    const [category] = await db
+      .select()
+      .from(menuCategories)
+      .where(eq(menuCategories.id, categoryId));
+
+    if (!category) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: "Category not found" },
+        },
+        { status: 404 }
+      );
+    }
+
+    // Check if any menus use this category
+    const [menuCount] = await db
+      .select({ count: count(menus.id) })
+      .from(menus)
+      .where(and(eq(menus.categoryId, categoryId), isNull(menus.deletedAt)));
+
+    if (menuCount.count > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: `Cannot delete category. It has ${menuCount.count} menu item(s) using it. Please move or delete these items first.`,
+          },
+        },
+        { status: 409 }
+      );
+    }
 
     await db
       .update(menuCategories)
@@ -54,7 +88,7 @@ export async function PUT(
 
     const { categoryId } = await params;
     const body = await request.json();
-    const { name } = body;
+    let { name } = body;
 
     // Validation
     if (!name) {
@@ -67,6 +101,48 @@ export async function PUT(
       );
     }
 
+    // Check for duplicate category name (case-insensitive), excluding current category
+    const normalizedName = name.trim().toLowerCase();
+    const [category] = await db
+      .select()
+      .from(menuCategories)
+      .where(eq(menuCategories.id, categoryId));
+
+    if (!category) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: "Category not found" },
+        },
+        { status: 404 }
+      );
+    }
+
+    const [existingCategory] = await db
+      .select()
+      .from(menuCategories)
+      .where(
+        and(
+          eq(menuCategories.merchantId, category.merchantId),
+          sql`LOWER(${menuCategories.name}) = ${normalizedName}`,
+          sql`${menuCategories.id} != ${categoryId}`,
+          isNull(menuCategories.deletedAt)
+        )
+      );
+
+    if (existingCategory) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: `Category "${name}" already exists for this merchant`,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    name = name.trim();
     const updatedCategory = await db
       .update(menuCategories)
       .set({ name })
