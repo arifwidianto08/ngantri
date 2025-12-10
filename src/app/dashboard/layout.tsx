@@ -63,7 +63,7 @@ export default function MerchantDashboardLayout({
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
       </div>
     );
   }
@@ -105,7 +105,7 @@ export default function MerchantDashboardLayout({
                   href={item.href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-indigo-50 text-indigo-600"
+                      ? "bg-gray-50 text-gray-900"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
@@ -121,7 +121,7 @@ export default function MerchantDashboardLayout({
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
             >
               <LogOut className="w-5 h-5" />
               Logout

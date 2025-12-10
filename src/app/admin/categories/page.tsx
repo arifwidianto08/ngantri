@@ -5,6 +5,8 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast-provider";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface Category {
   id: string;
@@ -96,7 +98,7 @@ export default function AdminCategoriesPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4" />
           <p className="text-gray-600">Loading categories...</p>
         </div>
       </div>
@@ -113,13 +115,13 @@ export default function AdminCategoriesPage() {
             Manage menu categories across all merchants
           </p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => void refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          disabled={isLoading || isFetching}
+          variant="outline"
         >
-          {isFetching ? (
+          {isLoading || isFetching ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Refreshing...</span>
@@ -143,7 +145,7 @@ export default function AdminCategoriesPage() {
               <span>Refresh</span>
             </>
           )}
-        </button>
+        </Button>
       </div>
 
       {/* Stats */}
@@ -172,7 +174,7 @@ export default function AdminCategoriesPage() {
           id="merchantFilter"
           value={selectedMerchant}
           onChange={(e) => setSelectedMerchant(e.target.value)}
-          className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
         >
           <option value="all">All Merchants</option>
           {merchants.map((merchant) => (
@@ -184,7 +186,7 @@ export default function AdminCategoriesPage() {
       </div>
 
       {/* Categories Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -216,14 +218,14 @@ export default function AdminCategoriesPage() {
                     {new Date(category.createdAt).toLocaleString("id-ID")}
                   </td>
                   <td className="px-6 py-4">
-                    <button
-                      type="button"
+                    <Button
                       onClick={() => handleDeleteClick(category.id)}
                       disabled={processing}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
+                      variant="destructive"
+                      size="sm"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -236,7 +238,7 @@ export default function AdminCategoriesPage() {
             No categories found
           </div>
         )}
-      </div>
+      </Card>
 
       <ConfirmDialog
         open={!!deleteId}

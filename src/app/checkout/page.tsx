@@ -343,8 +343,8 @@ export default function CheckoutPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8 text-center">
             <div className="mb-6">
-              <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-green-600" />
+              <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-gray-900" />
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
                 Order Placed Successfully!
@@ -425,7 +425,7 @@ export default function CheckoutPage() {
                     htmlFor="customerName"
                     className="block text-sm font-bold text-gray-900 mb-2"
                   >
-                    Your Name <span className="text-red-600">*</span>
+                    Your Name <span className="text-gray-900">*</span>
                   </label>
                   <input
                     type="text"
@@ -439,12 +439,12 @@ export default function CheckoutPage() {
                     placeholder="Enter your name"
                     className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base ${
                       errors.name
-                        ? "border-red-500 bg-red-50"
+                        ? "border-gray-300 bg-gray-50"
                         : "border-gray-200"
                     }`}
                   />
                   {errors.name && (
-                    <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
+                    <p className="text-sm text-gray-900 mt-2 flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
                       <span>{errors.name}</span>
                     </p>
@@ -457,7 +457,7 @@ export default function CheckoutPage() {
                     htmlFor="whatsappNumber"
                     className="block text-sm font-bold text-gray-900 mb-2"
                   >
-                    WhatsApp Number <span className="text-red-600">*</span>
+                    WhatsApp Number <span className="text-gray-900">*</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700 font-bold text-base">
@@ -478,13 +478,13 @@ export default function CheckoutPage() {
                       placeholder="812-3456-7890"
                       className={`w-full pl-14 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base ${
                         errors.whatsapp
-                          ? "border-red-500 bg-red-50"
+                          ? "border-gray-300 bg-gray-50"
                           : "border-gray-200"
                       }`}
                     />
                   </div>
                   {errors.whatsapp && (
-                    <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
+                    <p className="text-sm text-gray-900 mt-2 flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
                       <span>{errors.whatsapp}</span>
                     </p>
@@ -612,7 +612,7 @@ export default function CheckoutPage() {
                 onClick={handlePlaceOrder}
                 disabled={isPlacingOrder}
                 data-testid="place-order-btn"
-                className="w-full px-6 py-4 bg-green-600 text-white text-base sm:text-lg font-bold rounded-xl hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-98"
+                className="w-full px-6 py-4 bg-gray-900 text-white text-base sm:text-lg font-bold rounded-xl hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-98"
               >
                 {isPlacingOrder ? (
                   <span className="flex items-center justify-center gap-2">

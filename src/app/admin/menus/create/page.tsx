@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, ArrowLeft } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface Merchant {
   id: string;
@@ -114,16 +116,17 @@ export default function CreateMenuPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 mb-8"
+          className="flex items-center gap-2 mb-8"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Menus
-        </button>
+        </Button>
 
-        <div className="bg-white rounded-lg shadow p-8">
+        <Card className="p-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Create New Menu
           </h1>
@@ -133,7 +136,7 @@ export default function CreateMenuPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {formError && (
-              <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+              <div className="p-4 bg-gray-50 border border-gray-200 text-gray-900 rounded-lg">
                 {formError}
               </div>
             )}
@@ -150,7 +153,7 @@ export default function CreateMenuPage() {
                   }
                   required
                   disabled={isSubmitting}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-50"
                 >
                   <option value="">Select a merchant</option>
                   {merchantsResponse?.data?.map((m) => (
@@ -172,7 +175,7 @@ export default function CreateMenuPage() {
                   }
                   required
                   disabled={isSubmitting || !formData.merchantId}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-50"
                 >
                   <option value="">Select a category</option>
                   {filteredCategories.map((cat) => (
@@ -198,7 +201,7 @@ export default function CreateMenuPage() {
                   required
                   disabled={isSubmitting}
                   placeholder="e.g., Nasi Goreng"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-50"
                 />
               </div>
 
@@ -216,7 +219,7 @@ export default function CreateMenuPage() {
                   disabled={isSubmitting}
                   placeholder="e.g., 25000"
                   min="0"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-50"
                 />
               </div>
             </div>
@@ -233,7 +236,7 @@ export default function CreateMenuPage() {
                 disabled={isSubmitting}
                 placeholder="Describe your menu item..."
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-50"
               />
             </div>
 
@@ -249,31 +252,32 @@ export default function CreateMenuPage() {
                 }
                 disabled={isSubmitting}
                 placeholder="https://example.com/image.jpg"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-50"
               />
               {formData.imageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={formData.imageUrl}
                   alt="Preview"
-                  className="mt-4 h-40 w-40 object-cover rounded-lg"
+                  className="mt-4 h-40 w-40 object-cover rounded-lg mx-auto"
                 />
               )}
             </div>
 
             <div className="flex gap-3 pt-6 border-t">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => router.back()}
                 disabled={isSubmitting}
-                className="px-6 py-3 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 disabled:opacity-50 font-medium"
+                className="flex-1"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium flex items-center justify-center gap-2"
+                className="flex-1 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>
@@ -283,10 +287,10 @@ export default function CreateMenuPage() {
                 ) : (
                   "Create Menu"
                 )}
-              </button>
+              </Button>
             </div>
           </form>
-        </div>
+        </Card>
       </div>
     </div>
   );

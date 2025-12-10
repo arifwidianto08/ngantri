@@ -5,6 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast-provider";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface OrderItem {
   id: string;
@@ -43,15 +46,6 @@ interface OrdersResponse {
   };
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  accepted: "bg-blue-100 text-blue-800",
-  preparing: "bg-purple-100 text-purple-800",
-  ready: "bg-green-100 text-green-800",
-  completed: "bg-gray-100 text-gray-800",
-  cancelled: "bg-red-100 text-red-800",
-};
-
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
   accepted: "Accepted",
@@ -64,11 +58,6 @@ const STATUS_LABELS: Record<string, string> = {
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   paid: "Paid",
   unpaid: "Unpaid",
-};
-
-const PAYMENT_STATUS_COLORS: Record<string, string> = {
-  paid: "bg-green-100 text-green-800",
-  unpaid: "bg-red-100 text-red-800",
 };
 
 export default function AdminOrdersPage() {
@@ -212,7 +201,7 @@ export default function AdminOrdersPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4" />
           <p className="text-gray-600">Loading orders...</p>
         </div>
       </div>
@@ -242,11 +231,11 @@ export default function AdminOrdersPage() {
           </h1>
           <p className="text-gray-600 mt-1">Manage all customer orders</p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => void refetch()}
           disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          variant="outline"
         >
           {isLoading ? (
             <>
@@ -272,7 +261,7 @@ export default function AdminOrdersPage() {
               <span>Refresh</span>
             </>
           )}
-        </button>
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -283,15 +272,15 @@ export default function AdminOrdersPage() {
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Pending</p>
-          <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Unpaid</p>
-          <p className="text-2xl font-bold text-orange-600">{stats.unpaid}</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.unpaid}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Completed</p>
-          <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
         </div>
       </div>
 
@@ -314,7 +303,7 @@ export default function AdminOrdersPage() {
               onClick={() => setFilterStatus(status)}
               className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                 filterStatus === status
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-gray-900 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
@@ -325,7 +314,7 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* Orders List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -375,40 +364,42 @@ export default function AdminOrdersPage() {
                     Rp {order.totalAmount.toLocaleString("id-ID")}
                   </td>
                   <td className="px-6 py-4">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        STATUS_COLORS[order.status] ||
-                        "bg-gray-100 text-gray-800"
-                      }`}
+                    <Badge
+                      variant={
+                        order.status === "completed"
+                          ? "default"
+                          : order.status === "cancelled"
+                          ? "destructive"
+                          : "secondary"
+                      }
                     >
                       {STATUS_LABELS[order.status] || order.status}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="px-6 py-4">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        PAYMENT_STATUS_COLORS[
-                          order.paymentStatus || "unpaid"
-                        ] || "bg-gray-100 text-gray-800"
-                      }`}
+                    <Badge
+                      variant={
+                        order.paymentStatus === "paid" ? "default" : "secondary"
+                      }
                     >
                       {PAYMENT_STATUS_LABELS[order.paymentStatus || "unpaid"] ||
                         order.paymentStatus ||
                         "Unpaid"}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {new Date(order.createdAt).toLocaleString("id-ID")}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => setSelectedOrder(order)}
-                        className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
                       >
                         Details
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -420,7 +411,7 @@ export default function AdminOrdersPage() {
         {orders.length === 0 && (
           <div className="text-center py-12 text-gray-500">No orders found</div>
         )}
-      </div>
+      </Card>
 
       {/* Order Details Modal */}
       {selectedOrder && (
@@ -478,31 +469,34 @@ export default function AdminOrdersPage() {
                   </div>
                   <div>
                     <p className="text-gray-600">Status</p>
-                    <span
-                      className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                        STATUS_COLORS[selectedOrder.status] ||
-                        "bg-gray-100 text-gray-800"
-                      }`}
+                    <Badge
+                      variant={
+                        selectedOrder.status === "completed"
+                          ? "default"
+                          : selectedOrder.status === "cancelled"
+                          ? "destructive"
+                          : "secondary"
+                      }
                     >
                       {STATUS_LABELS[selectedOrder.status] ||
                         selectedOrder.status}
-                    </span>
+                    </Badge>
                   </div>
                   <div>
                     <p className="text-gray-600">Payment Status</p>
-                    <span
-                      className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                        PAYMENT_STATUS_COLORS[
-                          selectedOrder.paymentStatus || "unpaid"
-                        ] || "bg-gray-100 text-gray-800"
-                      }`}
+                    <Badge
+                      variant={
+                        selectedOrder.paymentStatus === "paid"
+                          ? "default"
+                          : "secondary"
+                      }
                     >
                       {PAYMENT_STATUS_LABELS[
                         selectedOrder.paymentStatus || "unpaid"
                       ] ||
                         selectedOrder.paymentStatus ||
                         "Unpaid"}
-                    </span>
+                    </Badge>
                   </div>
                   {selectedOrder.notes && (
                     <div className="col-span-2">
@@ -561,7 +555,7 @@ export default function AdminOrdersPage() {
                       setSelectedOrder(null);
                     }}
                     disabled={processing}
-                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 font-medium"
+                    className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400 font-medium"
                   >
                     Mark as Paid
                   </button>
@@ -586,7 +580,7 @@ export default function AdminOrdersPage() {
                       className={`px-4 py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
                         selectedOrder.status === status
                           ? "bg-gray-300 text-gray-600"
-                          : "bg-indigo-600 text-white hover:bg-indigo-700"
+                          : "bg-gray-900 text-white hover:bg-gray-800"
                       }`}
                     >
                       {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -602,7 +596,7 @@ export default function AdminOrdersPage() {
                       setSelectedOrder(null);
                     }}
                     disabled={processing}
-                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 font-medium"
+                    className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400 font-medium"
                   >
                     Cancel Order
                   </button>

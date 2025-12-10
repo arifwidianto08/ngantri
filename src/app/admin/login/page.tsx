@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 export default function AdminLoginPage() {
   const [username, setUsername] = useState("");
@@ -41,12 +42,12 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-indigo-100 rounded-full mb-4">
+          <div className="inline-block p-4 bg-gray-100 rounded-full mb-4">
             <svg
-              className="w-12 h-12 text-indigo-600"
+              className="w-12 h-12 text-gray-900"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -67,7 +68,7 @@ export default function AdminLoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            <div className="bg-gray-50 border border-gray-200 text-gray-900 px-4 py-3 rounded-lg">
               {error}
             </div>
           )}
@@ -85,7 +86,7 @@ export default function AdminLoginPage() {
               data-testid="admin-username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 outline-none transition"
               placeholder="Enter your username"
               required
               disabled={loading}
@@ -105,21 +106,21 @@ export default function AdminLoginPage() {
               data-testid="admin-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 outline-none transition"
               placeholder="Enter your password"
               required
               disabled={loading}
             />
           </div>
 
-          <button
+          <Button
             type="submit"
             data-testid="admin-login-btn"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+            className="w-full"
           >
             {loading ? "Signing in..." : "Sign In"}
-          </button>
+          </Button>
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-600">
