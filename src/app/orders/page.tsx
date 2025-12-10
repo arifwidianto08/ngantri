@@ -30,13 +30,13 @@ interface Order {
   createdAt: string;
 }
 
-const STATUS_COLORS = {
-  pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  accepted: "bg-blue-100 text-blue-800 border-blue-200",
-  preparing: "bg-purple-100 text-purple-800 border-purple-200",
-  ready: "bg-gray-100 text-gray-900 border-green-200",
-  completed: "bg-gray-100 text-gray-800 border-gray-200",
-  cancelled: "bg-gray-100 text-red-800 border-gray-200",
+const STATUS_COLORS: Record<string, string> = {
+  completed: "bg-green-100 text-green-800",
+  pending: "bg-yellow-100 text-yellow-800",
+  cancelled: "bg-red-100 text-red-800",
+  accepted: "bg-blue-100 text-blue-800",
+  preparing: "bg-purple-100 text-purple-800",
+  ready: "bg-orange-100 text-orange-800",
 };
 
 const STATUS_LABELS = {
@@ -214,7 +214,7 @@ export default function OrdersPage() {
                       key={order.id}
                       className="inline-block px-3 py-1.5 bg-white border-2 border-green-300 rounded-full text-xs sm:text-sm font-mono text-green-900 shadow-sm"
                     >
-                      #{order.id.slice(0, 8)}
+                      #{order.id.slice(0, 12)}
                     </span>
                   ))}
                 </div>
@@ -296,7 +296,7 @@ export default function OrdersPage() {
                         {order.merchantName || "Merchant"}
                       </h3>
                       <p className="text-xs sm:text-sm text-gray-500 font-mono">
-                        #{order.id.slice(0, 8)}
+                        #{order.id.slice(0, 12)}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0">

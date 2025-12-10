@@ -5,9 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast-provider";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 interface OrderItem {
   id: string;
@@ -58,6 +57,15 @@ const STATUS_LABELS: Record<string, string> = {
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   paid: "Paid",
   unpaid: "Unpaid",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  completed: "bg-green-100 text-green-800",
+  pending: "bg-yellow-100 text-yellow-800",
+  cancelled: "bg-red-100 text-red-800",
+  accepted: "bg-blue-100 text-blue-800",
+  preparing: "bg-purple-100 text-purple-800",
+  ready: "bg-orange-100 text-orange-800",
 };
 
 export default function AdminOrdersPage() {
@@ -197,30 +205,6 @@ export default function AdminOrdersPage() {
     await confirmUpdateStatus();
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4" />
-          <p className="text-gray-600">Loading orders...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-red-600 font-medium">Error loading orders</p>
-          <p className="text-gray-600 text-sm mt-1">
-            Please try refreshing the page
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -315,103 +299,124 @@ export default function AdminOrdersPage() {
 
       {/* Orders List */}
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Order ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Merchant
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Payment
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {orders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-mono text-gray-900">
-                    #{order.id.slice(0, 8)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {order.merchantName}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div>{order.customerName}</div>
-                    <div className="text-xs text-gray-500">
-                      {order.customerPhone}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                    Rp {order.totalAmount.toLocaleString("id-ID")}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge
-                      variant={
-                        order.status === "completed"
-                          ? "default"
-                          : order.status === "cancelled"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
-                      {STATUS_LABELS[order.status] || order.status}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge
-                      variant={
-                        order.paymentStatus === "paid" ? "default" : "secondary"
-                      }
-                    >
-                      {PAYMENT_STATUS_LABELS[order.paymentStatus || "unpaid"] ||
-                        order.paymentStatus ||
-                        "Unpaid"}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(order.createdAt).toLocaleString("id-ID")}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        Details
-                      </Button>
-                    </div>
-                  </td>
+        {isLoading ? (
+          <CardContent className="p-12 text-center">
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4" />
+              <p className="text-gray-600">Loading orders...</p>
+            </div>
+          </CardContent>
+        ) : error ? (
+          <CardContent className="p-12 text-center">
+            <p className="text-red-600 font-medium">Error loading orders</p>
+            <p className="text-gray-600 text-sm mt-1">
+              Please try refreshing the page
+            </p>
+          </CardContent>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Order ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Merchant
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Payment
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {orders.length === 0 && (
-          <div className="text-center py-12 text-gray-500">No orders found</div>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {orders.map((order) => (
+                  <tr key={order.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-mono text-gray-900">
+                      #{order.id.slice(0, 12)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {order.merchantName}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <div>{order.customerName}</div>
+                      <div className="text-xs text-gray-500">
+                        {order.customerPhone}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                      Rp {order.totalAmount.toLocaleString("id-ID")}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                          STATUS_COLORS[order.status] ||
+                          "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {STATUS_LABELS[order.status] || order.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                          order.paymentStatus === "paid"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {PAYMENT_STATUS_LABELS[
+                          order.paymentStatus || "unpaid"
+                        ] ||
+                          order.paymentStatus ||
+                          "Unpaid"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {new Date(order.createdAt).toLocaleString("id-ID")}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          Details
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
+
+      {!isLoading && !error && orders.length === 0 && (
+        <Card>
+          <CardContent className="p-12 text-center text-gray-500">
+            No orders found
+          </CardContent>
+        </Card>
+      )}
 
       {/* Order Details Modal */}
       {selectedOrder && (
@@ -469,34 +474,31 @@ export default function AdminOrdersPage() {
                   </div>
                   <div>
                     <p className="text-gray-600">Status</p>
-                    <Badge
-                      variant={
-                        selectedOrder.status === "completed"
-                          ? "default"
-                          : selectedOrder.status === "cancelled"
-                          ? "destructive"
-                          : "secondary"
-                      }
+                    <span
+                      className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
+                        STATUS_COLORS[selectedOrder.status] ||
+                        "bg-gray-100 text-gray-800"
+                      }`}
                     >
                       {STATUS_LABELS[selectedOrder.status] ||
                         selectedOrder.status}
-                    </Badge>
+                    </span>
                   </div>
                   <div>
                     <p className="text-gray-600">Payment Status</p>
-                    <Badge
-                      variant={
+                    <span
+                      className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
                         selectedOrder.paymentStatus === "paid"
-                          ? "default"
-                          : "secondary"
-                      }
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
                     >
                       {PAYMENT_STATUS_LABELS[
                         selectedOrder.paymentStatus || "unpaid"
                       ] ||
                         selectedOrder.paymentStatus ||
                         "Unpaid"}
-                    </Badge>
+                    </span>
                   </div>
                   {selectedOrder.notes && (
                     <div className="col-span-2">

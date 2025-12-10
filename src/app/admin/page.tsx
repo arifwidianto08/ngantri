@@ -7,10 +7,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
   BarChart,
   Bar,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,13 +59,22 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+const CHART_COLORS = [
+  "#1f2937",
+  "#374151",
+  "#4b5563",
+  "#6b7280",
+  "#9ca3af",
+  "#d1d5db",
+];
+
 const STATUS_COLORS: Record<string, string> = {
-  completed: "bg-gray-200 text-gray-900",
-  pending: "bg-gray-100 text-gray-900",
-  cancelled: "bg-gray-300 text-gray-900",
-  accepted: "bg-gray-200 text-gray-900",
-  preparing: "bg-gray-100 text-gray-900",
-  ready: "bg-gray-200 text-gray-900",
+  completed: "bg-green-100 text-green-800",
+  pending: "bg-yellow-100 text-yellow-800",
+  cancelled: "bg-red-100 text-red-800",
+  accepted: "bg-blue-100 text-blue-800",
+  preparing: "bg-purple-100 text-purple-800",
+  ready: "bg-orange-100 text-orange-800",
 };
 
 export default function AdminDashboardPage() {
@@ -237,26 +247,62 @@ export default function AdminDashboardPage() {
         {/* Orders by Status Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Orders by Status</CardTitle>
+            <CardTitle className="text-lg font-semibold">
+              Orders by Status
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={stats.ordersByStatus}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis
-                  dataKey="status"
-                  stroke="#9ca3af"
-                  style={{ fontSize: "12px" }}
-                />
-                <YAxis stroke="#9ca3af" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#fff",
-                    border: "1px solid #e5e7eb",
+          <CardContent className="pt-4">
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={stats.ordersByStatus.map((item) => ({
+                    ...item,
+                    displayStatus: STATUS_LABELS[item.status] || item.status,
+                  }))}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={(entry) => {
+                    const data = stats.ordersByStatus.map((item) => ({
+                      ...item,
+                      displayStatus: STATUS_LABELS[item.status] || item.status,
+                    }));
+                    const item =
+                      data[
+                        (entry as unknown as Record<string, unknown>)
+                          .index as number
+                      ];
+                    return `${item?.displayStatus} (${item?.count})`;
                   }}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="count"
+                  isAnimationActive={true}
+                >
+                  {stats.ordersByStatus.map((entry) => (
+                    <Cell
+                      key={entry.status}
+                      fill={
+                        CHART_COLORS[
+                          stats.ordersByStatus.indexOf(entry) %
+                            CHART_COLORS.length
+                        ]
+                      }
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value) => [value, "Orders"]}
+                  contentStyle={{
+                    backgroundColor: "#f9fafb",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                    padding: "12px",
+                  }}
+                  labelStyle={{ color: "#1f2937", fontWeight: "600" }}
                 />
-                <Bar dataKey="count" fill="#1f2937" radius={[4, 4, 0, 0]} />
-              </BarChart>
+              </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -264,11 +310,13 @@ export default function AdminDashboardPage() {
         {/* Revenue Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Revenue (Last 7 Days)</CardTitle>
+            <CardTitle className="text-lg font-semibold">
+              Revenue (Last 7 Days)
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart
+          <CardContent className="pt-4">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart
                 data={stats.revenueByDay.slice(0, 7).map((item) => ({
                   date: new Date(item.date).toLocaleDateString("id-ID", {
                     day: "2-digit",
@@ -276,31 +324,51 @@ export default function AdminDashboardPage() {
                   }),
                   revenue: item.revenue,
                 }))}
+                margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#f3f4f6"
+                  vertical={false}
+                  horizontal={true}
+                />
                 <XAxis
                   dataKey="date"
                   stroke="#9ca3af"
-                  style={{ fontSize: "12px" }}
+                  style={{ fontSize: "13px", fontWeight: "500" }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                  tick={{ fill: "#6b7280" }}
                 />
-                <YAxis stroke="#9ca3af" />
+                <YAxis
+                  stroke="#9ca3af"
+                  style={{ fontSize: "13px" }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(value) => `Rp ${(value / 1000).toFixed(0)}K`}
+                  tick={{ fill: "#6b7280" }}
+                />
                 <Tooltip
                   formatter={(value) =>
                     `Rp ${(value as number).toLocaleString("id-ID")}`
                   }
                   contentStyle={{
-                    backgroundColor: "#fff",
+                    backgroundColor: "#f9fafb",
                     border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                    padding: "12px",
                   }}
+                  labelStyle={{ color: "#1f2937", fontWeight: "600" }}
                 />
-                <Line
-                  type="monotone"
+                <Bar
                   dataKey="revenue"
-                  stroke="#1f2937"
-                  strokeWidth={2}
-                  dot={false}
+                  fill="#1f2937"
+                  radius={[8, 8, 0, 0]}
+                  isAnimationActive={true}
                 />
-              </LineChart>
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -326,7 +394,7 @@ export default function AdminDashboardPage() {
               {stats.recentOrders.slice(0, 10).map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-mono text-sm">
-                    {order.id.slice(0, 8)}
+                    {order.id.slice(0, 12)}
                   </TableCell>
                   <TableCell className="text-sm">
                     {order.merchantName}

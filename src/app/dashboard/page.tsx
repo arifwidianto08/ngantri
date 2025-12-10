@@ -5,15 +5,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Store } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,25 @@ interface DashboardData {
   revenueByDay: RevenueDay[];
 }
 
-export default function MerchantDashboard() {
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready: "Ready for Pickup",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const CHART_COLORS = [
+  "#1f2937",
+  "#374151",
+  "#4b5563",
+  "#6b7280",
+  "#9ca3af",
+  "#d1d5db",
+];
+
+export default function MerchantDashboardPage() {
   const { data, isLoading, error, refetch, isFetching } =
     useQuery<DashboardData>({
       queryKey: ["merchant-dashboard"],
@@ -212,8 +231,8 @@ export default function MerchantDashboard() {
                   </div>
                   <div>
                     <p className="text-gray-600">ID</p>
-                    <p className="font-mono text-gray-900 text-xs">
-                      {merchant.id.slice(0, 8)}
+                    <p className="font-medium text-gray-900">
+                      {merchant.id.slice(0, 12)}
                     </p>
                   </div>
                 </div>
@@ -262,80 +281,6 @@ export default function MerchantDashboard() {
         </Card>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Orders Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Orders by Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {ordersByStatus.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={ordersByStatus}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="status" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "6px",
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#1f2937" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-sm text-gray-500 text-center py-12">No data</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Revenue Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Revenue Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {revenueByDay.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={revenueByDay}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis
-                    dataKey="date"
-                    stroke="#9ca3af"
-                    tickFormatter={(date) =>
-                      new Date(date).toLocaleDateString("id-ID", {
-                        month: "short",
-                        day: "numeric",
-                      })
-                    }
-                  />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "6px",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#1f2937"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-sm text-gray-500 text-center py-12">No data</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -360,6 +305,148 @@ export default function MerchantDashboard() {
             <p className="text-2xl font-bold text-gray-900">
               {stats?.totalCategories || 0}
             </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Orders Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">
+              Orders by Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {ordersByStatus.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={ordersByStatus.map((item) => ({
+                      ...item,
+                      displayStatus: STATUS_LABELS[item.status] || item.status,
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => {
+                      const data = ordersByStatus.map((item) => ({
+                        ...item,
+                        displayStatus:
+                          STATUS_LABELS[item.status] || item.status,
+                      }));
+                      const item =
+                        data[
+                          (entry as unknown as Record<string, unknown>)
+                            .index as number
+                        ];
+                      return `${item?.displayStatus} (${item?.count})`;
+                    }}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="count"
+                    isAnimationActive={true}
+                  >
+                    {ordersByStatus.map((entry) => (
+                      <Cell
+                        key={entry.status}
+                        fill={
+                          CHART_COLORS[
+                            ordersByStatus.indexOf(entry) % CHART_COLORS.length
+                          ]
+                        }
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => [value, "Orders"]}
+                    contentStyle={{
+                      backgroundColor: "#f9fafb",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                      padding: "12px",
+                    }}
+                    labelStyle={{ color: "#1f2937", fontWeight: "600" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-12">No data</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Revenue Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">
+              Revenue Trend
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {revenueByDay.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={revenueByDay.map((item) => ({
+                    date: new Date(item.date).toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                    }),
+                    revenue: item.revenue,
+                  }))}
+                  margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#f3f4f6"
+                    vertical={false}
+                    horizontal={true}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#9ca3af"
+                    style={{ fontSize: "13px", fontWeight: "500" }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                    tick={{ fill: "#6b7280" }}
+                  />
+                  <YAxis
+                    stroke="#9ca3af"
+                    style={{ fontSize: "13px" }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value) =>
+                      `Rp ${(value / 1000).toFixed(0)}K`
+                    }
+                    tick={{ fill: "#6b7280" }}
+                  />
+                  <Tooltip
+                    formatter={(value) =>
+                      `Rp ${(value as number).toLocaleString("id-ID")}`
+                    }
+                    contentStyle={{
+                      backgroundColor: "#f9fafb",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                      padding: "12px",
+                    }}
+                    labelStyle={{ color: "#1f2937", fontWeight: "600" }}
+                  />
+                  <Bar
+                    dataKey="revenue"
+                    fill="#1f2937"
+                    radius={[8, 8, 0, 0]}
+                    isAnimationActive={true}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-12">No data</p>
+            )}
           </CardContent>
         </Card>
       </div>

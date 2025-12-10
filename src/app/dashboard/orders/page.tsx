@@ -6,7 +6,6 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 interface Order {
   id: string;
@@ -15,6 +14,24 @@ interface Order {
   createdAt: string;
   sessionId: string;
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready: "Ready for Pickup",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  completed: "bg-green-100 text-green-800",
+  pending: "bg-yellow-100 text-yellow-800",
+  cancelled: "bg-red-100 text-red-800",
+  accepted: "bg-blue-100 text-blue-800",
+  preparing: "bg-purple-100 text-purple-800",
+  ready: "bg-orange-100 text-orange-800",
+};
 
 export default function MerchantOrdersPage() {
   const [filter, setFilter] = useState<string>("all");
@@ -65,7 +82,8 @@ export default function MerchantOrdersPage() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["merchant-orders", filter] });
+      // Invalidate all merchant-orders queries to sync counts and data across all filters
+      queryClient.invalidateQueries({ queryKey: ["merchant-orders"] });
       toast({ title: "Success", description: "Order status updated!" });
     },
     onError: (error: unknown) => {
@@ -85,14 +103,6 @@ export default function MerchantOrdersPage() {
       minimumFractionDigits: 0,
     }).format(amount);
   };
-
-  if (isLoading || updateOrderStatusMutation.isPending) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -190,7 +200,16 @@ export default function MerchantOrdersPage() {
 
       {/* Orders List */}
       <div className="space-y-4">
-        {orders.length === 0 ? (
+        {isLoading || updateOrderStatusMutation.isPending ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <div className="flex flex-col items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4" />
+                <p className="text-gray-600">Loading orders...</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : orders.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center text-gray-500">
               No orders found for this filter
@@ -219,20 +238,14 @@ export default function MerchantOrdersPage() {
                     <p className="text-2xl font-bold text-gray-900">
                       {formatCurrency(order.totalAmount)}
                     </p>
-                    <Badge
-                      variant={
-                        order.status === "completed"
-                          ? "default"
-                          : order.status === "pending"
-                          ? "secondary"
-                          : order.status === "cancelled"
-                          ? "destructive"
-                          : "outline"
-                      }
-                      className="mt-2"
+                    <span
+                      className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                        STATUS_COLORS[order.status] ||
+                        "bg-gray-100 text-gray-800"
+                      }`}
                     >
-                      {order.status.toUpperCase()}
-                    </Badge>
+                      {STATUS_LABELS[order.status] || order.status}
+                    </span>
                   </div>
                 </div>
 
