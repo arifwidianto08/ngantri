@@ -90,14 +90,12 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: {
-        categories: categoriesWithCount,
-        pagination: {
-          page,
-          pageSize,
-          totalCount,
-          totalPages,
-        },
+      data: categoriesWithCount,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        totalPages,
       },
     });
   } catch (error) {

@@ -1,20 +1,14 @@
 /**
  * GET /api/merchants/[merchantId]/menus
- * Get menu items for a merchant with pagination
+ * Get menu items for a merchant with offset-based pagination
  */
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireMerchantAuth } from "@/lib/merchant-auth";
 import { db } from "@/lib/db";
-import { menus } from "@/data/schema";
-import { MenuRepositoryImpl } from "../../../../../data/repositories/menu-repository";
-import { MenuService } from "../../../../../services/menu-service";
-import { createSuccessResponse } from "../../../../../lib/errors";
-import { createPaginationParams } from "../../../../../lib/pagination";
-
-const menuRepository = new MenuRepositoryImpl();
-const menuService = new MenuService(menuRepository);
+import { menus, menuCategories } from "@/data/schema";
+import { eq, count } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
@@ -25,23 +19,59 @@ export async function GET(
 
     // Parse pagination parameters from query string
     const { searchParams } = new URL(request.url);
-    const paginationParams = createPaginationParams({
-      cursor: searchParams.get("cursor") || undefined,
-      limit: searchParams.get("limit") || undefined,
-      direction: searchParams.get("direction") || undefined,
-    });
-
-    // Get menu items for merchant
-    const result = await menuService.findMenuItemsByMerchant(
-      merchantId,
-      paginationParams
+    const page = Math.max(1, Number(searchParams.get("page") || "1"));
+    const pageSize = Math.min(
+      100,
+      Math.max(1, Number(searchParams.get("pageSize") || "10"))
     );
 
-    // Return in the format expected by frontend: { menus: [...] }
-    return createSuccessResponse({ menus: result.data });
+    // Calculate offset
+    const offset = (page - 1) * pageSize;
+
+    // Get total count
+    const [{ total }] = await db
+      .select({ total: count(menus.id) })
+      .from(menus)
+      .where(eq(menus.merchantId, merchantId));
+
+    // Get paginated menus with category info
+    const menuItems = await db
+      .select({
+        id: menus.id,
+        name: menus.name,
+        description: menus.description,
+        price: menus.price,
+        imageUrl: menus.imageUrl,
+        isAvailable: menus.isAvailable,
+        categoryId: menus.categoryId,
+        categoryName: menuCategories.name,
+        createdAt: menus.createdAt,
+      })
+      .from(menus)
+      .leftJoin(menuCategories, eq(menus.categoryId, menuCategories.id))
+      .where(eq(menus.merchantId, merchantId))
+      .orderBy(menus.createdAt)
+      .limit(pageSize)
+      .offset(offset);
+
+    const totalPages = Math.ceil(total / pageSize);
+
+    return NextResponse.json({
+      success: true,
+      data: menuItems,
+      pagination: {
+        page,
+        pageSize,
+        totalCount: total,
+        totalPages,
+      },
+    });
   } catch (error) {
     console.error("Error fetching merchant menus:", error);
-    throw error;
+    return NextResponse.json(
+      { error: "Failed to fetch menus" },
+      { status: 500 }
+    );
   }
 }
 

@@ -18,14 +18,12 @@ interface Category {
 
 interface CategoriesResponse {
   success: boolean;
-  data: {
-    categories: Category[];
-    pagination: {
-      page: number;
-      pageSize: number;
-      totalCount: number;
-      totalPages: number;
-    };
+  data: Category[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
   };
 }
 
@@ -221,8 +219,8 @@ export default function CategoriesPage() {
     setFormData({ name: "" });
   };
 
-  const categories = categoriesResponse?.data?.categories || [];
-  const pagination = categoriesResponse?.data?.pagination || {
+  const categories = categoriesResponse?.data || [];
+  const pagination = categoriesResponse?.pagination || {
     page: 1,
     pageSize: 10,
     totalCount: 0,

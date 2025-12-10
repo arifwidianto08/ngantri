@@ -262,7 +262,7 @@ export default function AdminMerchantsPage() {
                         {merchant.isAvailable && (
                           <BadgeCheck className="fill-blue-600" />
                         )}
-                        {merchant.isAvailable ? "Active" : "Unavailable"}
+                        {merchant.isAvailable ? "Available" : "Unavailable"}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">

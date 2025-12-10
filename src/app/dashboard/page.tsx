@@ -217,7 +217,7 @@ export default function MerchantDashboardPage() {
                     {merchant.isAvailable && (
                       <BadgeCheck className="fill-blue-600" />
                     )}
-                    {merchant.isAvailable ? "Active" : "Unavailable"}
+                    {merchant.isAvailable ? "Available" : "Unavailable"}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
