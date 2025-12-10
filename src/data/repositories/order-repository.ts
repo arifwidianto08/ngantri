@@ -283,14 +283,7 @@ export class OrderRepositoryImpl implements OrderRepository {
     return { order, items };
   }
 
-  async count(
-    merchantId?: string,
-    options?: {
-      status?: string;
-      dateFrom?: Date;
-      dateTo?: Date;
-    }
-  ): Promise<number> {
+  async count(merchantId?: string): Promise<number> {
     const conditions = [isNull(orders.deletedAt)];
 
     if (merchantId) {

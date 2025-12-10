@@ -13,6 +13,14 @@ export async function PATCH(
     const merchant = await requireMerchantAuth(request);
     const { orderId } = await params;
 
+    let body = {};
+    try {
+      body = await request.json();
+    } catch {
+      // Empty or invalid body, use defaults
+    }
+    const status = (body as { status?: string }).status || "paid";
+
     // Verify the order belongs to this merchant
     const orderCheck = await db
       .select({ orderId: orders.id })
@@ -40,22 +48,19 @@ export async function PATCH(
 
     const now = new Date();
     const { order } = await db.transaction(async (tx) => {
-      const [updatedOrder] = await tx
-        .update(orders)
-        .set({
-          status: "completed",
-          updatedAt: now,
-        })
-        .where(and(eq(orders.id, orderId), isNull(orders.deletedAt)))
-        .returning();
+      // Get the current order
+      const [currentOrder] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.id, orderId), isNull(orders.deletedAt)));
 
-      // Find and update related order_payments
+      // Update only payment status, not order status
       const [payment] = await tx
         .update(orderPayments)
         .set({
-          status: "paid",
-          paymentMethod: "cash",
-          paidAt: now,
+          status: status || "paid",
+          paymentMethod: status === "paid" ? "cash" : null,
+          paidAt: status === "paid" ? now : null,
           updatedAt: now,
         })
         .where(
@@ -66,25 +71,24 @@ export async function PATCH(
         )
         .returning();
 
-      console.log("Merchant marked order as paid:", {
-        merchantId: merchant.id,
-        order: updatedOrder,
-        payment,
-      });
-
       return {
-        order: updatedOrder,
+        order: currentOrder,
         payment,
       };
     });
 
+    const message =
+      status === "paid"
+        ? "Order payment marked as paid"
+        : "Order payment marked as unpaid";
+
     return NextResponse.json({
       success: true,
       data: order,
-      message: "Order marked as paid and completed",
+      message,
     });
   } catch (error) {
-    console.error("Error marking order as paid:", error);
+    console.error("Error updating order payment status:", error);
 
     if (error instanceof Error && error.message === "Authentication required") {
       return NextResponse.json(
@@ -99,7 +103,7 @@ export async function PATCH(
     return NextResponse.json(
       {
         success: false,
-        error: { message: "Failed to mark order as paid" },
+        error: { message: "Failed to update order payment status" },
       },
       { status: 500 }
     );
