@@ -1,131 +1,158 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Loader from "@/components/loader";
+import { useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+
+interface LoginRequest {
+  phoneNumber: string;
+  password: string;
+}
+
+interface LoginResponse {
+  success: boolean;
+  error?: {
+    message: string;
+  };
+}
 
 export default function MerchantLogin() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
+  const loginMutation = useMutation<LoginResponse, Error, LoginRequest>({
+    mutationFn: async (credentials) => {
       const response = await fetch("/api/merchants/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          phoneNumber,
-          password,
-        }),
+        body: JSON.stringify(credentials),
       });
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Login successful, redirect to dashboard
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
         router.push("/dashboard");
-      } else {
-        setError(result.error?.message || "Login failed");
       }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    },
+  });
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    loginMutation.mutate({ phoneNumber, password });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Merchant Login
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your merchant dashboard
-          </p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader className="text-center">
+              <CardTitle className="text-xl">Merchant Login</CardTitle>
+              <CardDescription>
+                Sign in to your merchant dashboard
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLogin}>
+                <FieldGroup>
+                  {loginMutation.isError && (
+                    <div className="bg-red-50 border border-red-200 text-red-900 px-4 py-3 rounded-lg text-sm">
+                      {loginMutation.error?.message || "Login failed"}
+                    </div>
+                  )}
 
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="space-y-4">
-            <div>
-              <label
-                htmlFor="phoneNumber"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Phone Number
-              </label>
-              <input
-                id="phoneNumber"
-                name="phoneNumber"
-                type="tel"
-                data-testid="merchant-phone"
-                required
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="+6281234567890"
-              />
-            </div>
+                  {loginMutation.data && !loginMutation.data.success && (
+                    <div className="bg-red-50 border border-red-200 text-red-900 px-4 py-3 rounded-lg text-sm">
+                      {loginMutation.data.error?.message || "Login failed"}
+                    </div>
+                  )}
 
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                data-testid="merchant-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter your password"
-              />
-            </div>
-          </div>
+                  <Field>
+                    <FieldLabel htmlFor="phoneNumber">Phone Number</FieldLabel>
+                    <Input
+                      id="phoneNumber"
+                      data-testid="merchant-phone"
+                      type="tel"
+                      placeholder="+6281234567890"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      required
+                      disabled={loginMutation.isPending}
+                    />
+                  </Field>
 
-          {error && (
-            <div className="bg-gray-50 border border-red-300 text-gray-900 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
+                  <Field>
+                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <Input
+                      id="password"
+                      data-testid="merchant-password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      disabled={loginMutation.isPending}
+                    />
+                  </Field>
 
-          <div>
-            <button
-              type="submit"
-              data-testid="merchant-login-btn"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  <Field>
+                    <Button
+                      type="submit"
+                      data-testid="merchant-login-btn"
+                      disabled={loginMutation.isPending}
+                      className="w-full"
+                    >
+                      {loginMutation.isPending ? "Signing in..." : "Sign In"}
+                    </Button>
+                    <FieldDescription className="text-center">
+                      Test credentials: <br />
+                      <span className="font-mono bg-slate-100 px-2 py-1 rounded text-xs">
+                        +6281234567890 / password123
+                      </span>
+                    </FieldDescription>
+                  </Field>
+                </FieldGroup>
+              </form>
+            </CardContent>
+          </Card>
+
+          <FieldDescription className="px-6 text-center">
+            By clicking continue, you agree to our{" "}
+            <Link
+              href="/"
+              className="underline underline-offset-4 hover:no-underline"
             >
-              {loading ? "Signing in..." : "Sign in"}
-            </button>
-          </div>
-
-          <div className="text-center text-sm text-gray-600">
-            <p>Test credentials:</p>
-            <p>
-              <strong>Phone:</strong> +6281234567890
-            </p>
-            <p>
-              <strong>Password:</strong> password123
-            </p>
-          </div>
-        </form>
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/"
+              className="underline underline-offset-4 hover:no-underline"
+            >
+              Privacy Policy
+            </Link>
+            .
+          </FieldDescription>
+        </div>
       </div>
     </div>
   );

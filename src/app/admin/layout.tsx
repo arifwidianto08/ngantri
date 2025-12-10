@@ -69,6 +69,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [loading, setLoading] = useState(true);
   const [isLoginPage, setIsLoginPage] = useState(false);
 
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+      router.push("/admin/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       const isLogin =
@@ -136,7 +145,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <NavMain items={adminData.navMain} />
         </SidebarContent>
         <SidebarFooter>
-          <NavUser user={adminData.user} />
+          <NavUser user={adminData.user} onLogout={handleLogout} />
         </SidebarFooter>
       </Sidebar>
 

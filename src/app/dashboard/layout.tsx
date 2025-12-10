@@ -38,6 +38,15 @@ export default function MerchantDashboardLayout({
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/merchants/logout", { method: "POST" });
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   const checkAuth = useCallback(async () => {
     try {
       const response = await fetch("/api/merchants/me");
@@ -123,7 +132,7 @@ export default function MerchantDashboardLayout({
           <NavMain items={merchantData.navMain} />
         </SidebarContent>
         <SidebarFooter>
-          <NavUser user={merchantData.user} />
+          <NavUser user={merchantData.user} onLogout={handleLogout} />
         </SidebarFooter>
       </Sidebar>
 

@@ -1,17 +1,15 @@
 "use client";
 
+import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  Area,
+  AreaChart,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
+  CartesianGrid,
+  XAxis,
+  YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +22,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 interface DashboardStats {
   totalOrders: number;
@@ -58,15 +62,6 @@ const STATUS_LABELS: Record<string, string> = {
   completed: "Completed",
   cancelled: "Cancelled",
 };
-
-const CHART_COLORS = [
-  "#1f2937",
-  "#374151",
-  "#4b5563",
-  "#6b7280",
-  "#9ca3af",
-  "#d1d5db",
-];
 
 const STATUS_COLORS: Record<string, string> = {
   completed: "bg-green-100 text-green-800",
@@ -130,6 +125,14 @@ export default function AdminDashboardPage() {
     );
   }
 
+  const ordersChartConfig = {
+    count: { label: "Orders", color: "hsl(var(--primary))" },
+  } satisfies ChartConfig;
+
+  const revenueChartConfig = {
+    revenue: { label: "Revenue", color: "hsl(var(--primary))" },
+  } satisfies ChartConfig;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -176,37 +179,43 @@ export default function AdminDashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card data-testid="total-orders-stat">
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-600 mb-1">Total Orders</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.totalOrders}
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground mb-1">Total Orders</p>
+            <p className="text-3xl font-bold mb-4">{stats.totalOrders}</p>
+            <p className="text-xs text-muted-foreground">
+              Trending up this month
             </p>
           </CardContent>
         </Card>
 
         <Card data-testid="total-revenue-stat">
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-600 mb-1">Total Revenue</p>
-            <p className="text-2xl font-bold text-gray-900">
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground mb-1">Total Revenue</p>
+            <p className="text-3xl font-bold mb-4">
               Rp {stats.totalRevenue.toLocaleString("id-ID")}
             </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-600 mb-1">Pending Orders</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.pendingOrders}
+            <p className="text-xs text-muted-foreground">
+              Strong performance this period
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-600 mb-1">Completed</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.completedOrders}
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground mb-1">Pending Orders</p>
+            <p className="text-3xl font-bold mb-4">{stats.pendingOrders}</p>
+            <p className="text-xs text-muted-foreground">Needs attention</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground mb-1">
+              Completed Orders
+            </p>
+            <p className="text-3xl font-bold mb-4">{stats.completedOrders}</p>
+            <p className="text-xs text-muted-foreground">
+              Excellent completion rate
             </p>
           </CardContent>
         </Card>
@@ -215,28 +224,35 @@ export default function AdminDashboardPage() {
       {/* Secondary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-600 mb-1">Total Merchants</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.totalMerchants}
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground mb-1">
+              Total Merchants
+            </p>
+            <p className="text-3xl font-bold mb-4">{stats.totalMerchants}</p>
+            <p className="text-xs text-muted-foreground">
+              Active merchant count
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-600 mb-1">Total Categories</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.totalCategories}
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground mb-1">
+              Total Categories
+            </p>
+            <p className="text-3xl font-bold mb-4">{stats.totalCategories}</p>
+            <p className="text-xs text-muted-foreground">
+              Growing menu variety
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-gray-600 mb-1">Total Menus</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {stats.totalMenus}
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground mb-1">Total Menus</p>
+            <p className="text-3xl font-bold mb-4">{stats.totalMenus}</p>
+            <p className="text-xs text-muted-foreground">
+              Diverse menu offerings
             </p>
           </CardContent>
         </Card>
@@ -251,59 +267,37 @@ export default function AdminDashboardPage() {
               Orders by Status
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={stats.ordersByStatus.map((item) => ({
-                    ...item,
-                    displayStatus: STATUS_LABELS[item.status] || item.status,
-                  }))}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => {
-                    const data = stats.ordersByStatus.map((item) => ({
-                      ...item,
-                      displayStatus: STATUS_LABELS[item.status] || item.status,
-                    }));
-                    const item =
-                      data[
-                        (entry as unknown as Record<string, unknown>)
-                          .index as number
-                      ];
-                    return `${item?.displayStatus} (${item?.count})`;
-                  }}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="count"
-                  isAnimationActive={true}
-                >
-                  {stats.ordersByStatus.map((entry) => (
-                    <Cell
-                      key={entry.status}
-                      fill={
-                        CHART_COLORS[
-                          stats.ordersByStatus.indexOf(entry) %
-                            CHART_COLORS.length
-                        ]
-                      }
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value) => [value, "Orders"]}
-                  contentStyle={{
-                    backgroundColor: "#f9fafb",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                    padding: "12px",
-                  }}
-                  labelStyle={{ color: "#1f2937", fontWeight: "600" }}
+          <CardContent className="p-0">
+            <ChartContainer
+              config={ordersChartConfig}
+              className="h-[300px] w-full px-6 pb-6"
+            >
+              <AreaChart data={stats.ordersByStatus}>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="status"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) =>
+                    STATUS_LABELS[value as string] || value
+                  }
                 />
-              </PieChart>
-            </ResponsiveContainer>
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent labelKey="status" indicator="dot" />
+                  }
+                />
+                <Area
+                  dataKey="count"
+                  type="natural"
+                  fill="hsl(var(--primary))"
+                  stroke="hsl(var(--primary))"
+                  isAnimationActive={true}
+                />
+              </AreaChart>
+            </ChartContainer>
           </CardContent>
         </Card>
 
@@ -314,8 +308,11 @@ export default function AdminDashboardPage() {
               Revenue (Last 7 Days)
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4">
-            <ResponsiveContainer width="100%" height={300}>
+          <CardContent className="p-0">
+            <ChartContainer
+              config={revenueChartConfig}
+              className="h-[300px] w-full px-6 pb-6"
+            >
               <BarChart
                 data={stats.revenueByDay.slice(0, 7).map((item) => ({
                   date: new Date(item.date).toLocaleDateString("id-ID", {
@@ -324,52 +321,33 @@ export default function AdminDashboardPage() {
                   }),
                   revenue: item.revenue,
                 }))}
-                margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#f3f4f6"
-                  vertical={false}
-                  horizontal={true}
-                />
+                <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="date"
-                  stroke="#9ca3af"
-                  style={{ fontSize: "13px", fontWeight: "500" }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={100}
-                  tick={{ fill: "#6b7280" }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
                 />
                 <YAxis
-                  stroke="#9ca3af"
-                  style={{ fontSize: "13px" }}
-                  axisLine={false}
                   tickLine={false}
+                  axisLine={false}
                   tickFormatter={(value) => `Rp ${(value / 1000).toFixed(0)}K`}
-                  tick={{ fill: "#6b7280" }}
                 />
-                <Tooltip
-                  formatter={(value) =>
-                    `Rp ${(value as number).toLocaleString("id-ID")}`
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent labelKey="date" indicator="dot" />
                   }
-                  contentStyle={{
-                    backgroundColor: "#f9fafb",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                    padding: "12px",
-                  }}
-                  labelStyle={{ color: "#1f2937", fontWeight: "600" }}
                 />
                 <Bar
                   dataKey="revenue"
-                  fill="#1f2937"
+                  fill="hsl(var(--primary))"
                   radius={[8, 8, 0, 0]}
                   isAnimationActive={true}
                 />
               </BarChart>
-            </ResponsiveContainer>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>
