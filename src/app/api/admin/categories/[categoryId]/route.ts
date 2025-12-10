@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
-import { menuCategories } from "@/data/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { menuCategories, menus } from "@/data/schema";
+import { and, eq, isNull, sql, count } from "drizzle-orm";
 
 export async function DELETE(
   request: NextRequest,
@@ -12,6 +12,40 @@ export async function DELETE(
     await requireAdminAuth();
 
     const { categoryId } = await params;
+
+    // Check if category exists
+    const [category] = await db
+      .select()
+      .from(menuCategories)
+      .where(eq(menuCategories.id, categoryId));
+
+    if (!category) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: "Category not found" },
+        },
+        { status: 404 }
+      );
+    }
+
+    // Check if any menus use this category
+    const [menuCount] = await db
+      .select({ count: count(menus.id) })
+      .from(menus)
+      .where(and(eq(menus.categoryId, categoryId), isNull(menus.deletedAt)));
+
+    if (menuCount.count > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: `Cannot delete category. It has ${menuCount.count} menu item(s) using it. Please move or delete these items first.`,
+          },
+        },
+        { status: 409 }
+      );
+    }
 
     await db
       .update(menuCategories)

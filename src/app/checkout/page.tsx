@@ -95,9 +95,7 @@ export default function CheckoutPage() {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(
-          result?.error || result?.error?.message || "Failed to create orders"
-        );
+        throw new Error(result?.error?.message || "Failed to create orders");
       }
 
       return result.data.orders.map(
@@ -126,9 +124,7 @@ export default function CheckoutPage() {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(
-          result?.error || result?.error?.message || "Failed to create payments"
-        );
+        throw new Error(result?.error?.message || "Failed to create payments");
       }
 
       return result;

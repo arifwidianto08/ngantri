@@ -2,8 +2,8 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireMerchantAuth } from "@/lib/merchant-auth";
 import { db } from "@/lib/db";
-import { menuCategories } from "@/data/schema";
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { menuCategories, menus } from "@/data/schema";
+import { eq, and, isNull, sql, count } from "drizzle-orm";
 
 /**
  * PATCH /api/merchants/[merchantId]/categories/[categoryId]
@@ -129,7 +129,8 @@ export async function DELETE(
       .where(
         and(
           eq(menuCategories.id, categoryId),
-          eq(menuCategories.merchantId, merchantId)
+          eq(menuCategories.merchantId, merchantId),
+          isNull(menuCategories.deletedAt)
         )
       )
       .limit(1);
@@ -138,6 +139,23 @@ export async function DELETE(
       return NextResponse.json(
         { error: { message: "Category not found" } },
         { status: 404 }
+      );
+    }
+
+    // Check if any menus use this category
+    const [menuCount] = await db
+      .select({ count: count(menus.id) })
+      .from(menus)
+      .where(and(eq(menus.categoryId, categoryId), isNull(menus.deletedAt)));
+
+    if (menuCount.count > 0) {
+      return NextResponse.json(
+        {
+          error: {
+            message: `Cannot delete category. It has ${menuCount.count} menu item(s) using it. Please move or delete these items first.`,
+          },
+        },
+        { status: 409 }
       );
     }
 

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireMerchantAuth } from "@/lib/merchant-auth";
 import { db } from "@/lib/db";
 import { orders, menus, menuCategories } from "@/data/schema";
-import { eq, and, isNull, sql, gte } from "drizzle-orm";
+import { eq, and, isNull, sql, gte, count } from "drizzle-orm";
 
 /**
  * GET /api/merchants/dashboard/stats
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const ordersByStatus = await db
       .select({
         status: orders.status,
-        count: sql<number>`count(*)::int`,
+        count: count(orders.id),
       })
       .from(orders)
       .where(and(eq(orders.merchantId, merchant.id), isNull(orders.deletedAt)))
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     const [categoryStats] = await db
       .select({
-        totalCategories: sql<number>`count(*)::int`,
+        totalCategories: count(menuCategories.id),
       })
       .from(menuCategories)
       .where(

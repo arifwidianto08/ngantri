@@ -111,9 +111,7 @@ export default function OrderDetailPage() {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(
-          result?.error || result?.error?.message || "Failed to fetch order"
-        );
+        throw new Error(result?.error?.message || "Failed to fetch order");
       }
 
       return result.data as Order;
@@ -135,9 +133,7 @@ export default function OrderDetailPage() {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(
-          result?.error || result?.error?.message || "Failed to cancel order"
-        );
+        throw new Error(result?.error?.message || "Failed to cancel order");
       }
 
       return result.data;

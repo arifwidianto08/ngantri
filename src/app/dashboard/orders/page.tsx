@@ -119,9 +119,7 @@ export default function MerchantOrdersPage() {
 
       if (!result.success) {
         throw new Error(
-          result?.error ||
-            result.error?.message ||
-            "Failed to update order status"
+          result.error?.message || "Failed to update order status"
         );
       }
 
@@ -154,9 +152,7 @@ export default function MerchantOrdersPage() {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(
-          result?.error || result?.error?.message || "Failed to mark as paid"
-        );
+        throw new Error(result?.error?.message || "Failed to mark as paid");
       }
 
       return result;

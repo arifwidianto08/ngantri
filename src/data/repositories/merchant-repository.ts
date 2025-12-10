@@ -1,7 +1,8 @@
-import { eq, desc, gt, and, isNull, sql } from "drizzle-orm";
+import { eq, desc, gt, and, isNull, sql, count } from "drizzle-orm";
 import { db } from "../../lib/db";
-import { merchants, Merchant, NewMerchant } from "../schema";
-import { MerchantRepository } from "../interfaces/merchant-repository";
+import { merchants } from "../schema";
+import type { Merchant, NewMerchant } from "../schema";
+import type { MerchantRepository } from "../interfaces/merchant-repository";
 
 export class MerchantRepositoryImpl implements MerchantRepository {
   async create(merchant: NewMerchant): Promise<Merchant> {
@@ -165,7 +166,7 @@ export class MerchantRepositoryImpl implements MerchantRepository {
     }
 
     const [result] = await db
-      .select({ count: sql<number>`COUNT(*)` })
+      .select({ count: count(merchants.id) })
       .from(merchants)
       .where(and(...conditions));
 

@@ -119,9 +119,7 @@ export default function AdminCategoriesPage() {
 
         if (!result.success) {
           throw new Error(
-            result?.error ||
-              result?.error?.message ||
-              "Failed to update category"
+            result?.error?.message || "Failed to update category"
           );
         }
 
@@ -149,9 +147,7 @@ export default function AdminCategoriesPage() {
       }
 
       if (!result.success) {
-        throw new Error(
-          result?.error || result?.error?.message || "Failed to create category"
-        );
+        throw new Error(result?.error?.message || "Failed to create category");
       }
 
       return result.data;
@@ -204,9 +200,7 @@ export default function AdminCategoriesPage() {
       } else {
         toast({
           title: "Error",
-          description: `Failed: ${
-            result?.error || result.error?.message || "Unknown error"
-          }`,
+          description: `Failed: ${result.error?.message || "Unknown error"}`,
           variant: "destructive",
         });
       }

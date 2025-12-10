@@ -127,9 +127,7 @@ export default function AdminOrdersPage() {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(
-          result?.error || result?.error?.message || "Failed to mark as paid"
-        );
+        throw new Error(result?.error?.message || "Failed to mark as paid");
       }
 
       return result;
@@ -168,9 +166,7 @@ export default function AdminOrdersPage() {
 
       if (!result.success) {
         throw new Error(
-          result?.error ||
-            result.error?.message ||
-            "Failed to update order status"
+          result.error?.message || "Failed to update order status"
         );
       }
 

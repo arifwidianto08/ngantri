@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
 import { orders, merchants, menus, menuCategories } from "@/data/schema";
-import { isNull, eq, gte, sql, and } from "drizzle-orm";
+import { isNull, eq, gte, sql, and, count } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -10,7 +10,7 @@ export async function GET() {
 
     // Get total orders
     const totalOrdersResult = await db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: count(orders.id) })
       .from(orders)
       .where(isNull(orders.deletedAt));
     const totalOrders = totalOrdersResult[0]?.count || 0;
@@ -26,35 +26,35 @@ export async function GET() {
 
     // Get pending orders
     const pendingOrdersResult = await db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: count(orders.id) })
       .from(orders)
       .where(and(isNull(orders.deletedAt), eq(orders.status, "pending")));
     const pendingOrders = pendingOrdersResult[0]?.count || 0;
 
     // Get completed orders
     const completedOrdersResult = await db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: count(orders.id) })
       .from(orders)
       .where(and(isNull(orders.deletedAt), eq(orders.status, "completed")));
     const completedOrders = completedOrdersResult[0]?.count || 0;
 
     // Get total merchants
     const totalMerchantsResult = await db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: count(orders.id) })
       .from(merchants)
       .where(isNull(merchants.deletedAt));
     const totalMerchants = totalMerchantsResult[0]?.count || 0;
 
     // Get total menus
     const totalMenusResult = await db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: count(orders.id) })
       .from(menus)
       .where(isNull(menus.deletedAt));
     const totalMenus = totalMenusResult[0]?.count || 0;
 
     // Get total categories
     const totalCategoriesResult = await db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: count(orders.id) })
       .from(menuCategories)
       .where(isNull(menuCategories.deletedAt));
     const totalCategories = totalCategoriesResult[0]?.count || 0;
@@ -78,7 +78,7 @@ export async function GET() {
     const ordersByStatus = await db
       .select({
         status: orders.status,
-        count: sql<number>`count(*)::int`,
+        count: count(orders.id),
       })
       .from(orders)
       .where(isNull(orders.deletedAt))

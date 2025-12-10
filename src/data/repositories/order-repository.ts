@@ -1,4 +1,15 @@
-import { eq, desc, gt, and, isNull, sql, gte, lte, inArray } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  gt,
+  and,
+  isNull,
+  sql,
+  gte,
+  lte,
+  inArray,
+  count,
+} from "drizzle-orm";
 import { db } from "../../lib/db";
 import {
   orders,
@@ -220,7 +231,7 @@ export class OrderRepositoryImpl implements OrderRepository {
     status: string,
     paymentStatus?: string
   ): Promise<Order | null> {
-    const updates: Partial<Order> = { status };
+    const updates: Partial<Order & { paymentStatus?: string }> = { status };
     if (paymentStatus) {
       updates.paymentStatus = paymentStatus;
     }
@@ -287,7 +298,7 @@ export class OrderRepositoryImpl implements OrderRepository {
     }
 
     const [result] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: count(orders.id) })
       .from(orders)
       .where(and(...conditions));
 

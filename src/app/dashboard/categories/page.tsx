@@ -143,9 +143,7 @@ export default function CategoriesPage() {
       }
 
       if (!result.success) {
-        throw new Error(
-          result?.error || result?.error?.message || "Failed to save category"
-        );
+        throw new Error(result?.error?.message || "Failed to save category");
       }
 
       return result.data;
@@ -184,9 +182,7 @@ export default function CategoriesPage() {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(
-          result?.error || result?.error?.message || "Failed to delete category"
-        );
+        throw new Error(result?.error?.message || "Failed to delete category");
       }
 
       return result.data;

@@ -7,7 +7,7 @@ import {
   orderPayments,
   orderItems,
 } from "@/data/schema";
-import { desc, isNull, eq, sql, and } from "drizzle-orm";
+import { desc, isNull, eq, sql, and, count } from "drizzle-orm";
 import { getAdminSession } from "@/lib/admin-auth";
 
 export async function GET(request: Request) {
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
     // Get total count for pagination
     const countResult = await db
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: count(orders.id) })
       .from(orders)
       .where(whereCondition);
 
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
     const statusCounts = await db
       .select({
         status: orders.status,
-        count: sql<number>`count(*)::int`,
+        count: count(orders.id),
       })
       .from(orders)
       .where(isNull(orders.deletedAt))
