@@ -132,7 +132,9 @@ export default function MerchantMenusPage() {
       const response = await fetch(url);
       const result = await response.json();
       if (!result.success) {
-        throw new Error(result.error?.message || "Failed to fetch menus");
+        throw new Error(
+          result?.error || result?.error?.message || "Failed to fetch menus"
+        );
       }
       return result;
     },
@@ -207,7 +209,9 @@ export default function MerchantMenusPage() {
       const result = await response.json();
 
       if (!result.success) {
-        throw new Error(result.error?.message || "Failed to save menu");
+        throw new Error(
+          result?.error || result?.error?.message || "Failed to save menu"
+        );
       }
 
       return result.data;
@@ -254,7 +258,9 @@ export default function MerchantMenusPage() {
       const result = await response.json();
       if (!result.success) {
         throw new Error(
-          result.error?.message || "Failed to update availability"
+          result?.error ||
+            result.error?.message ||
+            "Failed to update availability"
         );
       }
       return result;
@@ -287,7 +293,9 @@ export default function MerchantMenusPage() {
 
       const result = await response.json();
       if (!result.success) {
-        throw new Error(result.error?.message || "Failed to delete menu");
+        throw new Error(
+          result?.error || result?.error?.message || "Failed to delete menu"
+        );
       }
       return result;
     },

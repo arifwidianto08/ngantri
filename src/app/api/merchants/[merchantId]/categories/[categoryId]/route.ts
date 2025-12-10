@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireMerchantAuth } from "@/lib/merchant-auth";
 import { db } from "@/lib/db";
 import { menuCategories } from "@/data/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 
 /**
  * PATCH /api/merchants/[merchantId]/categories/[categoryId]
@@ -23,11 +23,11 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name } = body;
+    let { name } = body;
 
     if (!name) {
       return NextResponse.json(
-        { error: "Category name is required" },
+        { error: { message: "Category name is required" } },
         { status: 400 }
       );
     }
@@ -39,7 +39,8 @@ export async function PATCH(
       .where(
         and(
           eq(menuCategories.id, categoryId),
-          eq(menuCategories.merchantId, merchantId)
+          eq(menuCategories.merchantId, merchantId),
+          isNull(menuCategories.deletedAt)
         )
       )
       .limit(1);
@@ -51,6 +52,33 @@ export async function PATCH(
       );
     }
 
+    // Check for duplicate category name (case-insensitive), excluding current category
+    const normalizedName = name.trim().toLowerCase();
+    const [duplicate] = await db
+      .select()
+      .from(menuCategories)
+      .where(
+        and(
+          eq(menuCategories.merchantId, merchantId),
+          sql`LOWER(${menuCategories.name}) = ${normalizedName}`,
+          sql`${menuCategories.id} != ${categoryId}`,
+          isNull(menuCategories.deletedAt)
+        )
+      )
+      .limit(1);
+
+    if (duplicate) {
+      return NextResponse.json(
+        {
+          error: {
+            message: `Category "${name}" already exists for your merchant`,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    name = name.trim();
     const [updated] = await db
       .update(menuCategories)
       .set({ name, updatedAt: new Date() })
@@ -71,7 +99,7 @@ export async function PATCH(
 
     console.error("Error updating category:", error);
     return NextResponse.json(
-      { error: "Failed to update category" },
+      { error: { message: "Failed to update category" } },
       { status: 500 }
     );
   }
@@ -108,7 +136,7 @@ export async function DELETE(
 
     if (!existing) {
       return NextResponse.json(
-        { error: "Category not found" },
+        { error: { message: "Category not found" } },
         { status: 404 }
       );
     }
@@ -133,7 +161,7 @@ export async function DELETE(
 
     console.error("Error deleting category:", error);
     return NextResponse.json(
-      { error: "Failed to delete category" },
+      { error: { message: "Failed to delete category" } },
       { status: 500 }
     );
   }

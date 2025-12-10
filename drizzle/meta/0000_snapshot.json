@@ -222,16 +222,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "menu_categories_merchant_id_name_unique": {
-          "name": "menu_categories_merchant_id_name_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "merchant_id",
-            "name"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

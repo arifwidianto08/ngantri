@@ -28,32 +28,35 @@ export async function GET(
     // Calculate offset
     const offset = (page - 1) * pageSize;
 
-    // Get total count
-    const [{ total }] = await db
-      .select({ total: count(menus.id) })
-      .from(menus)
-      .where(eq(menus.merchantId, merchantId));
+    // Run both queries concurrently
+    const [countResult, menuItems] = await Promise.all([
+      db
+        .select({ total: count(menus.id) })
+        .from(menus)
+        .where(eq(menus.merchantId, merchantId)),
 
-    // Get paginated menus with category info
-    const menuItems = await db
-      .select({
-        id: menus.id,
-        name: menus.name,
-        description: menus.description,
-        price: menus.price,
-        imageUrl: menus.imageUrl,
-        isAvailable: menus.isAvailable,
-        categoryId: menus.categoryId,
-        categoryName: menuCategories.name,
-        createdAt: menus.createdAt,
-      })
-      .from(menus)
-      .leftJoin(menuCategories, eq(menus.categoryId, menuCategories.id))
-      .where(eq(menus.merchantId, merchantId))
-      .orderBy(menus.createdAt)
-      .limit(pageSize)
-      .offset(offset);
+      db
+        .select({
+          id: menus.id,
+          name: menus.name,
+          description: menus.description,
+          price: menus.price,
+          imageUrl: menus.imageUrl,
+          isAvailable: menus.isAvailable,
+          categoryId: menus.categoryId,
+          categoryName: menuCategories.name,
+          createdAt: menus.createdAt,
+        })
+        .from(menus)
+        .leftJoin(menuCategories, eq(menus.categoryId, menuCategories.id))
+        .where(eq(menus.merchantId, merchantId))
+        .orderBy(menus.createdAt)
+        .limit(pageSize)
+        .offset(offset),
+    ]);
 
+    // Extract total
+    const total = countResult?.[0]?.total ?? 0;
     const totalPages = Math.ceil(total / pageSize);
 
     return NextResponse.json({

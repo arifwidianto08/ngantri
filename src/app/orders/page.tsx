@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import Loader from "@/components/loader";
 import { Package, Loader2, PartyPopper, CheckCircle2 } from "lucide-react";
 import { getOrCreateBuyerSession } from "@/lib/session";
@@ -49,72 +49,52 @@ const STATUS_LABELS = {
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentView = searchParams.get("view") || "pending";
 
-  useEffect(() => {
-    const fetchOrders = async (isRefresh = false) => {
-      if (isRefresh) {
-        setRefreshing(true);
+  const {
+    data: orders = [],
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: ["orders", currentView],
+    queryFn: async () => {
+      const buyerSession = await getOrCreateBuyerSession();
+
+      if (!buyerSession) {
+        return [];
       }
 
-      try {
-        // Get session from session management utility
-        const buyerSession = await getOrCreateBuyerSession();
-        const view = searchParams.get("view") || "pending";
+      const params = new URLSearchParams({
+        session_id: buyerSession.id,
+      });
 
-        if (!buyerSession) {
-          setLoading(false);
-          return;
-        }
-
-        // Build query params
-        const params = new URLSearchParams({
-          session_id: buyerSession.id,
-        });
-
-        // Filter by view: active or history
-        if (view === "pending") {
-          // Active orders: pending, accepted, preparing, ready
-          params.append("status", "pending,accepted,preparing,ready");
-        } else if (view === "history") {
-          // History: completed, failed, cancelled
-          params.append("status", "completed,failed,cancelled");
-        }
-
-        // Single API call with filters
-        const response = await fetch(`/api/orders?${params.toString()}`);
-        const result = await response.json();
-
-        if (!result.success || !result.data || result.data.length === 0) {
-          setOrders([]);
-        } else {
-          setOrders(result.data);
-          setLastUpdate(new Date());
-        }
-      } catch (err) {
-        console.error("Error fetching orders:", err);
-        setOrders([]);
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
+      // Filter by view: active or history
+      // Active orders: pending, accepted, preparing, ready
+      // History: completed, failed, cancelled
+      if (currentView === "pending") {
+        params.append("status", "pending,accepted,preparing,ready");
+      } else if (currentView === "history") {
+        params.append("status", "completed,failed,cancelled");
       }
-    };
 
-    fetchOrders();
+      const response = await fetch(`/api/orders?${params.toString()}`);
+      const result = await response.json();
 
-    // Short-polling: Poll for order updates every 5 seconds (UC 3.2.8)
-    const interval = setInterval(() => fetchOrders(true), 5000);
+      if (!result.success || !result.data || result.data.length === 0) {
+        return [];
+      }
 
-    return () => clearInterval(interval);
-  }, [searchParams]);
+      return result.data;
+    },
+    refetchInterval: 5000, // Short-polling: Poll every 5 seconds (UC 3.2.8)
+    staleTime: 3000,
+  });
 
-  if (loading) {
+  const lastUpdate = new Date();
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Loader message="Loading your orders..." />
@@ -122,8 +102,10 @@ export default function OrdersPage() {
     );
   }
 
-  const allCompleted = orders.every((order) => order.status === "completed");
-  const anyReady = orders.some((order) => order.status === "ready");
+  const allCompleted = orders.every(
+    (order: Order) => order.status === "completed"
+  );
+  const anyReady = orders.some((order: Order) => order.status === "ready");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -138,13 +120,13 @@ export default function OrdersPage() {
               </h1>
               <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mt-1">
                 <span>Track in real-time</span>
-                {refreshing && (
+                {isFetching && (
                   <span className="inline-flex items-center gap-1 text-blue-600">
                     <Loader2 className="animate-spin h-3 w-3" />
                     <span className="hidden sm:inline">Updating...</span>
                   </span>
                 )}
-                {!refreshing && (
+                {!isFetching && (
                   <span className="text-xs text-gray-400">
                     {lastUpdate.toLocaleTimeString("id-ID")}
                   </span>
@@ -209,7 +191,7 @@ export default function OrdersPage() {
                   confirmation.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {orders.map((order) => (
+                  {orders.map((order: Order) => (
                     <span
                       key={order.id}
                       className="inline-block px-3 py-1.5 bg-white border-2 border-green-300 rounded-full text-xs sm:text-sm font-mono text-green-900 shadow-sm"
@@ -282,7 +264,7 @@ export default function OrdersPage() {
               </Link>
             </div>
           ) : (
-            orders.map((order) => (
+            orders.map((order: Order) => (
               <Link
                 key={order.id}
                 href={`/orders/${order.id}`}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import { getOrCreateCart, clearCart } from "../../lib/cart";
 import type { Cart } from "../../lib/cart";
 import { getBuyerSession } from "../../lib/session";
@@ -57,13 +58,82 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [loading, setLoading] = useState(true);
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [countdown, setCountdown] = useState(3);
   const router = useRouter();
 
   const { toast } = useToast();
+
+  // Mutation: Create batch orders
+  const createOrdersMutation = useMutation({
+    mutationFn: async (variables: {
+      sessionId: string;
+      customerName: string;
+      customerPhone: string;
+      notes: string;
+      ordersByMerchant: Record<
+        string,
+        {
+          merchantName: string;
+          items: Array<{
+            menuId: string;
+            menuName: string;
+            quantity: number;
+            unitPrice: number;
+            menuImageUrl?: string;
+          }>;
+        }
+      >;
+    }) => {
+      const response = await fetch("/api/orders/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(variables),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(
+          result?.error || result?.error?.message || "Failed to create orders"
+        );
+      }
+
+      return result.data.orders.map(
+        (order: {
+          merchantId: string;
+          merchantName: string;
+          orderId: string;
+        }) => ({
+          success: true,
+          merchantName: order.merchantName,
+          orderId: order.orderId,
+        })
+      );
+    },
+  });
+
+  // Mutation: Create payments
+  const createPaymentsMutation = useMutation({
+    mutationFn: async (orderIds: string[]) => {
+      const response = await fetch("/api/payments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_ids: orderIds }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(
+          result?.error || result?.error?.message || "Failed to create payments"
+        );
+      }
+
+      return result;
+    },
+  });
 
   useEffect(() => {
     const initializeCheckout = () => {
@@ -147,98 +217,6 @@ export default function CheckoutPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const createOrdersForMerchants = async (
-    cleanedWhatsapp: string,
-    ordersByMerchant: Record<string, OrdersByMerchant>
-  ): Promise<OrderResult[]> => {
-    if (!session) {
-      return Object.entries(ordersByMerchant).map(([, { merchantName }]) => ({
-        success: false,
-        merchantName,
-        error: "No session",
-      }));
-    }
-
-    const batchOrderData = {
-      sessionId: session.id,
-      customerName: customerName.trim(),
-      customerPhone: cleanedWhatsapp,
-      notes: `Table ${session.tableNumber}`,
-      ordersByMerchant: Object.entries(ordersByMerchant).reduce(
-        (acc, [merchantId, { merchantName, items }]) => {
-          acc[merchantId] = {
-            merchantName,
-            items: items.map((item) => ({
-              menuId: item.menuId,
-              menuName: item.menuName,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              menuImageUrl: item.imageUrl,
-            })),
-          };
-          return acc;
-        },
-        {} as Record<
-          string,
-          {
-            merchantName: string;
-            items: Array<{
-              menuId: string;
-              menuName: string;
-              quantity: number;
-              unitPrice: number;
-              menuImageUrl?: string;
-            }>;
-          }
-        >
-      ),
-    };
-
-    try {
-      const response = await fetch("/api/orders/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(batchOrderData),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        return result.data.orders.map(
-          (order: {
-            merchantId: string;
-            merchantName: string;
-            orderId: string;
-          }) => ({
-            success: true,
-            merchantName: order.merchantName,
-            orderId: order.orderId,
-          })
-        );
-      }
-
-      return Object.values(ordersByMerchant).map(({ merchantName }) => ({
-        success: false,
-        merchantName,
-        error: result.error,
-      }));
-    } catch (error) {
-      return Object.values(ordersByMerchant).map(({ merchantName }) => ({
-        success: false,
-        merchantName,
-        error: error instanceof Error ? error.message : "Unknown error",
-      }));
-    }
-  };
-
-  const createPaymentsForOrders = async (orderIds: string[]): Promise<void> => {
-    await fetch("/api/payments/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ order_ids: orderIds }),
-    });
-  };
-
   const handlePlaceOrder = async () => {
     if (!validateInputs()) {
       return;
@@ -252,8 +230,6 @@ export default function CheckoutPage() {
       });
       return;
     }
-
-    setIsPlacingOrder(true);
 
     try {
       localStorage.setItem("ngantri_customer_name", customerName.trim());
@@ -272,14 +248,47 @@ export default function CheckoutPage() {
         return acc;
       }, {} as Record<string, OrdersByMerchant>);
 
-      const results = await createOrdersForMerchants(
-        cleanedWhatsapp,
-        ordersByMerchant
-      );
+      const batchOrderData = {
+        sessionId: session.id,
+        customerName: customerName.trim(),
+        customerPhone: cleanedWhatsapp,
+        notes: `Table ${session.tableNumber}`,
+        ordersByMerchant: Object.entries(ordersByMerchant).reduce(
+          (acc, [merchantId, { merchantName, items }]) => {
+            acc[merchantId] = {
+              merchantName,
+              items: items.map((item) => ({
+                menuId: item.menuId,
+                menuName: item.menuName,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                menuImageUrl: item.imageUrl,
+              })),
+            };
+            return acc;
+          },
+          {} as Record<
+            string,
+            {
+              merchantName: string;
+              items: Array<{
+                menuId: string;
+                menuName: string;
+                quantity: number;
+                unitPrice: number;
+                menuImageUrl?: string;
+              }>;
+            }
+          >
+        ),
+      };
 
-      const failed = results.filter((r) => !r.success);
+      const results = await createOrdersMutation.mutateAsync(batchOrderData);
+      const failed = results.filter((r: OrderResult) => !r.success);
       if (failed.length > 0) {
-        const failedMerchants = failed.map((r) => r.merchantName).join(", ");
+        const failedMerchants = failed
+          .map((r: OrderResult) => r.merchantName)
+          .join(", ");
 
         toast({
           title: "Error",
@@ -292,12 +301,12 @@ export default function CheckoutPage() {
 
       const orderIds = results
         .filter(
-          (r): r is OrderResult & { orderId: string } =>
+          (r: OrderResult): r is OrderResult & { orderId: string } =>
             r.success && typeof r.orderId === "string"
         )
-        .map((r) => r.orderId);
+        .map((r: OrderResult & { orderId: string }) => r.orderId);
 
-      await createPaymentsForOrders(orderIds);
+      await createPaymentsMutation.mutateAsync(orderIds);
 
       clearCart();
       window.dispatchEvent(new Event("cart-updated"));
@@ -323,8 +332,6 @@ export default function CheckoutPage() {
         description: errorMessage,
         variant: "destructive",
       });
-    } finally {
-      setIsPlacingOrder(false);
     }
   };
 
@@ -610,11 +617,15 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={handlePlaceOrder}
-                disabled={isPlacingOrder}
+                disabled={
+                  createOrdersMutation.isPending ||
+                  createPaymentsMutation.isPending
+                }
                 data-testid="place-order-btn"
                 className="w-full px-6 py-4 bg-gray-900 text-white text-base sm:text-lg font-bold rounded-xl hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-98"
               >
-                {isPlacingOrder ? (
+                {createOrdersMutation.isPending ||
+                createPaymentsMutation.isPending ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="animate-spin h-5 w-5" />
                     <span>Processing...</span>

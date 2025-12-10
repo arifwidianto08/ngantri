@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   IconDashboard,
   IconPackage,
@@ -34,49 +35,57 @@ export default function MerchantDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [merchant, setMerchant] = useState<Merchant | null>(null);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/merchants/logout", { method: "POST" });
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/merchants/logout", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
       router.push("/dashboard/login");
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error("Logout failed:", error);
-    }
-  };
+    },
+  });
 
-  const checkAuth = useCallback(async () => {
-    try {
+  const { data: merchant, isLoading } = useQuery({
+    queryKey: ["merchant-me"],
+    queryFn: async () => {
       const response = await fetch("/api/merchants/me");
       const result = await response.json();
 
       if (!result.success || !result.data?.merchant) {
-        router.push("/dashboard/login");
-        return;
+        throw new Error("Not authenticated");
       }
 
-      setMerchant(result.data.merchant);
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      router.push("/dashboard/login");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
+      return result.data.merchant as Merchant;
+    },
+    enabled: pathname !== "/dashboard/login",
+    retry: false,
+  });
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    if (!isLoading && !merchant && pathname !== "/dashboard/login") {
+      router.push("/dashboard/login");
+    }
+  }, [merchant, isLoading, router, pathname]);
+
+  const handleLogout = async () => {
+    await logoutMutation.mutateAsync();
+  };
 
   // Don't wrap login page with sidebar
   if (pathname === "/dashboard/login") {
     return <div className="min-h-screen w-full">{children}</div>;
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />

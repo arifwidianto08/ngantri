@@ -57,7 +57,9 @@ export default function AdminMerchantsPage() {
       const response = await fetch(url);
       const result = await response.json();
       if (!result.success) {
-        throw new Error(result.error?.message || "Failed to fetch merchants");
+        throw new Error(
+          result?.error || result?.error?.message || "Failed to fetch merchants"
+        );
       }
       return result;
     },
@@ -91,7 +93,9 @@ export default function AdminMerchantsPage() {
       const result = await response.json();
       if (!result.success) {
         throw new Error(
-          result.error?.message || "Failed to update availability"
+          result?.error ||
+            result?.error?.message ||
+            "Failed to update availability"
         );
       }
       return result;
@@ -121,7 +125,9 @@ export default function AdminMerchantsPage() {
 
       const result = await response.json();
       if (!result.success) {
-        throw new Error(result.error?.message || "Failed to delete merchant");
+        throw new Error(
+          result?.error || result?.error?.message || "Failed to delete merchant"
+        );
       }
       return result;
     },

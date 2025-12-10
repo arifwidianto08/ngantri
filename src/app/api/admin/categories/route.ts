@@ -29,30 +29,32 @@ export async function GET(request: NextRequest) {
     }
     const whereClause = and(...whereConditions);
 
-    // Get total count
-    const [countResult] = await db
-      .select({ total: count(menuCategories.id) })
-      .from(menuCategories)
-      .where(whereClause);
+    // Run both queries concurrently
+    const [countResult, categories] = await Promise.all([
+      db
+        .select({ total: count(menuCategories.id) })
+        .from(menuCategories)
+        .where(whereClause)
+        .then(([result]) => result), // unwrap single row
+
+      db
+        .select({
+          id: menuCategories.id,
+          merchantId: menuCategories.merchantId,
+          merchantName: merchants.name,
+          name: menuCategories.name,
+          createdAt: menuCategories.createdAt,
+        })
+        .from(menuCategories)
+        .leftJoin(merchants, eq(menuCategories.merchantId, merchants.id))
+        .where(whereClause)
+        .orderBy(menuCategories.name)
+        .limit(pageSize)
+        .offset(offset),
+    ]);
 
     const totalCount = countResult?.total || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
-
-    // Fetch paginated categories
-    const categories = await db
-      .select({
-        id: menuCategories.id,
-        merchantId: menuCategories.merchantId,
-        merchantName: merchants.name,
-        name: menuCategories.name,
-        createdAt: menuCategories.createdAt,
-      })
-      .from(menuCategories)
-      .leftJoin(merchants, eq(menuCategories.merchantId, merchants.id))
-      .where(whereClause)
-      .orderBy(menuCategories.name)
-      .limit(pageSize)
-      .offset(offset);
 
     return NextResponse.json({
       success: true,

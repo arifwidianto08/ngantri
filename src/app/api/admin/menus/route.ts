@@ -21,37 +21,42 @@ export async function GET(request: NextRequest) {
     );
     const offset = (page - 1) * pageSize;
 
-    // Get total count
-    const [countResult] = await db
-      .select({ total: count(menus.id) })
-      .from(menus)
-      .where(isNull(menus.deletedAt));
+    // Build where clause once
+    const whereClause = isNull(menus.deletedAt);
+
+    // Run both queries concurrently
+    const [countResult, allMenus] = await Promise.all([
+      db
+        .select({ total: count(menus.id) })
+        .from(menus)
+        .where(whereClause)
+        .then(([row]) => row),
+
+      db
+        .select({
+          id: menus.id,
+          merchantId: menus.merchantId,
+          merchantName: merchants.name,
+          categoryId: menus.categoryId,
+          categoryName: menuCategories.name,
+          name: menus.name,
+          imageUrl: menus.imageUrl,
+          description: menus.description,
+          price: menus.price,
+          isAvailable: menus.isAvailable,
+          createdAt: menus.createdAt,
+        })
+        .from(menus)
+        .leftJoin(merchants, eq(menus.merchantId, merchants.id))
+        .leftJoin(menuCategories, eq(menus.categoryId, menuCategories.id))
+        .where(whereClause)
+        .orderBy(menus.name)
+        .limit(pageSize)
+        .offset(offset),
+    ]);
 
     const totalCount = countResult?.total || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
-
-    // Fetch paginated menus
-    const allMenus = await db
-      .select({
-        id: menus.id,
-        merchantId: menus.merchantId,
-        merchantName: merchants.name,
-        categoryId: menus.categoryId,
-        categoryName: menuCategories.name,
-        name: menus.name,
-        imageUrl: menus.imageUrl,
-        description: menus.description,
-        price: menus.price,
-        isAvailable: menus.isAvailable,
-        createdAt: menus.createdAt,
-      })
-      .from(menus)
-      .leftJoin(merchants, eq(menus.merchantId, merchants.id))
-      .leftJoin(menuCategories, eq(menus.categoryId, menuCategories.id))
-      .where(isNull(menus.deletedAt))
-      .orderBy(menus.name)
-      .limit(pageSize)
-      .offset(offset);
 
     return NextResponse.json({
       success: true,
