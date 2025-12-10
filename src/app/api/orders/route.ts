@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
         order,
         message: "Order created successfully",
       },
+      undefined,
       "Order created successfully",
       201
     );

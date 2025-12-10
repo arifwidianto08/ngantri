@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
-import { menus, merchants, menuCategories } from "@/data/schema";
+import { merchants } from "@/data/schema";
 import { isNull, eq, count } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
@@ -23,39 +23,34 @@ export async function GET(request: NextRequest) {
 
     // Get total count
     const [countResult] = await db
-      .select({ total: count(menus.id) })
-      .from(menus)
-      .where(isNull(menus.deletedAt));
+      .select({ total: count(merchants.id) })
+      .from(merchants)
+      .where(isNull(merchants.deletedAt));
 
     const totalCount = countResult?.total || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
 
-    // Fetch paginated menus
-    const allMenus = await db
+    // Fetch paginated merchants
+    const merchantList = await db
       .select({
-        id: menus.id,
-        merchantId: menus.merchantId,
-        merchantName: merchants.name,
-        categoryId: menus.categoryId,
-        categoryName: menuCategories.name,
-        name: menus.name,
-        imageUrl: menus.imageUrl,
-        description: menus.description,
-        price: menus.price,
-        isAvailable: menus.isAvailable,
-        createdAt: menus.createdAt,
+        id: merchants.id,
+        phoneNumber: merchants.phoneNumber,
+        merchantNumber: merchants.merchantNumber,
+        name: merchants.name,
+        imageUrl: merchants.imageUrl,
+        description: merchants.description,
+        isAvailable: merchants.isAvailable,
+        createdAt: merchants.createdAt,
       })
-      .from(menus)
-      .leftJoin(merchants, eq(menus.merchantId, merchants.id))
-      .leftJoin(menuCategories, eq(menus.categoryId, menuCategories.id))
-      .where(isNull(menus.deletedAt))
-      .orderBy(menus.name)
+      .from(merchants)
+      .where(isNull(merchants.deletedAt))
+      .orderBy(merchants.name)
       .limit(pageSize)
       .offset(offset);
 
     return NextResponse.json({
       success: true,
-      data: allMenus,
+      data: merchantList,
       pagination: {
         page,
         pageSize,
@@ -64,7 +59,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching menus:", error);
+    console.error("Error fetching merchants:", error);
 
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json(
@@ -79,7 +74,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: { message: "Failed to fetch menus" },
+        error: { message: "Failed to fetch merchants" },
       },
       { status: 500 }
     );

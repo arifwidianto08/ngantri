@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireMerchantAuth } from "@/lib/merchant-auth";
 import { db } from "@/lib/db";
-import { orders, orderItems, menus, menuCategories } from "@/data/schema";
+import { orders, menus, menuCategories } from "@/data/schema";
 import { eq, and, isNull, sql, gte } from "drizzle-orm";
 
 /**
@@ -17,14 +17,12 @@ export async function GET(request: NextRequest) {
     const orderStats = await db
       .select({
         totalOrders: sql<number>`count(*)::int`,
-        totalRevenue: sql<number>`coalesce(sum(${orders.totalAmount}), 0)::int`,
+        totalRevenue: sql<number>`COALESCE(SUM(${orders.totalAmount}), 0)::int`,
         pendingOrders: sql<number>`count(case when ${orders.status} = 'pending' then 1 end)::int`,
         completedOrders: sql<number>`count(case when ${orders.status} = 'completed' then 1 end)::int`,
       })
       .from(orders)
-      .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
-      .innerJoin(menus, eq(orderItems.menuId, menus.id))
-      .where(and(eq(menus.merchantId, merchant.id), isNull(orders.deletedAt)));
+      .where(and(eq(orders.merchantId, merchant.id), isNull(orders.deletedAt)));
 
     // Get orders by status
     const ordersByStatus = await db
@@ -33,9 +31,7 @@ export async function GET(request: NextRequest) {
         count: sql<number>`count(*)::int`,
       })
       .from(orders)
-      .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
-      .innerJoin(menus, eq(orderItems.menuId, menus.id))
-      .where(and(eq(menus.merchantId, merchant.id), isNull(orders.deletedAt)))
+      .where(and(eq(orders.merchantId, merchant.id), isNull(orders.deletedAt)))
       .groupBy(orders.status);
 
     // Get revenue by day (last 7 days)
@@ -48,11 +44,9 @@ export async function GET(request: NextRequest) {
         revenue: sql<number>`sum(${orders.totalAmount})::int`,
       })
       .from(orders)
-      .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
-      .innerJoin(menus, eq(orderItems.menuId, menus.id))
       .where(
         and(
-          eq(menus.merchantId, merchant.id),
+          eq(orders.merchantId, merchant.id),
           isNull(orders.deletedAt),
           gte(orders.createdAt, sevenDaysAgo)
         )

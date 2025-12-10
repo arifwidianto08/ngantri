@@ -218,7 +218,17 @@ export class OrderService implements IOrderService {
     }
 
     try {
-      const updatedOrder = await this.orderRepository.updateStatus(id, status);
+      // When order is completed, automatically set payment status to paid
+      let paymentStatus: string | undefined;
+      if (status === "completed") {
+        paymentStatus = "paid";
+      }
+
+      const updatedOrder = await this.orderRepository.updateStatusWithPayment(
+        id,
+        status,
+        paymentStatus
+      );
       if (!updatedOrder) {
         throw errors.orderNotFound(id);
       }

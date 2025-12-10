@@ -169,26 +169,26 @@ export default function OrdersPage() {
             onClick={() => {
               router.push("/orders?view=pending");
             }}
-            className={`flex-1 px-4 py-3 rounded-xl font-bold transition-all shadow-sm ${
+            className={`flex-1 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold transition-all shadow-sm text-sm sm:text-base ${
               currentView === "pending"
-                ? "bg-blue-600 text-white shadow-lg scale-105"
+                ? "bg-blue-600 text-white shadow-lg"
                 : "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
             }`}
           >
-            <div className="text-sm sm:text-base">Ongoing</div>
+            Ongoing
           </button>
           <button
             type="button"
             onClick={() => {
               router.push("/orders?view=history");
             }}
-            className={`flex-1 px-4 py-3 rounded-xl font-bold transition-all shadow-sm ${
+            className={`flex-1 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold transition-all shadow-sm text-sm sm:text-base ${
               currentView === "history"
-                ? "bg-blue-600 text-white shadow-lg scale-105"
+                ? "bg-blue-600 text-white shadow-lg"
                 : "bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200"
             }`}
           >
-            <div className="text-sm sm:text-base">History</div>
+            History
           </button>
         </div>
 

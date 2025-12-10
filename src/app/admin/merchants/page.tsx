@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, BadgeCheck } from "lucide-react";
 import Image from "next/image";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast-provider";
@@ -21,74 +21,127 @@ interface Merchant {
   createdAt: string;
 }
 
+interface MerchantsResponse {
+  success: boolean;
+  data: Merchant[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+  };
+}
+
 export default function AdminMerchantsPage() {
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(
     null
   );
-  const [processing, setProcessing] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Query: Fetch all merchants with pagination
   const {
-    data = [],
+    data: merchantsResponse,
     isLoading,
-    refetch,
     isFetching,
-  } = useQuery<Merchant[]>({
-    queryKey: ["admin-merchants"],
+    refetch,
+  } = useQuery<MerchantsResponse>({
+    queryKey: ["admin-merchants", page, pageSize],
     queryFn: async () => {
-      const response = await fetch("/api/merchants");
+      const url = new URL("/api/admin/merchants", window.location.origin);
+      url.searchParams.append("page", String(page));
+      url.searchParams.append("pageSize", String(pageSize));
+      const response = await fetch(url);
       const result = await response.json();
-      return Array.isArray(result.data) ? result.data : [];
+      if (!result.success) {
+        throw new Error(result.error?.message || "Failed to fetch merchants");
+      }
+      return result;
     },
   });
 
-  const toggleAvailability = async (
-    merchantId: string,
-    isAvailable: boolean
-  ) => {
-    setProcessing(true);
+  const merchants = merchantsResponse?.data ?? [];
+  const pagination = merchantsResponse?.pagination ?? {
+    page: 1,
+    pageSize: 10,
+    totalCount: 0,
+    totalPages: 0,
+  };
 
-    try {
+  // Mutation: Toggle merchant availability
+  const toggleAvailabilityMutation = useMutation({
+    mutationFn: async (variables: {
+      merchantId: string;
+      isAvailable: boolean;
+    }) => {
       const response = await fetch(
-        `/api/admin/merchants/${merchantId}/availability`,
+        `/api/admin/merchants/${variables.merchantId}/availability`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ isAvailable }),
+          body: JSON.stringify({ isAvailable: variables.isAvailable }),
         }
       );
 
       const result = await response.json();
-
-      if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
-
-        toast({
-          title: "Success",
-          description: "Merchant availability updated!",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: result.error?.message || "Unknown error",
-          variant: "destructive",
-        });
+      if (!result.success) {
+        throw new Error(
+          result.error?.message || "Failed to update availability"
+        );
       }
-    } catch (error) {
-      console.error("Error updating availability:", error);
+      return result;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
+      toast({
+        title: "Success",
+        description: "Merchant availability updated!",
+      });
+    },
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to update merchant availability",
+        description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
-    } finally {
-      setProcessing(false);
-    }
-  };
+    },
+  });
+
+  // Mutation: Delete merchant
+  const deleteMerchantMutation = useMutation({
+    mutationFn: async (merchantId: string) => {
+      const response = await fetch(`/api/admin/merchants/${merchantId}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error?.message || "Failed to delete merchant");
+      }
+      return result;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
+      setSelectedMerchant(null);
+      setDeleteId(null);
+      toast({
+        title: "Merchant deleted",
+        description: "The merchant has been removed successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleDeleteClick = (merchantId: string) => {
     setDeleteId(merchantId);
@@ -96,42 +149,7 @@ export default function AdminMerchantsPage() {
 
   const confirmDelete = async () => {
     if (!deleteId) return;
-
-    setProcessing(true);
-
-    try {
-      const response = await fetch(`/api/admin/merchants/${deleteId}`, {
-        method: "DELETE",
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
-        setSelectedMerchant(null);
-        setDeleteId(null);
-
-        toast({
-          title: "Merchant deleted",
-          description: "The merchant has been removed successfully.",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: result.error?.message || "Unknown error",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error deleting merchant:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete merchant",
-        variant: "destructive",
-      });
-    } finally {
-      setProcessing(false);
-    }
+    deleteMerchantMutation.mutate(deleteId);
   };
 
   return (
@@ -181,125 +199,174 @@ export default function AdminMerchantsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Total Merchants</p>
-          <p className="text-2xl font-bold text-gray-900">{data.length}</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {pagination.totalCount}
+          </p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Available</p>
           <p className="text-2xl font-bold text-gray-900">
-            {data.filter((m) => m.isAvailable).length}
+            {merchants.filter((m) => m.isAvailable).length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Unavailable</p>
           <p className="text-2xl font-bold text-gray-900">
-            {data.filter((m) => !m.isAvailable).length}
+            {merchants.filter((m) => !m.isAvailable).length}
           </p>
         </div>
       </div>
 
-      {/* Merchants Grid */}
-      {isLoading ? (
-        <Card>
-          <CardContent className="p-12 text-center">
+      {/* Merchants Table */}
+      <Card>
+        {isLoading ? (
+          <CardContent className="p-12">
             <div className="flex flex-col items-center justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4" />
               <p className="text-gray-600">Loading merchants...</p>
             </div>
           </CardContent>
-        </Card>
-      ) : data.length === 0 ? (
-        <Card>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Phone
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Created
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {merchants.map((merchant) => (
+                  <tr key={merchant.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      {merchant.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {merchant.phoneNumber}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge variant="default">
+                        {merchant.isAvailable && (
+                          <BadgeCheck className="fill-blue-600" />
+                        )}
+                        {merchant.isAvailable ? "Available" : "Unavailable"}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {new Date(merchant.createdAt).toLocaleString("id-ID")}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => setSelectedMerchant(merchant)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          Details
+                        </Button>
+                        <Button
+                          onClick={() =>
+                            toggleAvailabilityMutation.mutate({
+                              merchantId: merchant.id,
+                              isAvailable: !merchant.isAvailable,
+                            })
+                          }
+                          disabled={toggleAvailabilityMutation.isPending}
+                          variant={
+                            merchant.isAvailable ? "destructive" : "default"
+                          }
+                          size="sm"
+                        >
+                          {merchant.isAvailable ? "Disable" : "Enable"}
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteClick(merchant.id)}
+                          disabled={deleteMerchantMutation.isPending}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          {deleteMerchantMutation.isPending
+                            ? "Deleting..."
+                            : "Delete"}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {!isLoading && merchants.length === 0 && (
           <CardContent className="p-12 text-center text-gray-500">
             No merchants found
           </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {data.map((merchant) => (
-            <div
-              key={merchant.id}
-              className="bg-white rounded-lg shadow overflow-hidden"
-            >
-              {merchant.imageUrl && (
-                <div className="relative w-full h-48">
-                  <Image
-                    src={merchant.imageUrl}
-                    alt={merchant.name}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              )}
-              {!merchant.imageUrl && (
-                <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                  <svg
-                    className="w-16 h-16 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <title>No Image</title>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                </div>
-              )}
+        )}
+      </Card>
 
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">
-                      {merchant.name}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      #{merchant.merchantNumber}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={merchant.isAvailable ? "default" : "destructive"}
-                  >
-                    {merchant.isAvailable ? "Available" : "Unavailable"}
-                  </Badge>
-                </div>
-
-                <p className="text-sm text-gray-600 mb-2">
-                  {merchant.phoneNumber}
-                </p>
-
-                {merchant.description && (
-                  <p className="text-sm text-gray-700 mb-3 line-clamp-2">
-                    {merchant.description}
-                  </p>
-                )}
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setSelectedMerchant(merchant)}
-                    variant="default"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    Details
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      toggleAvailability(merchant.id, !merchant.isAvailable)
-                    }
-                    disabled={processing}
-                    variant={merchant.isAvailable ? "destructive" : "default"}
-                    size="sm"
-                    className="flex-1"
-                  >
-                    {merchant.isAvailable ? "Disable" : "Enable"}
-                  </Button>
-                </div>
-              </div>
+      {/* Pagination */}
+      {!isLoading && merchants.length > 0 && (
+        <div className="flex items-center justify-between px-4 py-4 bg-white rounded-lg shadow flex-wrap gap-4">
+          <div className="text-sm text-gray-600">
+            Page {pagination.page} of {pagination.totalPages} (Total:{" "}
+            {pagination.totalCount} merchants)
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="page-size" className="text-sm text-gray-600">
+                Per page:
+              </label>
+              <select
+                id="page-size"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
             </div>
-          ))}
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                variant="outline"
+                size="sm"
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-gray-600">Page {page}</span>
+              <Button
+                onClick={() =>
+                  setPage(Math.min(pagination.totalPages || 1, page + 1))
+                }
+                disabled={page === pagination.totalPages}
+                variant="outline"
+                size="sm"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -396,13 +463,13 @@ export default function AdminMerchantsPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    toggleAvailability(
-                      selectedMerchant.id,
-                      !selectedMerchant.isAvailable
-                    );
+                    toggleAvailabilityMutation.mutate({
+                      merchantId: selectedMerchant.id,
+                      isAvailable: !selectedMerchant.isAvailable,
+                    });
                     setSelectedMerchant(null);
                   }}
-                  disabled={processing}
+                  disabled={toggleAvailabilityMutation.isPending}
                   className={`w-full px-4 py-2 rounded-lg font-medium disabled:opacity-50 ${
                     selectedMerchant.isAvailable
                       ? "bg-gray-900 text-white hover:bg-gray-800"
@@ -417,7 +484,7 @@ export default function AdminMerchantsPage() {
                 <button
                   type="button"
                   onClick={() => handleDeleteClick(selectedMerchant.id)}
-                  disabled={processing}
+                  disabled={deleteMerchantMutation.isPending}
                   className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 font-medium"
                 >
                   Delete Merchant
@@ -434,7 +501,7 @@ export default function AdminMerchantsPage() {
         title="Delete Merchant"
         description="Are you sure you want to DELETE this merchant? This action cannot be undone."
         onConfirm={confirmDelete}
-        isLoading={processing}
+        isLoading={deleteMerchantMutation.isPending}
         variant="danger"
         confirmText="Delete"
       />

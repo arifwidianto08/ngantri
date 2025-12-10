@@ -2,14 +2,25 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import Link from "next/link";
 import {
-  LayoutDashboard,
-  Package,
-  UtensilsCrossed,
-  Folder,
-  LogOut,
-} from "lucide-react";
+  IconDashboard,
+  IconPackage,
+  IconChefHat,
+  IconFolder,
+} from "@tabler/icons-react";
+
+import { NavMain } from "@/components/nav-main";
+import { NavUser } from "@/components/nav-user";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
 
 interface Merchant {
   id: string;
@@ -28,20 +39,29 @@ export default function MerchantDashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
 
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/merchants/logout", { method: "POST" });
+      router.push("/dashboard/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   const checkAuth = useCallback(async () => {
     try {
       const response = await fetch("/api/merchants/me");
       const result = await response.json();
 
       if (!result.success || !result.data?.merchant) {
-        router.push("/login");
+        router.push("/dashboard/login");
         return;
       }
 
       setMerchant(result.data.merchant);
     } catch (error) {
       console.error("Auth check failed:", error);
-      router.push("/login");
+      router.push("/dashboard/login");
     } finally {
       setLoading(false);
     }
@@ -51,14 +71,10 @@ export default function MerchantDashboardLayout({
     checkAuth();
   }, [checkAuth]);
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/merchants/logout", { method: "POST" });
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+  // Don't wrap login page with sidebar
+  if (pathname === "/dashboard/login") {
+    return <div className="min-h-screen w-full">{children}</div>;
+  }
 
   if (loading) {
     return (
@@ -68,72 +84,68 @@ export default function MerchantDashboardLayout({
     );
   }
 
-  const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Orders", href: "/dashboard/orders", icon: Package },
-    { name: "Menus", href: "/dashboard/menus", icon: UtensilsCrossed },
-    { name: "Categories", href: "/dashboard/categories", icon: Folder },
-  ];
+  const merchantData = {
+    user: {
+      name: merchant?.name || "Merchant",
+      email: `#${merchant?.merchantNumber}`,
+      avatar: "/avatars/merchant.jpg",
+    },
+    navMain: [
+      {
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: IconDashboard,
+      },
+      {
+        title: "Orders",
+        url: "/dashboard/orders",
+        icon: IconPackage,
+      },
+      {
+        title: "Menus",
+        url: "/dashboard/menus",
+        icon: IconChefHat,
+      },
+      {
+        title: "Categories",
+        url: "/dashboard/categories",
+        icon: IconFolder,
+      },
+    ],
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-lg">
-        <div className="flex flex-col h-full">
-          {/* Logo/Brand */}
-          <div className="p-6 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-gray-900">Ngantri</h1>
-            <p className="text-sm text-gray-600 mt-1">Merchant Dashboard</p>
-          </div>
-
-          {/* Merchant Info */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <p className="text-sm font-medium text-gray-900">
-              {merchant?.name}
-            </p>
-            <p className="text-xs text-gray-600">#{merchant?.merchantNumber}</p>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-gray-50 text-gray-900"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Logout Button */}
-          <div className="p-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
+    <SidebarProvider>
+      <Sidebar collapsible="offcanvas">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              >
+                <a href="/dashboard">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    <span className="font-semibold">N</span>
+                  </div>
+                  <span className="truncate font-semibold">Ngantri</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          <NavMain items={merchantData.navMain} />
+        </SidebarContent>
+        <SidebarFooter>
+          <NavUser user={merchantData.user} onLogout={handleLogout} />
+        </SidebarFooter>
+      </Sidebar>
 
       {/* Main Content */}
-      <div className="ml-64">
+      <div className="flex-1">
         <div className="p-8">{children}</div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
