@@ -215,6 +215,18 @@ export class OrderRepositoryImpl implements OrderRepository {
     return this.update(id, { status });
   }
 
+  async updateStatusWithPayment(
+    id: string,
+    status: string,
+    paymentStatus?: string
+  ): Promise<Order | null> {
+    const updates: Partial<Order> = { status };
+    if (paymentStatus) {
+      updates.paymentStatus = paymentStatus;
+    }
+    return this.update(id, updates);
+  }
+
   async updateCustomerInfo(
     id: string,
     customerName?: string,

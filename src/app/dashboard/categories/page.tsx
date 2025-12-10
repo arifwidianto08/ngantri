@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getMerchantIdFromStorage,
   setMerchantIdInStorage,
@@ -26,9 +26,6 @@ interface Category {
 }
 
 export default function MerchantCategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: "" });
@@ -63,14 +60,12 @@ export default function MerchantCategoriesPage() {
 
       setMerchantId(id || "");
       setInitComplete(true);
-      setLoading(false);
     };
 
     initializeMerchantId();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  const { data: catData } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ["merchant-categories", merchantId],
     queryFn: async () => {
       if (!merchantId) return { categories: [] };
@@ -81,64 +76,50 @@ export default function MerchantCategoriesPage() {
     enabled: initComplete && !!merchantId,
   });
 
-  useEffect(() => {
-    if (catData) {
-      setCategories(catData.categories);
-      setLoading(false);
-    }
-  }, [catData]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim()) {
-      showToast("Category name is required", "warning");
-      return;
-    }
-
-    setProcessing(true);
-    try {
-      const method = editingId ? "PATCH" : "POST";
-      const url = editingId
-        ? `/api/merchants/${merchantId}/categories/${editingId}`
+  const saveCategoryMutation = useMutation({
+    mutationFn: async (variables: { name: string; id?: string }) => {
+      const method = variables.id ? "PATCH" : "POST";
+      const url = variables.id
+        ? `/api/merchants/${merchantId}/categories/${variables.id}`
         : `/api/merchants/${merchantId}/categories`;
 
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: formData.name }),
+        body: JSON.stringify({ name: variables.name }),
       });
 
       const result = await response.json();
 
-      if (result.success) {
-        queryClient.invalidateQueries({
-          queryKey: ["merchant-categories", merchantId],
-        });
-        setShowForm(false);
-        setEditingId(null);
-        setFormData({ name: "" });
-        showToast(
-          editingId ? "Category updated!" : "Category created!",
-          "success"
-        );
-      } else {
-        showToast(
-          `Failed: ${result.error?.message || "Unknown error"}`,
-          "error"
-        );
+      if (!result.success) {
+        throw new Error(result.error?.message || "Failed to save category");
       }
-    } catch (error) {
-      console.error("Error:", error);
-      showToast("Failed to save category", "error");
-    } finally {
-      setProcessing(false);
-    }
-  };
 
-  const deleteCategory = async (categoryId: string) => {
-    showToast("Deleting category...", "info", 0);
-    setProcessing(true);
-    try {
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["merchant-categories", merchantId],
+      });
+      setShowForm(false);
+      setEditingId(null);
+      setFormData({ name: "" });
+      showToast(
+        editingId ? "Category updated!" : "Category created!",
+        "success"
+      );
+    },
+    onError: (error) => {
+      console.error("Error saving category:", error);
+      showToast(
+        `Failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (categoryId: string) => {
       const response = await fetch(
         `/api/merchants/${merchantId}/categories/${categoryId}`,
         {
@@ -148,23 +129,38 @@ export default function MerchantCategoriesPage() {
 
       const result = await response.json();
 
-      if (result.success) {
-        queryClient.invalidateQueries({
-          queryKey: ["merchant-categories", merchantId],
-        });
-        showToast("Category deleted successfully!", "success");
-      } else {
-        showToast(
-          `Failed: ${result.error?.message || "Unknown error"}`,
-          "error"
-        );
+      if (!result.success) {
+        throw new Error(result.error?.message || "Failed to delete category");
       }
-    } catch (error) {
+
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["merchant-categories", merchantId],
+      });
+      showToast("Category deleted successfully!", "success");
+    },
+    onError: (error) => {
       console.error("Error deleting category:", error);
-      showToast("Failed to delete category", "error");
-    } finally {
-      setProcessing(false);
+      showToast(
+        `Failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      showToast("Category name is required", "warning");
+      return;
     }
+
+    saveCategoryMutation.mutate({
+      name: formData.name,
+      id: editingId || undefined,
+    });
   };
 
   const handleEdit = (category: Category) => {
@@ -179,7 +175,7 @@ export default function MerchantCategoriesPage() {
     setFormData({ name: "" });
   };
 
-  if (loading) {
+  if (isLoading || isFetching) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
@@ -222,13 +218,13 @@ export default function MerchantCategoriesPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button type="submit" disabled={processing}>
+                <Button type="submit" disabled={saveCategoryMutation.isPending}>
                   {editingId ? "Update" : "Create"}
                 </Button>
                 <Button
                   type="button"
                   onClick={handleCancel}
-                  disabled={processing}
+                  disabled={saveCategoryMutation.isPending}
                   variant="outline"
                 >
                   Cancel
@@ -244,7 +240,7 @@ export default function MerchantCategoriesPage() {
         <CardContent className="pt-6">
           <p className="text-sm text-gray-600">Total Categories</p>
           <p className="text-2xl font-bold text-gray-900">
-            {categories.length}
+            {data?.categories.length}
           </p>
         </CardContent>
       </Card>
@@ -260,14 +256,14 @@ export default function MerchantCategoriesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {categories.map((category) => (
+            {data?.categories?.map((category: Category) => (
               <TableRow key={category.id}>
                 <TableCell>
                   <div className="text-sm font-medium text-gray-900">
                     {category.name}
                   </div>
                   <div className="text-xs text-gray-500">
-                    ID: {category.id.slice(-8)}
+                    ID: {category.id.slice(-12)}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -281,7 +277,10 @@ export default function MerchantCategoriesPage() {
                   <Button
                     type="button"
                     onClick={() => handleEdit(category)}
-                    disabled={processing}
+                    disabled={
+                      saveCategoryMutation.isPending ||
+                      deleteCategoryMutation.isPending
+                    }
                     variant="outline"
                     size="sm"
                   >
@@ -289,8 +288,11 @@ export default function MerchantCategoriesPage() {
                   </Button>
                   <Button
                     type="button"
-                    onClick={() => deleteCategory(category.id)}
-                    disabled={processing}
+                    onClick={() => deleteCategoryMutation.mutate(category.id)}
+                    disabled={
+                      deleteCategoryMutation.isPending ||
+                      saveCategoryMutation.isPending
+                    }
                     variant="destructive"
                     size="sm"
                   >
@@ -302,7 +304,7 @@ export default function MerchantCategoriesPage() {
           </TableBody>
         </Table>
 
-        {categories.length === 0 && (
+        {data?.categories?.length === 0 && (
           <CardContent className="p-12 text-center text-gray-500">
             No categories found. Create your first category to organize your
             menu.

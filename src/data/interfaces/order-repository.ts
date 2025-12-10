@@ -39,6 +39,11 @@ export interface OrderRepository {
 
   // Order status management
   updateStatus(id: string, status: string): Promise<Order | null>;
+  updateStatusWithPayment(
+    id: string,
+    status: string,
+    paymentStatus?: string
+  ): Promise<Order | null>;
   updateCustomerInfo(
     id: string,
     customerName?: string,

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getMerchantIdFromStorage,
   setMerchantIdInStorage,
@@ -26,8 +26,6 @@ interface Menu {
 }
 
 export default function MerchantMenusPage() {
-  const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
   const [merchantId, setMerchantId] = useState<string>("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -68,13 +66,16 @@ export default function MerchantMenusPage() {
 
       setMerchantId(id || "");
       setInitComplete(true);
-      setLoading(false);
     };
 
     initializeMerchantId();
   }, [router]);
 
-  const { data: menuData } = useQuery({
+  const {
+    data: menuData,
+    isLoading,
+    isFetching,
+  } = useQuery({
     queryKey: ["merchant-menus", merchantId],
     queryFn: async () => {
       if (!merchantId) return { menus: [], categories: [] };
@@ -100,43 +101,92 @@ export default function MerchantMenusPage() {
   const menus = menuData?.menus ?? [];
   const categories = menuData?.categories ?? [];
 
-  const toggleAvailability = async (menuId: string, isAvailable: boolean) => {
-    setProcessing(true);
-    try {
+  const saveMenuMutation = useMutation({
+    mutationFn: async (variables: {
+      name: string;
+      description: string | null;
+      price: number;
+      categoryId: string;
+      id?: string;
+    }) => {
+      const method = variables.id ? "PATCH" : "POST";
+      const url = variables.id
+        ? `/api/merchants/${merchantId}/menus/${variables.id}`
+        : `/api/merchants/${merchantId}/menus`;
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: variables.name,
+          description: variables.description,
+          price: variables.price,
+          categoryId: variables.categoryId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error?.message || "Failed to save menu");
+      }
+
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["merchant-menus", merchantId],
+      });
+      setShowForm(false);
+      setEditingId(null);
+      setFormData({ name: "", description: "", price: "", categoryId: "" });
+      showToast(editingId ? "Menu updated!" : "Menu created!", "success");
+    },
+    onError: (error) => {
+      console.error("Error saving menu:", error);
+      showToast(
+        `Failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
+    },
+  });
+
+  const toggleAvailabilityMutation = useMutation({
+    mutationFn: async (variables: { menuId: string; isAvailable: boolean }) => {
       const response = await fetch(
-        `/api/merchants/${merchantId}/menus/${menuId}`,
+        `/api/merchants/${merchantId}/menus/${variables.menuId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isAvailable }),
+          body: JSON.stringify({ isAvailable: variables.isAvailable }),
         }
       );
 
       const result = await response.json();
 
-      if (result.success) {
-        queryClient.invalidateQueries({
-          queryKey: ["merchant-menus", merchantId],
-        });
-        showToast("Menu availability updated!", "success");
-      } else {
-        showToast(
-          `Failed: ${result.error?.message || "Unknown error"}`,
-          "error"
-        );
+      if (!result.success) {
+        throw new Error(result.error?.message || "Failed to update menu");
       }
-    } catch (error) {
-      console.error("Error updating menu:", error);
-      showToast("Failed to update menu", "error");
-    } finally {
-      setProcessing(false);
-    }
-  };
 
-  const deleteMenu = async (menuId: string) => {
-    showToast("Deleting menu item...", "info", 0);
-    setProcessing(true);
-    try {
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["merchant-menus", merchantId],
+      });
+      showToast("Menu availability updated!", "success");
+    },
+    onError: (error) => {
+      console.error("Error updating menu:", error);
+      showToast(
+        `Failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
+    },
+  });
+
+  const deleteMenuMutation = useMutation({
+    mutationFn: async (menuId: string) => {
       const response = await fetch(
         `/api/merchants/${merchantId}/menus/${menuId}`,
         {
@@ -146,24 +196,26 @@ export default function MerchantMenusPage() {
 
       const result = await response.json();
 
-      if (result.success) {
-        queryClient.invalidateQueries({
-          queryKey: ["merchant-menus", merchantId],
-        });
-        showToast("Menu deleted successfully!", "success");
-      } else {
-        showToast(
-          `Failed: ${result.error?.message || "Unknown error"}`,
-          "error"
-        );
+      if (!result.success) {
+        throw new Error(result.error?.message || "Failed to delete menu");
       }
-    } catch (error) {
+
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["merchant-menus", merchantId],
+      });
+      showToast("Menu deleted successfully!", "success");
+    },
+    onError: (error) => {
       console.error("Error deleting menu:", error);
-      showToast("Failed to delete menu", "error");
-    } finally {
-      setProcessing(false);
-    }
-  };
+      showToast(
+        `Failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,46 +224,13 @@ export default function MerchantMenusPage() {
       return;
     }
 
-    setProcessing(true);
-    try {
-      const method = editingId ? "PATCH" : "POST";
-      const url = editingId
-        ? `/api/merchants/${merchantId}/menus/${editingId}`
-        : `/api/merchants/${merchantId}/menus`;
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          description: formData.description || null,
-          price: Number.parseFloat(formData.price),
-          categoryId: formData.categoryId,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        queryClient.invalidateQueries({
-          queryKey: ["merchant-menus", merchantId],
-        });
-        setShowForm(false);
-        setEditingId(null);
-        setFormData({ name: "", description: "", price: "", categoryId: "" });
-        showToast(editingId ? "Menu updated!" : "Menu created!", "success");
-      } else {
-        showToast(
-          `Failed: ${result.error?.message || "Unknown error"}`,
-          "error"
-        );
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      showToast("Failed to save menu", "error");
-    } finally {
-      setProcessing(false);
-    }
+    saveMenuMutation.mutate({
+      name: formData.name,
+      description: formData.description || null,
+      price: Number.parseFloat(formData.price),
+      categoryId: formData.categoryId,
+      id: editingId || undefined,
+    });
   };
 
   const handleEdit = (menu: Menu) => {
@@ -239,7 +258,7 @@ export default function MerchantMenusPage() {
     }).format(amount);
   };
 
-  if (loading) {
+  if (isLoading || isFetching) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
@@ -332,13 +351,13 @@ export default function MerchantMenusPage() {
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit" disabled={processing}>
+                <Button type="submit" disabled={saveMenuMutation.isPending}>
                   {editingId ? "Update" : "Create"}
                 </Button>
                 <Button
                   type="button"
                   onClick={handleCancel}
-                  disabled={processing}
+                  disabled={saveMenuMutation.isPending}
                   variant="outline"
                 >
                   Cancel
@@ -421,7 +440,9 @@ export default function MerchantMenusPage() {
               <div className="flex gap-2">
                 <Button
                   onClick={() => handleEdit(menu)}
-                  disabled={processing}
+                  disabled={
+                    saveMenuMutation.isPending || deleteMenuMutation.isPending
+                  }
                   variant="default"
                   size="sm"
                   className="flex-1"
@@ -429,8 +450,17 @@ export default function MerchantMenusPage() {
                   Edit
                 </Button>
                 <Button
-                  onClick={() => toggleAvailability(menu.id, !menu.isAvailable)}
-                  disabled={processing}
+                  onClick={() =>
+                    toggleAvailabilityMutation.mutate({
+                      menuId: menu.id,
+                      isAvailable: !menu.isAvailable,
+                    })
+                  }
+                  disabled={
+                    toggleAvailabilityMutation.isPending ||
+                    saveMenuMutation.isPending ||
+                    deleteMenuMutation.isPending
+                  }
                   variant={menu.isAvailable ? "outline" : "default"}
                   size="sm"
                   className="flex-1"
@@ -438,8 +468,12 @@ export default function MerchantMenusPage() {
                   {menu.isAvailable ? "Disable" : "Enable"}
                 </Button>
                 <Button
-                  onClick={() => deleteMenu(menu.id)}
-                  disabled={processing}
+                  onClick={() => deleteMenuMutation.mutate(menu.id)}
+                  disabled={
+                    deleteMenuMutation.isPending ||
+                    saveMenuMutation.isPending ||
+                    toggleAvailabilityMutation.isPending
+                  }
                   variant="destructive"
                   size="sm"
                 >

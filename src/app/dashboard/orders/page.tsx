@@ -231,7 +231,7 @@ export default function MerchantOrdersPage() {
                       })}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Session: {order.sessionId.slice(-8)}
+                      Session: {order.sessionId.slice(-12)}
                     </p>
                   </div>
                   <div className="text-right">
