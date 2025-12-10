@@ -152,7 +152,7 @@ export default function CartPage() {
                 type="button"
                 onClick={handleClearCart}
                 data-testid="clear-cart-btn"
-                className="text-red-600 hover:text-red-700 text-xs sm:text-sm font-semibold px-3 py-2 rounded-lg hover:bg-red-50 transition-colors"
+                className="text-gray-900 hover:text-gray-900 text-xs sm:text-sm font-semibold px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Clear All
               </button>
@@ -196,14 +196,14 @@ export default function CartPage() {
               {cart && cart.items.length > 0 && (
                 <div className="relative overflow-hidden bg-gradient-to-br from-green-500 to-green-700 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 h-32 flex flex-col justify-center">
                   <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
-                  <p className="text-sm font-semibold text-green-100 mb-1">
+                  <p className="text-sm font-semibold text-gray-100 mb-1">
                     Cart
                   </p>
                   <div className="flex items-baseline gap-2">
                     <p className="text-2xl font-black text-white">
                       {cart.totalItems}
                     </p>
-                    <p className="text-sm font-semibold text-green-100">
+                    <p className="text-sm font-semibold text-gray-100">
                       items
                     </p>
                   </div>
@@ -272,7 +272,7 @@ export default function CartPage() {
                       className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200"
                     >
                       {/* Merchant Header */}
-                      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-6 py-4">
+                      <div className="bg-gradient-to-r from-blue-600 to-gray-600 px-4 sm:px-6 py-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center text-white font-bold text-lg sm:text-xl">
@@ -369,7 +369,7 @@ export default function CartPage() {
                                     type="button"
                                     onClick={() => handleRemoveItem(item.id)}
                                     data-testid="remove-item-btn"
-                                    className="text-red-600 hover:text-red-700 text-xs sm:text-sm font-semibold hover:bg-red-50 px-4 py-2.5 rounded-lg transition-colors active:scale-95"
+                                    className="text-gray-900 hover:text-gray-900 text-xs sm:text-sm font-semibold hover:bg-gray-50 px-4 py-2.5 rounded-lg transition-colors active:scale-95"
                                   >
                                     Remove
                                   </button>
@@ -421,7 +421,7 @@ export default function CartPage() {
                 data-testid="checkout-btn"
                 className={`w-full py-4 px-6 text-center rounded-xl font-bold text-base sm:text-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 ${
                   session?.tableNumber
-                    ? "bg-green-600 text-white hover:bg-green-700 active:scale-[0.98]"
+                    ? "bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.98]"
                     : "bg-orange-500 text-white hover:bg-orange-600"
                 }`}
                 onClick={(e) => {

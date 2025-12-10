@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/toast-provider";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface Order {
   id: string;
@@ -13,12 +15,34 @@ interface Order {
   sessionId: string;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready: "Ready for Pickup",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  completed: "bg-green-100 text-green-800",
+  pending: "bg-yellow-100 text-yellow-800",
+  cancelled: "bg-red-100 text-red-800",
+  accepted: "bg-blue-100 text-blue-800",
+  preparing: "bg-purple-100 text-purple-800",
+  ready: "bg-orange-100 text-orange-800",
+};
+
 export default function MerchantOrdersPage() {
   const [filter, setFilter] = useState<string>("all");
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: ordersData, isLoading } = useQuery({
+  const {
+    data: ordersData,
+    isLoading,
+    isFetching,
+  } = useQuery({
     queryKey: ["merchant-orders", filter],
     queryFn: async () => {
       const url =
@@ -58,7 +82,8 @@ export default function MerchantOrdersPage() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["merchant-orders", filter] });
+      // Invalidate all merchant-orders queries to sync counts and data across all filters
+      queryClient.invalidateQueries({ queryKey: ["merchant-orders"] });
       toast({ title: "Success", description: "Order status updated!" });
     },
     onError: (error: unknown) => {
@@ -79,14 +104,6 @@ export default function MerchantOrdersPage() {
     }).format(amount);
   };
 
-  if (isLoading || updateOrderStatusMutation.isPending) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -94,234 +111,230 @@ export default function MerchantOrdersPage() {
           <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
           <p className="text-gray-600 mt-1">Manage your incoming orders</p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() =>
             queryClient.invalidateQueries({
               queryKey: ["merchant-orders", filter],
             })
           }
-          disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          disabled={isLoading || isFetching}
+          variant="outline"
         >
-          {isLoading ? (
+          {isLoading || isFetching ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Refreshing...</span>
             </>
           ) : (
-            <span>Refresh</span>
+            <>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <title>Refresh</title>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span>Refresh</span>
+            </>
           )}
-        </button>
+        </Button>
       </div>
 
       {/* Filter Buttons */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              filter === "all"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            All ({ordersData?.statusCounts?.all || 0})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("pending")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              filter === "pending"
-                ? "bg-orange-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Pending ({ordersData?.statusCounts?.pending || 0})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("accepted")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              filter === "accepted"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Accepted ({ordersData?.statusCounts?.accepted || 0})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("preparing")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              filter === "preparing"
-                ? "bg-purple-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Preparing ({ordersData?.statusCounts?.preparing || 0})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("ready")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              filter === "ready"
-                ? "bg-green-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Ready ({ordersData?.statusCounts?.ready || 0})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("completed")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              filter === "completed"
-                ? "bg-gray-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Completed ({ordersData?.statusCounts?.completed || 0})
-          </button>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              onClick={() => setFilter("all")}
+              variant={filter === "all" ? "default" : "outline"}
+              size="sm"
+            >
+              All ({ordersData?.statusCounts?.all || 0})
+            </Button>
+            <Button
+              onClick={() => setFilter("pending")}
+              variant={filter === "pending" ? "default" : "outline"}
+              size="sm"
+            >
+              Pending ({ordersData?.statusCounts?.pending || 0})
+            </Button>
+            <Button
+              onClick={() => setFilter("accepted")}
+              variant={filter === "accepted" ? "default" : "outline"}
+              size="sm"
+            >
+              Accepted ({ordersData?.statusCounts?.accepted || 0})
+            </Button>
+            <Button
+              onClick={() => setFilter("preparing")}
+              variant={filter === "preparing" ? "default" : "outline"}
+              size="sm"
+            >
+              Preparing ({ordersData?.statusCounts?.preparing || 0})
+            </Button>
+            <Button
+              onClick={() => setFilter("ready")}
+              variant={filter === "ready" ? "default" : "outline"}
+              size="sm"
+            >
+              Ready ({ordersData?.statusCounts?.ready || 0})
+            </Button>
+            <Button
+              onClick={() => setFilter("completed")}
+              variant={filter === "completed" ? "default" : "outline"}
+              size="sm"
+            >
+              Completed ({ordersData?.statusCounts?.completed || 0})
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Orders List */}
       <div className="space-y-4">
-        {orders.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
-            No orders found for this filter
-          </div>
+        {isLoading || updateOrderStatusMutation.isPending ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <div className="flex flex-col items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4" />
+                <p className="text-gray-600">Loading orders...</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : orders.length === 0 ? (
+          <Card>
+            <CardContent className="p-12 text-center text-gray-500">
+              No orders found for this filter
+            </CardContent>
+          </Card>
         ) : (
           orders.map((order: Order) => (
-            <div key={order.id} className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Order #{order.id.toUpperCase()}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {new Date(order.createdAt).toLocaleString("id-ID", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Session: {order.sessionId.slice(-8)}
-                  </p>
+            <Card key={order.id}>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Order #{order.id.toUpperCase()}
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {new Date(order.createdAt).toLocaleString("id-ID", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Session: {order.sessionId.slice(-8)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(order.totalAmount)}
+                    </p>
+                    <span
+                      className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                        STATUS_COLORS[order.status] ||
+                        "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {STATUS_LABELS[order.status] || order.status}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(order.totalAmount)}
-                  </p>
-                  <span
-                    className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold ${
-                      order.status === "pending"
-                        ? "bg-orange-100 text-orange-800"
-                        : order.status === "accepted"
-                        ? "bg-blue-100 text-blue-800"
-                        : order.status === "preparing"
-                        ? "bg-purple-100 text-purple-800"
-                        : order.status === "ready"
-                        ? "bg-green-100 text-green-800"
-                        : order.status === "completed"
-                        ? "bg-gray-100 text-gray-800"
-                        : order.status === "cancelled"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {order.status.toUpperCase()}
-                  </span>
-                </div>
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2 flex-wrap">
-                {order.status === "pending" && (
-                  <>
-                    <button
-                      type="button"
+                {/* Action Buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  {order.status === "pending" && (
+                    <>
+                      <Button
+                        onClick={() =>
+                          updateOrderStatusMutation.mutate({
+                            orderId: order.id,
+                            newStatus: "accepted",
+                          })
+                        }
+                        variant="default"
+                        size="sm"
+                      >
+                        Accept Order
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          updateOrderStatusMutation.mutate({
+                            orderId: order.id,
+                            newStatus: "cancelled",
+                          })
+                        }
+                        variant="destructive"
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  )}
+
+                  {order.status === "accepted" && (
+                    <Button
                       onClick={() =>
                         updateOrderStatusMutation.mutate({
                           orderId: order.id,
-                          newStatus: "accepted",
+                          newStatus: "preparing",
                         })
                       }
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                      variant="default"
+                      size="sm"
                     >
-                      Accept Order
-                    </button>
-                    <button
-                      type="button"
+                      Start Preparing
+                    </Button>
+                  )}
+
+                  {order.status === "preparing" && (
+                    <Button
                       onClick={() =>
                         updateOrderStatusMutation.mutate({
                           orderId: order.id,
-                          newStatus: "cancelled",
+                          newStatus: "ready",
                         })
                       }
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+                      variant="default"
+                      size="sm"
                     >
-                      Cancel
-                    </button>
-                  </>
-                )}
+                      Mark as Ready
+                    </Button>
+                  )}
 
-                {order.status === "accepted" && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateOrderStatusMutation.mutate({
-                        orderId: order.id,
-                        newStatus: "preparing",
-                      })
-                    }
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
-                  >
-                    Start Preparing
-                  </button>
-                )}
+                  {order.status === "ready" && (
+                    <Button
+                      onClick={() =>
+                        updateOrderStatusMutation.mutate({
+                          orderId: order.id,
+                          newStatus: "completed",
+                        })
+                      }
+                      variant="default"
+                      size="sm"
+                    >
+                      Complete Order
+                    </Button>
+                  )}
 
-                {order.status === "preparing" && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateOrderStatusMutation.mutate({
-                        orderId: order.id,
-                        newStatus: "ready",
-                      })
-                    }
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-                  >
-                    Mark as Ready
-                  </button>
-                )}
+                  {order.status === "completed" && (
+                    <div className="text-sm text-gray-600">Order completed</div>
+                  )}
 
-                {order.status === "ready" && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateOrderStatusMutation.mutate({
-                        orderId: order.id,
-                        newStatus: "completed",
-                      })
-                    }
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm font-medium"
-                  >
-                    Complete Order
-                  </button>
-                )}
-
-                {order.status === "completed" && (
-                  <div className="text-sm text-gray-600">Order completed</div>
-                )}
-
-                {order.status === "cancelled" && (
-                  <div className="text-sm text-red-600">Order cancelled</div>
-                )}
-              </div>
-            </div>
+                  {order.status === "cancelled" && (
+                    <div className="text-sm text-gray-900">Order cancelled</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           ))
         )}
       </div>

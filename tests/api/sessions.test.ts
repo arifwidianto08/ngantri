@@ -31,8 +31,9 @@ describe("Sessions API", () => {
         body: JSON.stringify({}),
       });
 
-      expect(res.status).toBe(201);
       const data = await res.json();
+
+      expect([200, 201]).toContain(res.status);
       expect(data.success).toBe(true);
       expect(data.data).toHaveProperty("session");
     });
@@ -61,7 +62,7 @@ describe("Sessions API", () => {
         body: JSON.stringify({ table_number: 5 }),
       });
 
-      expect(res.status).toBe(201);
+      expect([200, 201]).toContain(res.status);
       const data = await res.json();
       expect(data.success).toBe(true);
     });

@@ -8,6 +8,16 @@ import {
   setMerchantIdInStorage,
 } from "@/lib/merchant-client";
 import { useToast } from "@/components/toast-provider";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface Category {
   id: string;
@@ -172,7 +182,7 @@ export default function MerchantCategoriesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
       </div>
     );
   }
@@ -184,127 +194,121 @@ export default function MerchantCategoriesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
           <p className="text-gray-600 mt-1">Organize your menu items</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
-        >
-          + Add Category
-        </button>
+        <Button onClick={() => setShowForm(true)}>+ Add Category</Button>
       </div>
 
       {/* Create/Edit Form */}
       {showForm && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold mb-4">
-            {editingId ? "Edit Category" : "Create New Category"}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category Name
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="e.g., Main Courses, Desserts"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={processing}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
-              >
-                {editingId ? "Update" : "Create"}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={processing}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:opacity-50 font-medium"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {editingId ? "Edit Category" : "Create New Category"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="e.g., Main Courses, Desserts"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={processing}>
+                  {editingId ? "Update" : "Create"}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={processing}
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
       {/* Stats */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <p className="text-sm text-gray-600">Total Categories</p>
-        <p className="text-2xl font-bold text-gray-900">{categories.length}</p>
-      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-sm text-gray-600">Total Categories</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {categories.length}
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Categories Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Menu Items
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Menu Items</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {categories.map((category) => (
-              <tr key={category.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
+              <TableRow key={category.id}>
+                <TableCell>
                   <div className="text-sm font-medium text-gray-900">
                     {category.name}
                   </div>
                   <div className="text-xs text-gray-500">
                     ID: {category.id.slice(-8)}
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                </TableCell>
+                <TableCell>
                   <div className="text-sm text-gray-600">
                     {category.menuCount !== undefined
                       ? `${category.menuCount} items`
                       : "-"}
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                  <button
+                </TableCell>
+                <TableCell className="text-right space-x-3">
+                  <Button
                     type="button"
                     onClick={() => handleEdit(category)}
                     disabled={processing}
-                    className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
+                    variant="outline"
+                    size="sm"
                   >
                     Edit
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => deleteCategory(category.id)}
                     disabled={processing}
-                    className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                    variant="destructive"
+                    size="sm"
                   >
                     Delete
-                  </button>
-                </td>
-              </tr>
+                  </Button>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
 
         {categories.length === 0 && (
-          <div className="p-12 text-center text-gray-500">
+          <CardContent className="p-12 text-center text-gray-500">
             No categories found. Create your first category to organize your
             menu.
-          </div>
+          </CardContent>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

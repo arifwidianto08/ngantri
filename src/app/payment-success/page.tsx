@@ -40,9 +40,9 @@ export default function PaymentSuccessPage() {
     <div className="container mx-auto max-w-2xl px-4 py-20">
       <div className="rounded-lg border bg-white shadow-sm">
         <div className="p-6 text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
             <svg
-              className="h-12 w-12 text-green-600"
+              className="h-12 w-12 text-gray-900"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

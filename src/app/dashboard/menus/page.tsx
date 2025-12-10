@@ -9,6 +9,9 @@ import {
   setMerchantIdInStorage,
 } from "@/lib/merchant-client";
 import { useToast } from "@/components/toast-provider";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import type { MenuCategory } from "@/data/schema";
 
 interface Menu {
@@ -239,7 +242,7 @@ export default function MerchantMenusPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
       </div>
     );
   }
@@ -251,136 +254,131 @@ export default function MerchantMenusPage() {
           <h1 className="text-3xl font-bold text-gray-900">Menus</h1>
           <p className="text-gray-600 mt-1">Manage your menu items</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
-        >
-          + Add Menu
-        </button>
+        <Button onClick={() => setShowForm(true)}>+ Add Menu</Button>
       </div>
 
       {/* Create/Edit Form */}
       {showForm && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold mb-4">
-            {editingId ? "Edit Menu" : "Create New Menu"}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>{editingId ? "Edit Menu" : "Create New Menu"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Menu Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    placeholder="e.g., Nasi Goreng"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Price (IDR)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({ ...formData, price: e.target.value })
+                    }
+                    placeholder="e.g., 25000"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Menu Name
+                  Category
                 </label>
-                <input
-                  type="text"
-                  value={formData.name}
+                <select
+                  value={formData.categoryId}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, categoryId: e.target.value })
                   }
-                  placeholder="e.g., Nasi Goreng"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((cat: MenuCategory) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Price (IDR)
+                  Description (Optional)
                 </label>
-                <input
-                  type="number"
-                  value={formData.price}
+                <textarea
+                  value={formData.description}
                   onChange={(e) =>
-                    setFormData({ ...formData, price: e.target.value })
+                    setFormData({ ...formData, description: e.target.value })
                   }
-                  placeholder="e.g., 25000"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="Describe your menu item..."
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
-              <select
-                value={formData.categoryId}
-                onChange={(e) =>
-                  setFormData({ ...formData, categoryId: e.target.value })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              >
-                <option value="">Select a category</option>
-                {categories.map((cat: MenuCategory) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description (Optional)
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Describe your menu item..."
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={processing}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
-              >
-                {editingId ? "Update" : "Create"}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={processing}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:opacity-50 font-medium"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={processing}>
+                  {editingId ? "Update" : "Create"}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={processing}
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600">Total Menus</p>
-          <p className="text-2xl font-bold text-gray-900">{menus.length}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600">Available</p>
-          <p className="text-2xl font-bold text-green-600">
-            {menus.filter((m: Menu) => m.isAvailable).length}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <p className="text-sm text-gray-600">Unavailable</p>
-          <p className="text-2xl font-bold text-red-600">
-            {menus.filter((m: Menu) => !m.isAvailable).length}
-          </p>
-        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-gray-600">Total Menus</p>
+            <p className="text-2xl font-bold text-gray-900">{menus.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-gray-600">Available</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {menus.filter((m: Menu) => m.isAvailable).length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-gray-600">Unavailable</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {menus.filter((m: Menu) => !m.isAvailable).length}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Menus Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {menus.map((menu: Menu) => (
-          <div
-            key={menu.id}
-            className="bg-white rounded-lg shadow overflow-hidden"
-          >
+          <Card key={menu.id} className="overflow-hidden">
             {menu.imageUrl ? (
               <div className="relative w-full h-48">
                 <Image
@@ -408,66 +406,55 @@ export default function MerchantMenusPage() {
                     <p className="text-xs text-gray-500">{menu.categoryName}</p>
                   )}
                 </div>
-                <span
-                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    menu.isAvailable
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
+                <Badge variant={menu.isAvailable ? "default" : "destructive"}>
                   {menu.isAvailable ? "Available" : "Unavailable"}
-                </span>
-              </div>
-
+                </Badge>
+              </div>{" "}
               {menu.description && (
                 <p className="text-sm text-gray-600 mb-3 line-clamp-2">
                   {menu.description}
                 </p>
               )}
-
-              <p className="text-xl font-bold text-green-600 mb-3">
+              <p className="text-xl font-bold text-gray-900 mb-3">
                 {formatCurrency(menu.price)}
               </p>
-
               <div className="flex gap-2">
-                <button
-                  type="button"
+                <Button
                   onClick={() => handleEdit(menu)}
                   disabled={processing}
-                  className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+                  variant="default"
+                  size="sm"
+                  className="flex-1"
                 >
                   Edit
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
                   onClick={() => toggleAvailability(menu.id, !menu.isAvailable)}
                   disabled={processing}
-                  className={`flex-1 px-3 py-2 text-sm rounded-lg font-medium ${
-                    menu.isAvailable
-                      ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
-                      : "bg-green-100 text-green-700 hover:bg-green-200"
-                  } disabled:opacity-50`}
+                  variant={menu.isAvailable ? "outline" : "default"}
+                  size="sm"
+                  className="flex-1"
                 >
                   {menu.isAvailable ? "Disable" : "Enable"}
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
                   onClick={() => deleteMenu(menu.id)}
                   disabled={processing}
-                  className="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
+                  variant="destructive"
+                  size="sm"
                 >
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       {menus.length === 0 && (
-        <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
+        <Card className="p-12 text-center text-gray-500">
           No menu items found. Create your first menu item to get started.
-        </div>
+        </Card>
       )}
     </div>
   );

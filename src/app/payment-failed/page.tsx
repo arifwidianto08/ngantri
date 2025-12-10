@@ -11,9 +11,9 @@ export default function PaymentFailedPage() {
     <div className="container mx-auto max-w-2xl px-4 py-20">
       <div className="rounded-lg border bg-white shadow-sm">
         <div className="p-6 text-center">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
             <svg
-              className="h-12 w-12 text-red-600"
+              className="h-12 w-12 text-gray-900"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -33,10 +33,10 @@ export default function PaymentFailedPage() {
           </p>
         </div>
         <div className="space-y-6 p-6">
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
             <div className="flex gap-3">
               <svg
-                className="h-5 w-5 flex-shrink-0 text-red-600"
+                className="h-5 w-5 flex-shrink-0 text-gray-900"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >

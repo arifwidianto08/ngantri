@@ -6,6 +6,9 @@ import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast-provider";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface Merchant {
   id: string;
@@ -131,17 +134,6 @@ export default function AdminMerchantsPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading merchants...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -152,13 +144,13 @@ export default function AdminMerchantsPage() {
           </h1>
           <p className="text-gray-600 mt-1">Manage all registered merchants</p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => void refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          disabled={isLoading || isFetching}
+          variant="outline"
         >
-          {isFetching ? (
+          {isLoading || isFetching ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Refreshing...</span>
@@ -182,7 +174,7 @@ export default function AdminMerchantsPage() {
               <span>Refresh</span>
             </>
           )}
-        </button>
+        </Button>
       </div>
 
       {/* Stats */}
@@ -193,116 +185,121 @@ export default function AdminMerchantsPage() {
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Available</p>
-          <p className="text-2xl font-bold text-green-600">
+          <p className="text-2xl font-bold text-gray-900">
             {data.filter((m) => m.isAvailable).length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Unavailable</p>
-          <p className="text-2xl font-bold text-red-600">
+          <p className="text-2xl font-bold text-gray-900">
             {data.filter((m) => !m.isAvailable).length}
           </p>
         </div>
       </div>
 
       {/* Merchants Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {data.map((merchant) => (
-          <div
-            key={merchant.id}
-            className="bg-white rounded-lg shadow overflow-hidden"
-          >
-            {merchant.imageUrl && (
-              <div className="relative w-full h-48">
-                <Image
-                  src={merchant.imageUrl}
-                  alt={merchant.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            )}
-            {!merchant.imageUrl && (
-              <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                <svg
-                  className="w-16 h-16 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <title>No Image</title>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+      {isLoading ? (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4" />
+              <p className="text-gray-600">Loading merchants...</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : data.length === 0 ? (
+        <Card>
+          <CardContent className="p-12 text-center text-gray-500">
+            No merchants found
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {data.map((merchant) => (
+            <div
+              key={merchant.id}
+              className="bg-white rounded-lg shadow overflow-hidden"
+            >
+              {merchant.imageUrl && (
+                <div className="relative w-full h-48">
+                  <Image
+                    src={merchant.imageUrl}
+                    alt={merchant.name}
+                    fill
+                    className="object-cover"
                   />
-                </svg>
-              </div>
-            )}
-
-            <div className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {merchant.name}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    #{merchant.merchantNumber}
-                  </p>
                 </div>
-                <span
-                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    merchant.isAvailable
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {merchant.isAvailable ? "Available" : "Unavailable"}
-                </span>
-              </div>
-
-              <p className="text-sm text-gray-600 mb-2">
-                {merchant.phoneNumber}
-              </p>
-
-              {merchant.description && (
-                <p className="text-sm text-gray-700 mb-3 line-clamp-2">
-                  {merchant.description}
-                </p>
+              )}
+              {!merchant.imageUrl && (
+                <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
+                  <svg
+                    className="w-16 h-16 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <title>No Image</title>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                </div>
               )}
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedMerchant(merchant)}
-                  className="flex-1 px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
-                >
-                  Details
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    toggleAvailability(merchant.id, !merchant.isAvailable)
-                  }
-                  disabled={processing}
-                  className={`flex-1 px-3 py-2 text-sm rounded-lg font-medium ${
-                    merchant.isAvailable
-                      ? "bg-red-100 text-red-700 hover:bg-red-200"
-                      : "bg-green-100 text-green-700 hover:bg-green-200"
-                  } disabled:opacity-50`}
-                >
-                  {merchant.isAvailable ? "Disable" : "Enable"}
-                </button>
+              <div className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {merchant.name}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      #{merchant.merchantNumber}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={merchant.isAvailable ? "default" : "destructive"}
+                  >
+                    {merchant.isAvailable ? "Available" : "Unavailable"}
+                  </Badge>
+                </div>
+
+                <p className="text-sm text-gray-600 mb-2">
+                  {merchant.phoneNumber}
+                </p>
+
+                {merchant.description && (
+                  <p className="text-sm text-gray-700 mb-3 line-clamp-2">
+                    {merchant.description}
+                  </p>
+                )}
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setSelectedMerchant(merchant)}
+                    variant="default"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    Details
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      toggleAvailability(merchant.id, !merchant.isAvailable)
+                    }
+                    disabled={processing}
+                    variant={merchant.isAvailable ? "destructive" : "default"}
+                    size="sm"
+                    className="flex-1"
+                  >
+                    {merchant.isAvailable ? "Disable" : "Enable"}
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      {data.length === 0 && (
-        <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
-          No merchants found
+          ))}
         </div>
       )}
 
@@ -368,8 +365,8 @@ export default function AdminMerchantsPage() {
                   <span
                     className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
                       selectedMerchant.isAvailable
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
+                        ? "bg-gray-200 text-gray-900"
+                        : "bg-gray-300 text-gray-900"
                     }`}
                   >
                     {selectedMerchant.isAvailable ? "Available" : "Unavailable"}
@@ -408,8 +405,8 @@ export default function AdminMerchantsPage() {
                   disabled={processing}
                   className={`w-full px-4 py-2 rounded-lg font-medium disabled:opacity-50 ${
                     selectedMerchant.isAvailable
-                      ? "bg-orange-600 text-white hover:bg-orange-700"
-                      : "bg-green-600 text-white hover:bg-green-700"
+                      ? "bg-gray-900 text-white hover:bg-gray-800"
+                      : "bg-gray-900 text-white hover:bg-gray-800"
                   }`}
                 >
                   {selectedMerchant.isAvailable
@@ -421,7 +418,7 @@ export default function AdminMerchantsPage() {
                   type="button"
                   onClick={() => handleDeleteClick(selectedMerchant.id)}
                   disabled={processing}
-                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 font-medium"
+                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 font-medium"
                 >
                   Delete Merchant
                 </button>

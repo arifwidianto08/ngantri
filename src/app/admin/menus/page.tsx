@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface Menu {
   id: string;
@@ -126,7 +129,7 @@ export default function AdminMenusPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4" />
           <p className="text-gray-600">Loading menus...</p>
         </div>
       </div>
@@ -144,21 +147,21 @@ export default function AdminMenusPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
             onClick={() => router.push("/admin/menus/create")}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
             <span>Create Menu</span>
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => void refetch()}
-            disabled={isFetching}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            disabled={isLoading || isFetching}
+            variant="outline"
           >
-            {isFetching ? (
+            {isLoading || isFetching ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Refreshing...</span>
@@ -182,32 +185,32 @@ export default function AdminMenusPage() {
                 <span>Refresh</span>
               </>
             )}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
+        <Card className="p-4">
           <p className="text-sm text-gray-600">Total Menus</p>
           <p className="text-2xl font-bold text-gray-900">{menus.length}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
+        </Card>
+        <Card className="p-4">
           <p className="text-sm text-gray-600">Available</p>
-          <p className="text-2xl font-bold text-green-600">
+          <p className="text-2xl font-bold text-gray-900">
             {menus.filter((m) => m.isAvailable).length}
           </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
+        </Card>
+        <Card className="p-4">
           <p className="text-sm text-gray-600">Unavailable</p>
-          <p className="text-2xl font-bold text-red-600">
+          <p className="text-2xl font-bold text-gray-900">
             {menus.filter((m) => !m.isAvailable).length}
           </p>
-        </div>
+        </Card>
       </div>
 
       {/* Filter */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <Card className="p-4">
         <label
           htmlFor="merchantFilter"
           className="block text-sm font-medium text-gray-700 mb-2"
@@ -218,7 +221,7 @@ export default function AdminMenusPage() {
           id="merchantFilter"
           value={selectedMerchant}
           onChange={(e) => setSelectedMerchant(e.target.value)}
-          className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
         >
           <option value="all">All Merchants</option>
           {merchants.map((merchant) => (
@@ -227,15 +230,12 @@ export default function AdminMenusPage() {
             </option>
           ))}
         </select>
-      </div>
+      </Card>
 
       {/* Menus Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredMenus.map((menu) => (
-          <div
-            key={menu.id}
-            className="bg-white rounded-lg shadow overflow-hidden"
-          >
+          <Card key={menu.id} className="overflow-hidden">
             {menu.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -272,15 +272,9 @@ export default function AdminMenusPage() {
                   <p className="text-sm text-gray-600">{menu.merchantName}</p>
                   <p className="text-xs text-gray-500">{menu.categoryName}</p>
                 </div>
-                <span
-                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    menu.isAvailable
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
+                <Badge variant={menu.isAvailable ? "default" : "destructive"}>
                   {menu.isAvailable ? "Available" : "Unavailable"}
-                </span>
+                </Badge>
               </div>
 
               {menu.description && (
@@ -289,40 +283,37 @@ export default function AdminMenusPage() {
                 </p>
               )}
 
-              <p className="text-xl font-bold text-indigo-600 mb-3">
+              <p className="text-xl font-bold text-gray-900 mb-3">
                 Rp {menu.price.toLocaleString("id-ID")}
               </p>
 
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => router.push(`/admin/menus/${menu.id}`)}
-                  className="flex-1 px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
+                  className="flex-1"
+                  size="sm"
                 >
                   Details
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant={menu.isAvailable ? "destructive" : "secondary"}
                   onClick={() => toggleAvailability(menu.id, !menu.isAvailable)}
                   disabled={processing}
-                  className={`flex-1 px-3 py-2 text-sm rounded-lg font-medium ${
-                    menu.isAvailable
-                      ? "bg-red-100 text-red-700 hover:bg-red-200"
-                      : "bg-green-100 text-green-700 hover:bg-green-200"
-                  } disabled:opacity-50`}
+                  size="sm"
+                  className="flex-1"
                 >
                   {menu.isAvailable ? "Disable" : "Enable"}
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       {filteredMenus.length === 0 && (
-        <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
-          No menus found
-        </div>
+        <Card className="p-12 text-center text-gray-500">No menus found</Card>
       )}
 
       {/* Delete Confirmation */}

@@ -30,13 +30,13 @@ interface Order {
   createdAt: string;
 }
 
-const STATUS_COLORS = {
-  pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  accepted: "bg-blue-100 text-blue-800 border-blue-200",
-  preparing: "bg-purple-100 text-purple-800 border-purple-200",
-  ready: "bg-green-100 text-green-800 border-green-200",
-  completed: "bg-gray-100 text-gray-800 border-gray-200",
-  cancelled: "bg-red-100 text-red-800 border-red-200",
+const STATUS_COLORS: Record<string, string> = {
+  completed: "bg-green-100 text-green-800",
+  pending: "bg-yellow-100 text-yellow-800",
+  cancelled: "bg-red-100 text-red-800",
+  accepted: "bg-blue-100 text-blue-800",
+  preparing: "bg-purple-100 text-purple-800",
+  ready: "bg-orange-100 text-orange-800",
 };
 
 const STATUS_LABELS = {
@@ -197,13 +197,13 @@ export default function OrdersPage() {
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
             <div className="flex items-start gap-3 sm:gap-4">
               <div className="flex-shrink-0">
-                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
+                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-gray-900" />
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg sm:text-xl font-bold text-green-900 mb-2">
                   Order Placed Successfully!
                 </h2>
-                <p className="text-sm sm:text-base text-green-800 mb-3">
+                <p className="text-sm sm:text-base text-gray-900 mb-3">
                   Your order{orders.length > 1 ? "s have" : " has"} been sent to
                   the merchant{orders.length > 1 ? "s" : ""}. Please wait for
                   confirmation.
@@ -214,7 +214,7 @@ export default function OrdersPage() {
                       key={order.id}
                       className="inline-block px-3 py-1.5 bg-white border-2 border-green-300 rounded-full text-xs sm:text-sm font-mono text-green-900 shadow-sm"
                     >
-                      #{order.id.slice(0, 8)}
+                      #{order.id.slice(0, 12)}
                     </span>
                   ))}
                 </div>
@@ -227,7 +227,7 @@ export default function OrdersPage() {
         {currentView === "pending" && anyReady && !allCompleted && (
           <div className="bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-300 rounded-xl p-4 mb-4 sm:mb-6">
             <p className="text-green-900 font-bold text-sm sm:text-base flex items-center gap-2">
-              <PartyPopper className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+              <PartyPopper className="w-5 h-5 sm:w-6 sm:h-6 text-gray-900" />
               <span>Some of your orders are ready for pickup!</span>
             </p>
           </div>
@@ -296,7 +296,7 @@ export default function OrdersPage() {
                         {order.merchantName || "Merchant"}
                       </h3>
                       <p className="text-xs sm:text-sm text-gray-500 font-mono">
-                        #{order.id.slice(0, 8)}
+                        #{order.id.slice(0, 12)}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
@@ -317,7 +317,7 @@ export default function OrdersPage() {
                         <span
                           className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
                             order.paymentStatus === "paid"
-                              ? "bg-green-50 text-green-700 border-green-200"
+                              ? "bg-green-50 text-gray-800 border-green-200"
                               : "bg-orange-50 text-orange-700 border-orange-200"
                           }`}
                         >

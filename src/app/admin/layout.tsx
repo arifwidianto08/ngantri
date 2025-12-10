@@ -59,7 +59,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4" />
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -180,7 +180,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div className="h-full px-3 py-4 overflow-y-auto">
           <div className="flex items-center justify-between mb-6 px-2">
             <Link href="/admin" className="flex items-center">
-              <span className="text-2xl font-bold text-indigo-600">
+              <span className="text-2xl font-bold text-gray-900">
                 Ngantri
               </span>
             </Link>
@@ -219,7 +219,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   data-testid={testId}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
-                      ? "bg-indigo-50 text-indigo-600 font-medium"
+                      ? "bg-gray-50 text-gray-900 font-medium"
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
@@ -234,7 +234,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors w-full"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors w-full"
             >
               <svg
                 className="w-5 h-5"

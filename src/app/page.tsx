@@ -237,14 +237,14 @@ export default function Home() {
             {cart && cart.items.length > 0 && (
               <div className="relative overflow-hidden bg-gradient-to-br from-green-500 to-green-700 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 h-32 flex flex-col justify-center">
                 <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
-                <p className="text-sm font-semibold text-green-100 mb-1">
+                <p className="text-sm font-semibold text-gray-100 mb-1">
                   Cart
                 </p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-black text-white">
                     {cart.totalItems}
                   </p>
-                  <p className="text-sm font-semibold text-green-100">items</p>
+                  <p className="text-sm font-semibold text-gray-100">items</p>
                 </div>
                 <p className="text-lg font-bold text-white mt-1">
                   Rp {cart.totalAmount.toLocaleString("id-ID")}
@@ -328,7 +328,7 @@ export default function Home() {
                       className={`w-2 h-2 rounded-full ${
                         merchant.isAvailable
                           ? "bg-green-500 animate-pulse"
-                          : "bg-red-500"
+                          : "bg-gray-500"
                       }`}
                     />
                     {merchant.isAvailable ? "Open Now" : "Closed"}
@@ -342,7 +342,7 @@ export default function Home() {
         {/* Menu Items */}
         {selectedMerchant && (
           <div className="">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg p-4 sm:p-6 mb-4">
+            <div className="bg-gradient-to-r from-blue-600 to-gray-600 rounded-xl shadow-lg p-4 sm:p-6 mb-4">
               <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
                 <UtensilsCrossed className="w-6 h-6 sm:w-7 sm:h-7" />
                 <span>Menu - {selectedMerchant.name}</span>
@@ -391,7 +391,7 @@ export default function Home() {
                       )}
                       {!item.isAvailable && (
                         <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-                          <span className="bg-red-500 text-white px-4 py-2 rounded-full font-bold text-sm">
+                          <span className="bg-gray-500 text-white px-4 py-2 rounded-full font-bold text-sm">
                             Sold Out
                           </span>
                         </div>

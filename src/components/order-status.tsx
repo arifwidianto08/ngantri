@@ -214,7 +214,7 @@ export default function OrderStatus({ orderId, onClose }: OrderStatusProps) {
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-gray-600">Order ID</span>
             <span className="font-mono text-sm">
-              {orderDetails.id.slice(0, 8)}...
+              {orderDetails.id.slice(0, 12)}...
             </span>
           </div>
           <div className="flex justify-between items-center">

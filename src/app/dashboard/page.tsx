@@ -2,26 +2,23 @@
 
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
+import { Store } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
-  ShoppingCart,
-  DollarSign,
-  Clock,
-  CheckCircle,
-  Store,
-} from "lucide-react";
-import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
 } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface Merchant {
   id: string;
@@ -60,7 +57,25 @@ interface DashboardData {
   revenueByDay: RevenueDay[];
 }
 
-export default function MerchantDashboard() {
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready: "Ready for Pickup",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const CHART_COLORS = [
+  "#1f2937",
+  "#374151",
+  "#4b5563",
+  "#6b7280",
+  "#9ca3af",
+  "#d1d5db",
+];
+
+export default function MerchantDashboardPage() {
   const { data, isLoading, error, refetch, isFetching } =
     useQuery<DashboardData>({
       queryKey: ["merchant-dashboard"],
@@ -106,7 +121,10 @@ export default function MerchantDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border border-gray-300 border-t-gray-900 mx-auto mb-2" />
+          <p className="text-sm text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -115,10 +133,10 @@ export default function MerchantDashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <p className="text-red-600 font-medium">Error loading dashboard</p>
-          <p className="text-gray-600 text-sm mt-1">
-            Please try refreshing the page
+          <p className="text-sm font-medium text-gray-900">
+            Error loading dashboard
           </p>
+          <p className="text-xs text-gray-600 mt-1">Please refresh the page</p>
         </div>
       </div>
     );
@@ -126,22 +144,23 @@ export default function MerchantDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">
-            Overview of your business performance
+          <p className="text-sm text-gray-600 mt-1">
+            Your business at a glance
           </p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => void refetch()}
-          disabled={isFetching}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          disabled={isLoading || isFetching}
+          variant="outline"
         >
-          {isFetching ? (
+          {isLoading || isFetching ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              <Loader2 className="w-4 h-4 animate-spin" />
               <span>Refreshing...</span>
             </>
           ) : (
@@ -163,264 +182,273 @@ export default function MerchantDashboard() {
               <span>Refresh</span>
             </>
           )}
-        </button>
+        </Button>
       </div>
 
-      {/* Merchant Profile Card */}
+      {/* Merchant Profile */}
       {merchant && (
-        <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-          <div className="flex items-start gap-6">
-            {merchant.imageUrl ? (
-              <div className="relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border-2 border-gray-200">
-                <Image
-                  src={merchant.imageUrl}
-                  alt={merchant.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-24 h-24 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 border-2 border-gray-200">
-                <Store className="w-12 h-12 text-gray-400" />
-              </div>
-            )}
-
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {merchant.name}
-                </h2>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    merchant.isAvailable
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {merchant.isAvailable ? "Available" : "Unavailable"}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <div>
-                  <p className="text-sm text-gray-600">Merchant Number</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    #{merchant.merchantNumber}
-                  </p>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              {merchant.imageUrl ? (
+                <div className="relative w-20 h-20 rounded flex-shrink-0 overflow-hidden">
+                  <Image
+                    src={merchant.imageUrl}
+                    alt={merchant.name}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Phone Number</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {merchant.phoneNumber}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Merchant ID</p>
-                  <p className="text-lg font-semibold font-mono text-gray-900">
-                    {merchant.id.slice(0, 8)}...
-                  </p>
-                </div>
-              </div>
-
-              {merchant.description && (
-                <div className="mt-4">
-                  <p className="text-sm text-gray-600">Description</p>
-                  <p className="text-base text-gray-900">
-                    {merchant.description}
-                  </p>
+              ) : (
+                <div className="w-20 h-20 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <Store className="w-10 h-10 text-gray-400" />
                 </div>
               )}
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {merchant.name}
+                  </h2>
+                  <Badge
+                    variant={merchant.isAvailable ? "default" : "secondary"}
+                  >
+                    {merchant.isAvailable ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
+                  <div>
+                    <p className="text-gray-600">Merchant #</p>
+                    <p className="font-medium text-gray-900">
+                      {merchant.merchantNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Phone</p>
+                    <p className="font-medium text-gray-900">
+                      {merchant.phoneNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">ID</p>
+                    <p className="font-medium text-gray-900">
+                      {merchant.id.slice(0, 12)}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {stats?.totalOrders || 0}
-              </p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <ShoppingCart className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-600 mb-1">Total Orders</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {stats?.totalOrders || 0}
+            </p>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {formatCurrency(stats?.totalRevenue || 0)}
-              </p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <DollarSign className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-600 mb-1">Total Revenue</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {formatCurrency(stats?.totalRevenue || 0)}
+            </p>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Pending Orders</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {stats?.pendingOrders || 0}
-              </p>
-            </div>
-            <div className="bg-orange-100 p-3 rounded-lg">
-              <Clock className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-600 mb-1">Pending</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {stats?.pendingOrders || 0}
+            </p>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-green-600">
-                {stats?.completedOrders || 0}
-              </p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-600 mb-1">Completed</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {stats?.completedOrders || 0}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Charts Row */}
+      {/* Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-600 mb-1">Total Menus</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {stats?.totalMenus || 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-600 mb-1">Available</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {stats?.availableMenus || 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-gray-600 mb-1">Categories</p>
+            <p className="text-2xl font-bold text-gray-900">
+              {stats?.totalCategories || 0}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Orders by Status - Pie Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Orders by Status
-          </h3>
-          {ordersByStatus.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={ordersByStatus.map((item) => ({
-                    ...item,
-                    name: item.status,
-                    value: item.count,
-                  }))}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label
-                >
-                  {ordersByStatus.map((item) => {
-                    const colors: Record<string, string> = {
-                      completed: "#22c55e",
-                      pending: "#f97316",
-                      cancelled: "#ef4444",
-                      accepted: "#3b82f6",
-                      preparing: "#a855f7",
-                      ready: "#06b6d4",
-                    };
-                    return (
+        {/* Orders Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">
+              Orders by Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {ordersByStatus.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={ordersByStatus.map((item) => ({
+                      ...item,
+                      displayStatus: STATUS_LABELS[item.status] || item.status,
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => {
+                      const data = ordersByStatus.map((item) => ({
+                        ...item,
+                        displayStatus:
+                          STATUS_LABELS[item.status] || item.status,
+                      }));
+                      const item =
+                        data[
+                          (entry as unknown as Record<string, unknown>)
+                            .index as number
+                        ];
+                      return `${item?.displayStatus} (${item?.count})`;
+                    }}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="count"
+                    isAnimationActive={true}
+                  >
+                    {ordersByStatus.map((entry) => (
                       <Cell
-                        key={`cell-${item.status}`}
-                        fill={colors[item.status] || "#8b5cf6"}
+                        key={entry.status}
+                        fill={
+                          CHART_COLORS[
+                            ordersByStatus.indexOf(entry) % CHART_COLORS.length
+                          ]
+                        }
                       />
-                    );
-                  })}
-                </Pie>
-                <Tooltip
-                  formatter={(value) => `${value} orders`}
-                  labelFormatter={(label) => `${label}`}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-gray-500 text-sm text-center py-12">
-              No order data available
-            </p>
-          )}
-        </div>
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => [value, "Orders"]}
+                    contentStyle={{
+                      backgroundColor: "#f9fafb",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                      padding: "12px",
+                    }}
+                    labelStyle={{ color: "#1f2937", fontWeight: "600" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-12">No data</p>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Revenue by Day - Line Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Revenue (Last 7 Days)
-          </h3>
-          {revenueByDay.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={revenueByDay}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(date) =>
-                    new Date(date).toLocaleDateString("id-ID", {
+        {/* Revenue Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">
+              Revenue Trend
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {revenueByDay.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={revenueByDay.map((item) => ({
+                    date: new Date(item.date).toLocaleDateString("id-ID", {
+                      day: "2-digit",
                       month: "short",
-                      day: "numeric",
-                    })
-                  }
-                />
-                <YAxis
-                  tickFormatter={(value) => {
-                    if (value >= 1000000)
-                      return `Rp${(value / 1000000).toFixed(1)}M`;
-                    if (value >= 1000) return `Rp${(value / 1000).toFixed(0)}K`;
-                    return `Rp${value}`;
-                  }}
-                />
-                <Tooltip
-                  formatter={(value) =>
-                    `Rp ${Number(value).toLocaleString("id-ID")}`
-                  }
-                  labelFormatter={(label) =>
-                    new Date(label).toLocaleDateString("id-ID")
-                  }
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  dot={{ fill: "#3b82f6", r: 4 }}
-                  activeDot={{ r: 6 }}
-                  name="Revenue"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-gray-500 text-sm text-center py-12">
-              No revenue data available
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Menu Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm text-gray-600">Total Menus</p>
-          <p className="text-3xl font-bold text-gray-900">
-            {stats?.totalMenus || 0}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm text-gray-600">Available Menus</p>
-          <p className="text-3xl font-bold text-green-600">
-            {stats?.availableMenus || 0}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm text-gray-600">Total Categories</p>
-          <p className="text-3xl font-bold text-gray-900">
-            {stats?.totalCategories || 0}
-          </p>
-        </div>
+                    }),
+                    revenue: item.revenue,
+                  }))}
+                  margin={{ top: 20, right: 30, left: 60, bottom: 60 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#f3f4f6"
+                    vertical={false}
+                    horizontal={true}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#9ca3af"
+                    style={{ fontSize: "13px", fontWeight: "500" }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                    tick={{ fill: "#6b7280" }}
+                  />
+                  <YAxis
+                    stroke="#9ca3af"
+                    style={{ fontSize: "13px" }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value) =>
+                      `Rp ${(value / 1000).toFixed(0)}K`
+                    }
+                    tick={{ fill: "#6b7280" }}
+                  />
+                  <Tooltip
+                    formatter={(value) =>
+                      `Rp ${(value as number).toLocaleString("id-ID")}`
+                    }
+                    contentStyle={{
+                      backgroundColor: "#f9fafb",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                      padding: "12px",
+                    }}
+                    labelStyle={{ color: "#1f2937", fontWeight: "600" }}
+                  />
+                  <Bar
+                    dataKey="revenue"
+                    fill="#1f2937"
+                    radius={[8, 8, 0, 0]}
+                    isAnimationActive={true}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-12">No data</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
