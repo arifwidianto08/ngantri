@@ -7,7 +7,7 @@ import { eq, and, isNull, count } from "drizzle-orm";
 
 /**
  * GET /api/merchants/[merchantId]/categories
- * Get all categories for a merchant
+ * Get all categories for a merchant with pagination
  */
 export async function GET(
   request: NextRequest,
@@ -22,6 +22,33 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    // Get pagination params
+    const searchParams = request.nextUrl.searchParams;
+    const pageParam = searchParams.get("page");
+    const pageSizeParam = searchParams.get("pageSize");
+
+    const page = Math.max(1, Number.parseInt(pageParam || "1", 10));
+    const pageSize = Math.max(
+      1,
+      Math.min(100, Number.parseInt(pageSizeParam || "10", 10))
+    );
+    const offset = (page - 1) * pageSize;
+
+    // Get total count
+    const [countResult] = await db
+      .select({ total: count(menuCategories.id) })
+      .from(menuCategories)
+      .where(
+        and(
+          eq(menuCategories.merchantId, merchantId),
+          isNull(menuCategories.deletedAt)
+        )
+      );
+
+    const totalCount = countResult?.total || 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    // Fetch paginated categories
     const categories = await db
       .select({
         id: menuCategories.id,
@@ -36,7 +63,9 @@ export async function GET(
           isNull(menuCategories.deletedAt)
         )
       )
-      .orderBy(menuCategories.name);
+      .orderBy(menuCategories.name)
+      .limit(pageSize)
+      .offset(offset);
 
     // Get menu count for each category in a single query using GROUP BY
     const categoryCounts = await db
@@ -61,7 +90,15 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: { categories: categoriesWithCount },
+      data: {
+        categories: categoriesWithCount,
+        pagination: {
+          page,
+          pageSize,
+          totalCount,
+          totalPages,
+        },
+      },
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {

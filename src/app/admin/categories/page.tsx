@@ -5,7 +5,7 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast-provider";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 interface Category {
@@ -21,25 +21,49 @@ interface Merchant {
   name: string;
 }
 
+interface CategoriesResponse {
+  success: boolean;
+  data: Category[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+  };
+}
+
+interface MerchantsResponse {
+  success: boolean;
+  data: Merchant[];
+}
+
 export default function AdminCategoriesPage() {
   const [selectedMerchant, setSelectedMerchant] = useState<string>("all");
   const [processing, setProcessing] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   const [categoriesQuery, merchantsQuery] = useQueries({
     queries: [
       {
-        queryKey: ["categories"],
-        queryFn: async (): Promise<{ data: Category[] }> => {
-          const res = await fetch("/api/admin/categories");
+        queryKey: ["admin-categories", selectedMerchant, page, pageSize],
+        queryFn: async (): Promise<CategoriesResponse> => {
+          const url = new URL("/api/admin/categories", window.location.origin);
+          url.searchParams.append("page", String(page));
+          url.searchParams.append("pageSize", String(pageSize));
+          if (selectedMerchant !== "all") {
+            url.searchParams.append("merchantId", selectedMerchant);
+          }
+          const res = await fetch(url);
           return res.json();
         },
       },
       {
-        queryKey: ["merchants"],
-        queryFn: async (): Promise<{ data: Merchant[] }> => {
+        queryKey: ["admin-merchants"],
+        queryFn: async (): Promise<MerchantsResponse> => {
           const res = await fetch("/api/merchants");
           return res.json();
         },
@@ -48,9 +72,16 @@ export default function AdminCategoriesPage() {
   });
 
   const categories = categoriesQuery.data?.data ?? [];
+  const pagination = categoriesQuery.data?.pagination ?? {
+    page: 1,
+    pageSize: 10,
+    totalCount: 0,
+    totalPages: 0,
+  };
   const merchants = merchantsQuery.data?.data ?? [];
   const isLoading = categoriesQuery.isLoading || merchantsQuery.isLoading;
   const isFetching = categoriesQuery.isFetching || merchantsQuery.isFetching;
+
   const refetch = async () => {
     await Promise.all([categoriesQuery.refetch(), merchantsQuery.refetch()]);
   };
@@ -71,7 +102,9 @@ export default function AdminCategoriesPage() {
 
       const result = await response.json();
       if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
+        void queryClient.invalidateQueries({
+          queryKey: ["admin-categories"],
+        });
         setDeleteId(null);
 
         showToast("Category deleted successfully", "success");
@@ -88,11 +121,6 @@ export default function AdminCategoriesPage() {
       setProcessing(false);
     }
   };
-
-  const filteredCategories =
-    selectedMerchant === "all"
-      ? categories
-      : categories.filter((c) => c.merchantId === selectedMerchant);
 
   if (isLoading) {
     return (
@@ -153,7 +181,7 @@ export default function AdminCategoriesPage() {
         <div className="bg-white rounded-lg shadow p-4">
           <p className="text-sm text-gray-600">Total Categories</p>
           <p className="text-2xl font-bold text-gray-900">
-            {categories.length}
+            {pagination.totalCount}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
@@ -173,7 +201,10 @@ export default function AdminCategoriesPage() {
         <select
           id="merchantFilter"
           value={selectedMerchant}
-          onChange={(e) => setSelectedMerchant(e.target.value)}
+          onChange={(e) => {
+            setSelectedMerchant(e.target.value);
+            setPage(1);
+          }}
           className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
         >
           <option value="all">All Merchants</option>
@@ -186,59 +217,120 @@ export default function AdminCategoriesPage() {
       </div>
 
       {/* Categories Table */}
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Category Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Merchant
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Created At
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredCategories.map((category) => (
-                <tr key={category.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {category.name}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {category.merchantName || "Unknown"}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(category.createdAt).toLocaleString("id-ID")}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Button
-                      onClick={() => handleDeleteClick(category.id)}
-                      disabled={processing}
-                      variant="destructive"
-                      size="sm"
-                    >
-                      Delete
-                    </Button>
-                  </td>
+      <Card>
+        {isLoading ? (
+          <CardContent className="p-12">
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4" />
+              <p className="text-gray-600">Loading categories...</p>
+            </div>
+          </CardContent>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Category Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Merchant
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Created At
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredCategories.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            No categories found
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {categories.map((category) => (
+                  <tr key={category.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      {category.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {category.merchantName || "Unknown"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {new Date(category.createdAt).toLocaleString("id-ID")}
+                    </td>
+                    <td className="px-6 py-4">
+                      <Button
+                        onClick={() => handleDeleteClick(category.id)}
+                        disabled={processing}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        Delete
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
+
+        {!isLoading && categories.length === 0 && (
+          <CardContent className="p-12 text-center text-gray-500">
+            No categories found
+          </CardContent>
+        )}
       </Card>
+
+      {/* Pagination */}
+      {!isLoading && categories.length > 0 && (
+        <div className="flex items-center justify-between px-4 py-4 bg-white rounded-lg shadow flex-wrap gap-4">
+          <div className="text-sm text-gray-600">
+            Page {pagination.page} of {pagination.totalPages} (Total:{" "}
+            {pagination.totalCount} categories)
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="page-size" className="text-sm text-gray-600">
+                Per page:
+              </label>
+              <select
+                id="page-size"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                variant="outline"
+                size="sm"
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-gray-600">Page {page}</span>
+              <Button
+                onClick={() =>
+                  setPage(Math.min(pagination.totalPages || 1, page + 1))
+                }
+                disabled={page === pagination.totalPages}
+                variant="outline"
+                size="sm"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={!!deleteId}

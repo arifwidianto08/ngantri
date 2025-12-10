@@ -81,19 +81,28 @@ export default function EditMenuPage() {
     },
   });
 
-  const { data: categoriesData } = useQuery<{ data: Category[] }>({
+  const { data: categoriesData } = useQuery<{
+    success: boolean;
+    data: Category[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalCount: number;
+      totalPages: number;
+    };
+  }>({
     queryKey: ["admin-categories"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/categories");
+      const res = await fetch("/api/admin/categories?page=1&pageSize=1000");
       if (!res.ok) throw new Error("Failed to fetch categories");
       return res.json();
     },
   });
 
-  const filteredCategories =
-    categoriesData?.data?.filter(
-      (cat) => cat.merchantId === formData.merchantId
-    ) || [];
+  const allCategories = categoriesData?.data ?? [];
+  const filteredCategories = allCategories.filter(
+    (cat) => cat.merchantId === formData.merchantId
+  );
 
   useEffect(() => {
     if (menu) {

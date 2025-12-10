@@ -1,82 +1,125 @@
 "use client";
 
-import { useToast } from "@/components/toast-provider";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  getMerchantIdFromStorage,
-  setMerchantIdInStorage,
-} from "@/lib/merchant-client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Loader2 } from "lucide-react";
+import { useToast } from "@/components/toast-provider";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface Category {
   id: string;
   name: string;
-  menuCount?: number;
+  merchantId: string;
+  createdAt: string;
+  menuCount: number;
 }
 
-export default function MerchantCategoriesPage() {
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "" });
-  const [merchantId, setMerchantId] = useState<string>("");
+interface CategoriesResponse {
+  success: boolean;
+  data: {
+    categories: Category[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalCount: number;
+      totalPages: number;
+    };
+  };
+}
+
+export default function CategoriesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const [initComplete, setInitComplete] = useState(false);
 
+  // State management
+  const [merchantId, setMerchantId] = useState("");
+  const [initComplete, setInitComplete] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ name: "" });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Initialize merchant ID
   useEffect(() => {
     const initializeMerchantId = async () => {
-      let id = getMerchantIdFromStorage();
+      const storedId = localStorage.getItem("merchantId");
 
-      if (!id) {
-        try {
-          const response = await fetch("/api/merchants/me");
-          const result = await response.json();
+      if (storedId) {
+        setMerchantId(storedId);
+        setInitComplete(true);
+        return;
+      }
 
-          if (result.success && result.data.merchant?.id) {
-            id = result.data.merchant.id;
-            setMerchantIdInStorage(id);
-          } else {
-            router.push("/dashboard/login");
-            return;
-          }
-        } catch (error) {
-          console.error("Error fetching merchant:", error);
+      try {
+        const response = await fetch("/api/merchants/me");
+        if (!response.ok) {
           router.push("/dashboard/login");
           return;
         }
+
+        const { data } = await response.json();
+        if (data?.id) {
+          const { id } = data;
+          localStorage.setItem("merchantId", id);
+          setMerchantId(id);
+        } else {
+          router.push("/dashboard/login");
+          return;
+        }
+      } catch (error) {
+        console.error("Error fetching merchant:", error);
+        router.push("/dashboard/login");
+        return;
       }
 
-      setMerchantId(id || "");
       setInitComplete(true);
     };
 
     initializeMerchantId();
   }, [router]);
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["merchant-categories", merchantId],
+  // Fetch categories with pagination
+  const {
+    data: categoriesResponse,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery<CategoriesResponse>({
+    queryKey: ["merchant-categories", merchantId, page, pageSize],
     queryFn: async () => {
-      if (!merchantId) return { categories: [] };
-      const response = await fetch(`/api/merchants/${merchantId}/categories`);
+      if (!merchantId)
+        return {
+          success: false,
+          data: {
+            categories: [],
+            pagination: { page: 1, pageSize: 10, totalCount: 0, totalPages: 0 },
+          },
+        };
+
+      const url = new URL(
+        `/api/merchants/${merchantId}/categories`,
+        window.location.origin
+      );
+      url.searchParams.append("page", String(page));
+      url.searchParams.append("pageSize", String(pageSize));
+
+      const response = await fetch(url);
       const result = await response.json();
-      return { categories: result.success ? result.data.categories || [] : [] };
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to fetch categories");
+      }
+
+      return result;
     },
     enabled: initComplete && !!merchantId,
   });
 
+  // Save category mutation
   const saveCategoryMutation = useMutation({
     mutationFn: async (variables: { name: string; id?: string }) => {
       const method = variables.id ? "PATCH" : "POST";
@@ -99,7 +142,7 @@ export default function MerchantCategoriesPage() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ["merchant-categories", merchantId],
       });
       setShowForm(false);
@@ -119,6 +162,7 @@ export default function MerchantCategoriesPage() {
     },
   });
 
+  // Delete category mutation
   const deleteCategoryMutation = useMutation({
     mutationFn: async (categoryId: string) => {
       const response = await fetch(
@@ -137,7 +181,7 @@ export default function MerchantCategoriesPage() {
       return result.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ["merchant-categories", merchantId],
       });
       showToast("Category deleted successfully!", "success");
@@ -151,6 +195,7 @@ export default function MerchantCategoriesPage() {
     },
   });
 
+  // Form handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
@@ -176,7 +221,15 @@ export default function MerchantCategoriesPage() {
     setFormData({ name: "" });
   };
 
-  if (isLoading) {
+  const categories = categoriesResponse?.data?.categories || [];
+  const pagination = categoriesResponse?.data?.pagination || {
+    page: 1,
+    pageSize: 10,
+    totalCount: 0,
+    totalPages: 0,
+  };
+
+  if (isLoading && !initComplete) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
@@ -203,11 +256,7 @@ export default function MerchantCategoriesPage() {
           </Button>
           <Button
             type="button"
-            onClick={() =>
-              void queryClient.invalidateQueries({
-                queryKey: ["merchant-menus", merchantId],
-              })
-            }
+            onClick={() => void refetch()}
             disabled={isLoading || isFetching}
             variant="outline"
           >
@@ -281,82 +330,136 @@ export default function MerchantCategoriesPage() {
         </Card>
       )}
 
-      {/* Stats */}
-      <Card>
-        <CardContent className="pt-6">
-          <p className="text-sm text-gray-600">Total Categories</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {data?.categories.length}
-          </p>
-        </CardContent>
-      </Card>
-
       {/* Categories Table */}
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Menu Items</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data?.categories?.map((category: Category) => (
-              <TableRow key={category.id}>
-                <TableCell>
-                  <div className="text-sm font-medium text-gray-900">
-                    {category.name}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    ID: {category.id.slice(-12)}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm text-gray-600">
-                    {category.menuCount !== undefined
-                      ? `${category.menuCount} items`
-                      : "-"}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right space-x-3">
-                  <Button
-                    type="button"
-                    onClick={() => handleEdit(category)}
-                    disabled={
-                      saveCategoryMutation.isPending ||
-                      deleteCategoryMutation.isPending
-                    }
-                    variant="outline"
-                    size="sm"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => deleteCategoryMutation.mutate(category.id)}
-                    disabled={
-                      deleteCategoryMutation.isPending ||
-                      saveCategoryMutation.isPending
-                    }
-                    variant="destructive"
-                    size="sm"
-                  >
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        {isLoading ? (
+          <CardContent className="p-12">
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4" />
+              <p className="text-gray-600">Loading categories...</p>
+            </div>
+          </CardContent>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Menu Items
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {categories.map((category: Category) => (
+                  <tr key={category.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      {category.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {category.menuCount} items
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(category)}
+                          disabled={
+                            saveCategoryMutation.isPending ||
+                            deleteCategoryMutation.isPending
+                          }
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() =>
+                            deleteCategoryMutation.mutate(category.id)
+                          }
+                          disabled={
+                            deleteCategoryMutation.isPending ||
+                            saveCategoryMutation.isPending
+                          }
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {data?.categories?.length === 0 && (
+        {!isLoading && categories.length === 0 && (
           <CardContent className="p-12 text-center text-gray-500">
             No categories found. Create your first category to organize your
             menu.
           </CardContent>
         )}
       </Card>
+
+      {/* Pagination */}
+      {!isLoading && categories.length > 0 && (
+        <div className="flex items-center justify-between px-4 py-4 bg-white rounded-lg shadow flex-wrap gap-4">
+          <div className="text-sm text-gray-600">
+            Page {pagination.page} of {pagination.totalPages} (Total:{" "}
+            {pagination.totalCount} categories)
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label htmlFor="page-size" className="text-sm text-gray-600">
+                Per page:
+              </label>
+              <select
+                id="page-size"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                variant="outline"
+                size="sm"
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-gray-600">Page {page}</span>
+              <Button
+                onClick={() =>
+                  setPage(Math.min(pagination.totalPages || 1, page + 1))
+                }
+                disabled={page === pagination.totalPages}
+                variant="outline"
+                size="sm"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
