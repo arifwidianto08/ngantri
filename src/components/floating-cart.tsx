@@ -44,7 +44,7 @@ export default function FloatingCart({ show = true }: FloatingCartProps) {
       <div className="fixed bottom-6 right-4 left-4 z-50 md:hidden">
         <Link
           href="/cart"
-          className="flex items-center justify-between gap-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 rounded-2xl shadow-2xl hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-95"
+          className="flex items-center justify-between gap-4 bg-gray-900 text-white px-6 py-4 rounded-2xl shadow-2xl hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-95"
         >
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -100,7 +100,7 @@ export default function FloatingCart({ show = true }: FloatingCartProps) {
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full flex items-center justify-between p-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all"
+            className="w-full flex items-center justify-between p-5 bg-gray-900 text-white hover:gray-800 transition-all"
           >
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -194,7 +194,7 @@ export default function FloatingCart({ show = true }: FloatingCartProps) {
               <div className="p-4 border-t-2 bg-gray-50">
                 <Link
                   href="/cart"
-                  className="block w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-center rounded-xl hover:from-blue-700 hover:to-indigo-700 font-bold transition-all shadow-lg hover:shadow-xl"
+                  className="block w-full py-3.5 bg-gray-900 text-white text-center rounded-xl hover:gray-800 font-bold transition-all shadow-lg hover:shadow-xl"
                 >
                   View Cart & Checkout →
                 </Link>

@@ -244,7 +244,7 @@ export default function OrdersPage() {
               </p>
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 font-semibold shadow-lg hover:shadow-xl transition-all"
               >
                 <span>Browse Menu</span>
                 <svg

@@ -9,13 +9,13 @@ import { getBuyerSession } from "../../lib/session";
 import type { BuyerSession } from "../../lib/session";
 import Image from "next/image";
 import Loader from "@/components/loader";
+
 import {
-  CheckCircle,
-  CreditCard,
-  Loader2,
-  MessageCircle,
-  AlertCircle,
-} from "lucide-react";
+  IconCheck,
+  IconLoader2,
+  IconMessageCircle,
+  IconAlertCircle,
+} from "@tabler/icons-react";
 import { useToast } from "@/components/toast-provider";
 
 interface ValidationErrors {
@@ -56,6 +56,7 @@ export default function CheckoutPage() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [session, setSession] = useState<BuyerSession | null>(null);
   const [customerName, setCustomerName] = useState("");
+  const [tableNumber, setTableNumber] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -155,9 +156,13 @@ export default function CheckoutPage() {
         setCart(currentCart);
         setSession(currentSession);
 
+        const cachedTableNumber = localStorage.getItem(
+          "ngantri_customer_table_number"
+        );
         const cachedName = localStorage.getItem("ngantri_customer_name");
         const cachedWhatsapp = localStorage.getItem("ngantri_customer_phone");
 
+        if (cachedTableNumber) setTableNumber(cachedTableNumber);
         if (cachedName) setCustomerName(cachedName);
         if (cachedWhatsapp) setWhatsappNumber(cachedWhatsapp);
       } catch (error) {
@@ -347,7 +352,7 @@ export default function CheckoutPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8 text-center">
             <div className="mb-6">
               <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-gray-900" />
+                <IconCheck className="w-10 h-10 sm:w-12 sm:h-12 text-gray-900" />
               </div>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
                 Order Placed Successfully!
@@ -377,7 +382,6 @@ export default function CheckoutPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <CreditCard className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" />
                 <span>Checkout</span>
               </h1>
               <p className="text-xs sm:text-sm text-gray-600">
@@ -387,7 +391,7 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={() => router.push("/cart")}
-              className="px-3 sm:px-4 py-2 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+              className="px-3 sm:px-4 py-2 text-sm font-semibold text-gray-900 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors"
             >
               ← Back
             </button>
@@ -399,29 +403,43 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Left Column - Customer Info */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* Session Info */}
-            {session && (
-              <div className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-3xl shadow-lg p-6 sm:p-8">
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 p-6 rounded-2xl shadow-lg h-32 flex flex-col justify-center">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
-                    <p className="text-sm font-semibold text-blue-100 mb-1">
-                      Table Number
-                    </p>
-                    <p className="text-5xl font-black text-white">
-                      {session.tableNumber}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Customer Information Form */}
             <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-200">
               <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-4">
                 Customer Information
               </h2>
               <div className="space-y-4">
+                {/* Table Number Input */}
+                <div>
+                  <label
+                    htmlFor="tableNumber"
+                    className="block text-sm font-bold text-gray-900 mb-2"
+                  >
+                    Your Table Number <span className="text-gray-900">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="tableNumber"
+                    data-testid="table-number"
+                    value={tableNumber}
+                    onChange={(e) => {
+                      setTableNumber(e.target.value);
+                      setErrors((prev) => ({ ...prev, name: undefined }));
+                    }}
+                    placeholder="Enter your table number"
+                    className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base ${
+                      errors.name
+                        ? "border-gray-300 bg-gray-50"
+                        : "border-gray-200"
+                    }`}
+                  />
+                  {errors.name && (
+                    <p className="text-sm text-gray-900 mt-2 flex items-center gap-1">
+                      <IconAlertCircle className="w-4 h-4" />
+                      <span>{errors.name}</span>
+                    </p>
+                  )}
+                </div>
                 {/* Name Input */}
                 <div>
                   <label
@@ -448,7 +466,7 @@ export default function CheckoutPage() {
                   />
                   {errors.name && (
                     <p className="text-sm text-gray-900 mt-2 flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
+                      <IconAlertCircle className="w-4 h-4" />
                       <span>{errors.name}</span>
                     </p>
                   )}
@@ -488,12 +506,12 @@ export default function CheckoutPage() {
                   </div>
                   {errors.whatsapp && (
                     <p className="text-sm text-gray-900 mt-2 flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
+                      <IconAlertCircle className="w-4 h-4" />
                       <span>{errors.whatsapp}</span>
                     </p>
                   )}
                   <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                    <MessageCircle className="w-4 h-4" />
+                    <IconMessageCircle className="w-4 h-4" />
                     <span>We&apos;ll send order updates via WhatsApp</span>
                   </p>
                 </div>
@@ -569,44 +587,24 @@ export default function CheckoutPage() {
                 Payment Summary
               </h2>
 
-              {/* Items Breakdown */}
-              <div className="space-y-3 mb-4 pb-4 border-b-2 border-gray-100">
-                {Object.entries(merchantGroups).map(
-                  ([merchantId, { merchantName, total }]) => (
-                    <div
-                      key={merchantId}
-                      className="flex justify-between text-sm"
-                    >
-                      <span className="text-gray-800 font-semibold truncate pr-2">
-                        {merchantName}
-                      </span>
-                      <span className="font-bold text-gray-900 flex-shrink-0">
-                        Rp {total.toLocaleString("id-ID")}
-                      </span>
-                    </div>
-                  )
-                )}
+              {/* Summary Breakdown */}
+              <div className="space-y-4 mb-6 pb-6 border-b-2 border-gray-200">
+                <div className="flex justify-between text-sm sm:text-base">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span className="font-semibold text-gray-900">
+                    Rp {grandTotal.toLocaleString("id-ID")}
+                  </span>
+                </div>
               </div>
 
               {/* Grand Total */}
-              <div className="flex justify-between items-center mb-6 p-4 bg-blue-100 border-2 border-blue-400 rounded-xl">
-                <span className="text-base sm:text-lg font-bold text-gray-900">
+              <div className="flex justify-between items-center mb-6 pb-6 border-b-2 border-gray-200">
+                <span className="text-lg sm:text-xl font-bold text-gray-900">
                   Total
                 </span>
-                <span className="text-xl sm:text-2xl font-bold text-blue-600">
+                <span className="text-xl sm:text-xl font-bold text-gray-900">
                   Rp {grandTotal.toLocaleString("id-ID")}
                 </span>
-              </div>
-
-              {/* Payment Notice */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 sm:p-4 mb-6">
-                <p className="text-xs sm:text-sm text-blue-800 flex items-center gap-2">
-                  <CreditCard className="w-4 h-4" />
-                  <span>
-                    <strong>Payment:</strong> You will be redirected to secure
-                    payment page.
-                  </span>
-                </p>
               </div>
 
               {/* Place Order Button */}
@@ -618,12 +616,12 @@ export default function CheckoutPage() {
                   createPaymentsMutation.isPending
                 }
                 data-testid="place-order-btn"
-                className="w-full px-6 py-4 bg-gray-900 text-white text-base sm:text-lg font-bold rounded-xl hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-98"
+                className="w-full px-4 py-2 bg-gray-900 text-white text-base sm:text-lg font-bold rounded-lg hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-98"
               >
                 {createOrdersMutation.isPending ||
                 createPaymentsMutation.isPending ? (
                   <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="animate-spin h-5 w-5" />
+                    <IconLoader2 className="animate-spin h-5 w-5" />
                     <span>Processing...</span>
                   </span>
                 ) : (
