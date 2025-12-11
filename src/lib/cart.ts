@@ -232,12 +232,7 @@ async function syncCartWithServer(cart: Cart): Promise<void> {
   if (!session) return;
 
   try {
-    // Clear existing cart items on server
-    await fetch(`/api/sessions/${session.id}/cart`, {
-      method: "DELETE",
-    });
-
-    // Add all current cart items to server in bulk
+    // Add all current cart items to server in bulk - upsert instead of delete/insert
     if (cart.items.length > 0) {
       await fetch(`/api/sessions/${session.id}/cart/bulk`, {
         method: "POST",
@@ -250,6 +245,11 @@ async function syncCartWithServer(cart: Cart): Promise<void> {
             notes: item.notes,
           })),
         }),
+      });
+    } else {
+      // Only delete if cart is completely empty
+      await fetch(`/api/sessions/${session.id}/cart`, {
+        method: "DELETE",
       });
     }
   } catch (error) {

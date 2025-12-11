@@ -23,7 +23,7 @@ export default function Loader({
     <div className={containerClasses}>
       <div className="text-center">
         <div
-          className={`inline-block ${sizeClasses[size]} animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]`}
+          className={`inline-block ${sizeClasses[size]} animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]`}
         />
         {message && <p className="mt-4 text-gray-600">{message}</p>}
       </div>

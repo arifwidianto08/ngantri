@@ -38,7 +38,7 @@ export default function CartWidget() {
     <Link
       href="/cart"
       data-testid="cart-widget"
-      className="relative inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-bold shadow-lg hover:shadow-xl active:scale-95"
+      className="relative inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-gray-900 text-white rounded-xl hover:gray-900 font-bold shadow-lg hover:shadow-xl active:scale-95"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

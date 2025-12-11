@@ -69,7 +69,7 @@ export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center">
               <UtensilsCrossed className="w-6 h-6 text-white" />
             </div>
             <DialogTitle>Welcome to Ngantri!</DialogTitle>
@@ -87,7 +87,7 @@ export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
               className="block text-sm font-bold text-gray-900 mb-2"
             >
               <div className="flex items-center gap-2">
-                <Hash className="w-4 h-4 text-blue-600" />
+                <Hash className="w-4 h-4 text-gray-900" />
                 <span>Table Number</span>
                 <span className="text-red-600">*</span>
               </div>
@@ -119,7 +119,7 @@ export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
               className="block text-sm font-bold text-gray-900 mb-2"
             >
               <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-blue-600" />
+                <User className="w-4 h-4 text-gray-900" />
                 <span>Your Name</span>
                 <span className="text-red-600">*</span>
               </div>
@@ -151,7 +151,7 @@ export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
               className="block text-sm font-bold text-gray-900 mb-2"
             >
               <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-blue-600" />
+                <Phone className="w-4 h-4 text-gray-900" />
                 <span>WhatsApp Number</span>
                 <span className="text-red-600">*</span>
               </div>
@@ -187,7 +187,7 @@ export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-4 px-6 rounded-xl font-bold text-base hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
+            className="w-full bg-gray-900 text-white py-4 px-6 rounded-xl font-bold text-base hover:bg-gray-800 shadow-lg hover:shadow-xl"
           >
             Start Ordering
           </button>

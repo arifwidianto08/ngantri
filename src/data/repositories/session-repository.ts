@@ -65,8 +65,43 @@ export class SessionRepositoryImpl implements SessionRepository {
   }
 
   async addCartItems(items: NewCartItem[]): Promise<CartItem[]> {
-    const created = await db.insert(cartItems).values(items).returning();
-    return created;
+    const results: CartItem[] = [];
+
+    for (const item of items) {
+      // Check if item already exists
+      const [existingItem] = await db
+        .select()
+        .from(cartItems)
+        .where(
+          and(
+            eq(cartItems.sessionId, item.sessionId),
+            eq(cartItems.menuId, item.menuId),
+            isNull(cartItems.deletedAt)
+          )
+        )
+        .limit(1);
+
+      if (existingItem) {
+        // Update existing item
+        const [updated] = await db
+          .update(cartItems)
+          .set({
+            quantity: item.quantity,
+            priceSnapshot: item.priceSnapshot,
+            notes: item.notes,
+            updatedAt: new Date(),
+          })
+          .where(eq(cartItems.id, existingItem.id))
+          .returning();
+        results.push(updated);
+      } else {
+        // Insert new item
+        const [created] = await db.insert(cartItems).values(item).returning();
+        results.push(created);
+      }
+    }
+
+    return results;
   }
 
   async findCartItems(

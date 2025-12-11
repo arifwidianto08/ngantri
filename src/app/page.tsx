@@ -92,7 +92,7 @@ export default function Home() {
         enabled: !!selectedMerchant && !loading,
         queryFn: async (): Promise<{
           success: boolean;
-          data: { menus: MenuItem[] };
+          data: MenuItem[];
         }> => {
           const merchantId = selectedMerchant?.id;
           if (!merchantId) throw new Error("No merchant selected");
@@ -108,14 +108,14 @@ export default function Home() {
   const menusQuery = results[1];
 
   const merchants = merchantsQuery.data?.data ?? [];
-  const menuItems = menusQuery.data?.data.menus ?? [];
+  const menuItems = menusQuery.data?.data ?? [];
 
   const merchantsLoading =
     merchantsQuery.isLoading || merchantsQuery.isFetching;
   const menuLoading = menusQuery.isLoading || menusQuery.isFetching;
 
   // =============================
-  // Setup handler (unchanged)
+  // Setup handler
   // =============================
   const handleSetupComplete = async (data: {
     tableNumber: string;
@@ -136,6 +136,7 @@ export default function Home() {
         setCustomerName(data.customerName);
         setShowSetupDialog(false);
 
+        localStorage.setItem("ngantri_customer_table_number", data.tableNumber);
         localStorage.setItem("ngantri_customer_name", data.customerName);
         localStorage.setItem("ngantri_customer_phone", data.whatsappNumber);
       }
@@ -145,7 +146,7 @@ export default function Home() {
   };
 
   // =============================
-  // Add to cart (unchanged)
+  // Add to cart
   // =============================
   const handleAddToCart = async (menuItem: MenuItem) => {
     if (!session || !cart) return;
@@ -188,7 +189,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
-                <UtensilsCrossed className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-blue-600" />
+                <UtensilsCrossed className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-gray-900" />
                 <span>ngantri</span>
               </h1>
               <p className="text-xs sm:text-sm text-gray-700 font-medium">
@@ -237,9 +238,7 @@ export default function Home() {
             {cart && cart.items.length > 0 && (
               <div className="relative overflow-hidden bg-gradient-to-br from-green-500 to-green-700 p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 h-32 flex flex-col justify-center">
                 <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10" />
-                <p className="text-sm font-semibold text-gray-100 mb-1">
-                  Cart
-                </p>
+                <p className="text-sm font-semibold text-gray-100 mb-1">Cart</p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-black text-white">
                     {cart.totalItems}
@@ -270,7 +269,7 @@ export default function Home() {
         {/* Merchants List */}
         <div className="mb-6">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 px-1 flex items-center gap-2">
-            <Store className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+            <Store className="w-5 h-5 sm:w-6 sm:h-6 text-gray-900" />
             <span>Select Merchant</span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
@@ -430,7 +429,7 @@ export default function Home() {
                           data-testid="add-to-cart-btn"
                           className={`px-4 py-2.5 rounded-lg font-bold transition-all shadow-md hover:shadow-lg text-sm ${
                             item.isAvailable
-                              ? "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
+                              ? "bg-gray-900 text-white hover:bg-gray-800 active:scale-95"
                               : "bg-gray-200 text-gray-400 cursor-not-allowed"
                           }`}
                         >
