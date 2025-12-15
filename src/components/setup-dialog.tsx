@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UtensilsCrossed, User, Phone, Hash } from "lucide-react";
 import {
   Dialog,
@@ -20,14 +20,28 @@ interface SetupDialogProps {
 }
 
 export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
-  const [tableNumber, setTableNumber] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [form, setForm] = useState({
+    tableNumber: "",
+    customerName: "",
+    whatsappNumber: "",
+  });
   const [errors, setErrors] = useState<{
     table?: string;
     name?: string;
     phone?: string;
   }>({});
+
+  // Load data from local storage when dialog opens
+  useEffect(() => {
+    if (open) {
+      setForm({
+        tableNumber:
+          localStorage.getItem("ngantri_customer_table_number") || "",
+        customerName: localStorage.getItem("ngantri_customer_name") || "",
+        whatsappNumber: localStorage.getItem("ngantri_customer_phone") || "",
+      });
+    }
+  }, [open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,17 +49,17 @@ export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
     const newErrors: typeof errors = {};
 
     // Validate table number
-    if (!tableNumber || tableNumber.trim() === "") {
+    if (!form.tableNumber || form.tableNumber.trim() === "") {
       newErrors.table = "Table number is required";
     }
 
     // Validate name
-    if (!customerName || customerName.trim().length < 2) {
+    if (!form.customerName || form.customerName.trim().length < 2) {
       newErrors.name = "Name must be at least 2 characters";
     }
 
     // Validate WhatsApp number
-    const cleanedPhone = whatsappNumber.replace(/\D/g, "");
+    const cleanedPhone = form.whatsappNumber.replace(/\D/g, "");
     if (cleanedPhone.length < 10) {
       newErrors.phone = "Phone number must be at least 10 digits";
     } else if (cleanedPhone.length > 15) {
@@ -58,8 +72,8 @@ export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
     }
 
     onComplete({
-      tableNumber: tableNumber.trim(),
-      customerName: customerName.trim(),
+      tableNumber: form.tableNumber.trim(),
+      customerName: form.customerName.trim(),
       whatsappNumber: cleanedPhone,
     });
   };
@@ -95,9 +109,9 @@ export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
             <input
               type="text"
               id="table"
-              value={tableNumber}
+              value={form.tableNumber}
               onChange={(e) => {
-                setTableNumber(e.target.value);
+                setForm((prev) => ({ ...prev, tableNumber: e.target.value }));
                 setErrors((prev) => ({ ...prev, table: undefined }));
               }}
               placeholder="e.g., 19"
@@ -127,9 +141,9 @@ export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
             <input
               type="text"
               id="name"
-              value={customerName}
+              value={form.customerName}
               onChange={(e) => {
-                setCustomerName(e.target.value);
+                setForm((prev) => ({ ...prev, customerName: e.target.value }));
                 setErrors((prev) => ({ ...prev, name: undefined }));
               }}
               placeholder="Enter your name"
@@ -163,9 +177,12 @@ export default function SetupDialog({ open, onComplete }: SetupDialogProps) {
               <input
                 type="tel"
                 id="phone"
-                value={whatsappNumber}
+                value={form.whatsappNumber}
                 onChange={(e) => {
-                  setWhatsappNumber(e.target.value);
+                  setForm((prev) => ({
+                    ...prev,
+                    whatsappNumber: e.target.value,
+                  }));
                   setErrors((prev) => ({ ...prev, phone: undefined }));
                 }}
                 placeholder="812-3456-7890"

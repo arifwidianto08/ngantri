@@ -44,6 +44,7 @@ export async function GET(
           imageUrl: menus.imageUrl,
           isAvailable: menus.isAvailable,
           categoryId: menus.categoryId,
+          merchantId: menus.merchantId,
           categoryName: menuCategories.name,
           createdAt: menus.createdAt,
         })
@@ -110,7 +111,6 @@ export async function POST(
     const [newMenu] = await db
       .insert(menus)
       .values({
-        id: `menu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name,
         description: description || null,
         price,

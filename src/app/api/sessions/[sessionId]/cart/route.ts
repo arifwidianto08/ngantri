@@ -50,8 +50,8 @@ const addToCartHandler = async (
       );
     }
 
-    // Verify session exists
-    await sessionService.findSessionById(sessionId);
+    // Check local storage sessionId: validate in DB, create if doesn't exist
+    await sessionService.findOrCreateSession(sessionId);
 
     // Verify menu item exists and is available
     const menuItem = await menuService.findMenuItemById(menu_id);
@@ -90,8 +90,8 @@ const deleteCartHandler = async (
   const { sessionId } = await params;
 
   try {
-    // Verify session exists
-    await sessionService.findSessionById(sessionId);
+    // Check local storage sessionId: validate in DB, create if doesn't exist
+    await sessionService.findOrCreateSession(sessionId);
 
     // Clear all cart items for this session
     await sessionRepository.clearCart(sessionId);
