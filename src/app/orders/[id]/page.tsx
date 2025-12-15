@@ -471,12 +471,6 @@ export default function OrderDetailPage() {
               {cancelOrderMutation.isPending ? "Cancelling..." : "Cancel Order"}
             </button>
           )}
-          <Link
-            href="/"
-            className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold shadow-lg hover:shadow-xl transition-all text-center"
-          >
-            Order More
-          </Link>
         </div>
 
         {/* Cancel Confirmation Dialog */}

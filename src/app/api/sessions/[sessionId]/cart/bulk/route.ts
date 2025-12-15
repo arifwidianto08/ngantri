@@ -50,8 +50,8 @@ const bulkAddToCartHandler = async (
       );
     }
 
-    // Verify session exists
-    await sessionService.findSessionById(sessionId);
+    // Check local storage sessionId: validate in DB, create if doesn't exist
+    await sessionService.findOrCreateSession(sessionId);
 
     // Validate and prepare items
     const cartItemsToAdd: NewCartItem[] = [];

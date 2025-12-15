@@ -83,6 +83,28 @@ export class SessionService implements ISessionService {
   }
 
   /**
+   * Find session by ID or create if doesn't exist
+   */
+  async findOrCreateSession(id: string): Promise<BuyerSession> {
+    try {
+      const session = await this.sessionRepository.findSessionById(id);
+      if (session) {
+        return session;
+      }
+      // Create new session with the provided ID
+      const newSession: NewBuyerSession = {
+        id: id, // Allow specifying the ID
+      };
+      return await this.sessionRepository.createSession(newSession);
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw errors.internal("Failed to find or create session", error);
+    }
+  }
+
+  /**
    * Delete session (soft delete)
    */
   async deleteSession(id: string): Promise<void> {
@@ -101,14 +123,12 @@ export class SessionService implements ISessionService {
 
   /**
    * Update table number for a session
+   * Only updates existing sessions (session should be created first via findOrCreateSession)
    */
   async updateTableNumber(
     id: string,
     tableNumber: number
   ): Promise<BuyerSession> {
-    // Validate session exists
-    await this.findSessionById(id);
-
     // Validate table number
     if (!Number.isInteger(tableNumber) || tableNumber <= 0) {
       throw errors.validation("Table number must be a positive integer");
@@ -119,6 +139,7 @@ export class SessionService implements ISessionService {
     }
 
     try {
+      // Update the session
       const updatedSession = await this.sessionRepository.updateSession(id, {
         tableNumber,
       });

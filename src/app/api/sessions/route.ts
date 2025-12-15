@@ -14,6 +14,20 @@ const sessionService = new SessionService(sessionRepository);
 const createSessionHandler = async (request: NextRequest) => {
   const body = await request.json().catch(() => ({}));
 
+  // If client provides sessionId from local storage, use that
+  if (body.sessionId || body.session_id) {
+    const sessionId = body.sessionId || body.session_id;
+    const session = await sessionService.findOrCreateSession(sessionId);
+    return createSuccessResponse(
+      {
+        session,
+        message: "Session created successfully",
+      },
+      undefined,
+      201
+    );
+  }
+
   // Create session with optional table number
   const sessionData = {
     tableNumber: body.table_number || body.tableNumber,

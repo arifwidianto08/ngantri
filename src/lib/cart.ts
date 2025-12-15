@@ -20,7 +20,7 @@ export interface CartItem {
 
 export interface Cart {
   sessionId: string;
-  items: CartItem[];
+  items: Partial<CartItem>[];
   totalItems: number;
   totalAmount: number;
   updatedAt: string;
@@ -124,14 +124,19 @@ export async function addToCart(
 
     if (existingItemIndex >= 0) {
       // Update quantity of existing item
-      cart.items[existingItemIndex].quantity += quantity;
-      cart.items[existingItemIndex].totalPrice =
-        cart.items[existingItemIndex].quantity *
-        cart.items[existingItemIndex].unitPrice;
+      const existingItem = cart.items[existingItemIndex];
+      if (existingItem) {
+        const existingQuantity = existingItem?.quantity || 0;
+        const existingUnitPrice = existingItem?.unitPrice || 0;
+        cart.items[existingItemIndex] = {
+          ...existingItem,
+          quantity: existingQuantity + quantity,
+          totalPrice: existingQuantity * existingUnitPrice,
+        };
+      }
     } else {
       // Add new item to cart
-      const newItem: CartItem = {
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      const newItem: Partial<CartItem> = {
         menuId,
         menuName,
         merchantId,
@@ -178,9 +183,15 @@ export async function updateCartItemQuantity(
       cart.items.splice(itemIndex, 1);
     } else {
       // Update quantity
-      cart.items[itemIndex].quantity = quantity;
-      cart.items[itemIndex].totalPrice =
-        quantity * cart.items[itemIndex].unitPrice;
+      const existingCartItem = cart.items[itemIndex];
+      if (existingCartItem) {
+        const existingCartItemUnitPrice = existingCartItem?.unitPrice || 0;
+        cart.items[itemIndex] = {
+          ...existingCartItem,
+          quantity,
+          totalPrice: existingCartItemUnitPrice * quantity,
+        };
+      }
     }
 
     updateCartTotals(cart);
@@ -219,8 +230,14 @@ export function clearCart(): void {
  * Update cart totals
  */
 function updateCartTotals(cart: Cart): void {
-  cart.totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-  cart.totalAmount = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
+  cart.totalItems = cart.items.reduce(
+    (sum, item) => sum + (item?.quantity || 0),
+    0
+  );
+  cart.totalAmount = cart.items.reduce(
+    (sum, item) => sum + (item?.totalPrice || 0),
+    0
+  );
   cart.updatedAt = new Date().toISOString();
 }
 
