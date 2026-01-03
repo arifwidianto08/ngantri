@@ -43,10 +43,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# text files
 *.txt
 
-# tests 
+# tests
 playwright-report
 /playwright-report
 test-results
 /test-results
+
+# VitePress (IMPORTANT)
+docs/.vitepress/cache
+docs/.vitepress/dist
