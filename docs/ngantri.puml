@@ -1,0 +1,143 @@
+@startuml
+hide methods
+hide stereotypes
+
+' ======================
+' Core Users
+' ======================
+class Admin {
+  id: UUID
+  username: string
+  password_hash: string
+  name: string
+  created_at: timestamptz
+  updated_at: timestamptz
+  deleted_at: timestamptz
+}
+
+class Merchant {
+  id: UUID
+  phone_number: string
+  password_hash: string
+  merchant_number: int
+  name: string
+  image_url: string
+  description: text
+  is_available: bool
+  created_at: timestamptz
+  updated_at: timestamptz
+  deleted_at: timestamptz
+}
+
+' ======================
+' Buyer Session & Cart
+' ======================
+class BuyerSession {
+  id: UUID
+  table_number: int
+  created_at: timestamptz
+  updated_at: timestamptz
+  deleted_at: timestamptz
+}
+
+class CartItem {
+  id: UUID
+  quantity: int
+  price_snapshot: int
+  notes: text
+  created_at: timestamptz
+  updated_at: timestamptz
+  deleted_at: timestamptz
+}
+
+BuyerSession "1" --> "many" CartItem : has
+Merchant "1" --> "many" CartItem : owns
+Menu "1" --> "many" CartItem : selected
+
+' ======================
+' Menu
+' ======================
+class MenuCategory {
+  id: UUID
+  name: string
+  created_at: timestamptz
+  updated_at: timestamptz
+  deleted_at: timestamptz
+}
+
+class Menu {
+  id: UUID
+  name: string
+  image_url: string
+  description: text
+  price: int
+  is_available: bool
+  created_at: timestamptz
+  updated_at: timestamptz
+  deleted_at: timestamptz
+}
+
+Merchant "1" --> "many" MenuCategory : has
+MenuCategory "1" --> "many" Menu : contains
+Merchant "1" --> "many" Menu : offers
+
+' ======================
+' Orders
+' ======================
+class Order {
+  id: UUID
+  status: string
+  total_amount: int
+  customer_name: string
+  customer_phone: string
+  notes: text
+  created_at: timestamptz
+  updated_at: timestamptz
+  deleted_at: timestamptz
+}
+
+BuyerSession "1" --> "many" Order : creates
+Merchant "1" --> "many" Order : receives
+
+class OrderItem {
+  id: UUID
+  menu_name: string
+  menu_image_url: string
+  quantity: int
+  unit_price: int
+  subtotal: int
+  created_at: timestamptz
+  updated_at: timestamptz
+  deleted_at: timestamptz
+}
+
+Order "1" --> "many" OrderItem : contains
+Menu "1" --> "many" OrderItem : snapshot
+
+' ======================
+' Payments
+' ======================
+class OrderPayment {
+  id: UUID
+  payment_url: string
+  amount: int
+  status: string
+  payment_method: string
+  paid_at: timestamptz
+  expires_at: timestamptz
+  created_at: timestamptz
+  updated_at: timestamptz
+  deleted_at: timestamptz
+}
+
+class OrderPaymentItem {
+  id: UUID
+  amount: int
+  created_at: timestamptz
+}
+
+Order "1" --> "1" OrderPayment : has
+OrderPayment "1" --> "many" OrderPaymentItem : splits
+Order "1" --> "many" OrderPaymentItem : reconciles
+
+@enduml

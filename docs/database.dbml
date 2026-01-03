@@ -1,0 +1,117 @@
+Table admins {
+  id uuid [pk]
+  username varchar(50) [not null, unique]
+  password_hash varchar(255) [not null]
+  name varchar(100)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+}
+
+Table buyer_sessions {
+  id uuid [pk]
+  table_number int
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+}
+
+Table cart_items {
+  id uuid [pk]
+  session_id uuid [not null, ref: > buyer_sessions.id]
+  merchant_id uuid [not null, ref: > merchants.id]
+  menu_id uuid [not null, ref: > menus.id]
+  quantity int [not null, default: 1]
+  price_snapshot int [not null]
+  notes text
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+}
+
+Table merchants {
+  id uuid [pk]
+  phone_number varchar(20) [not null, unique]
+  password_hash varchar(255) [not null]
+  merchant_number int [not null, unique]
+  name varchar(100) [not null]
+  image_url varchar(255)
+  description text
+  is_available bool [not null, default: true]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+}
+
+Table menu_categories {
+  id uuid [pk]
+  merchant_id uuid [not null, ref: > merchants.id]
+  name varchar(100) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+}
+
+Table menus {
+  id uuid [pk]
+  merchant_id uuid [not null, ref: > merchants.id]
+  category_id uuid [not null, ref: > menu_categories.id]
+  name varchar(100) [not null]
+  image_url varchar(255)
+  description text
+  price int [not null]
+  is_available bool [not null, default: true]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+}
+
+Table orders {
+  id uuid [pk]
+  session_id uuid [not null, ref: > buyer_sessions.id]
+  merchant_id uuid [not null, ref: > merchants.id]
+  status varchar(20) [not null, default: "pending"]
+  total_amount int [not null]
+  customer_name varchar(100)
+  customer_phone varchar(20)
+  notes text
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+}
+
+Table order_items {
+  id uuid [pk]
+  order_id uuid [not null, ref: > orders.id]
+  menu_id uuid [not null, ref: > menus.id]
+  menu_name varchar(100) [not null]
+  menu_image_url varchar(255)
+  quantity int [not null]
+  unit_price int [not null]
+  subtotal int [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+}
+
+Table order_payments {
+  id uuid [pk]
+  order_id uuid [not null, unique, ref: > orders.id]
+  payment_url varchar(500)
+  amount int [not null]
+  status varchar(20) [not null, default: "unpaid"]
+  payment_method varchar(50)
+  paid_at timestamptz
+  expires_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+}
+
+Table order_payment_items {
+  id uuid [pk]
+  payment_id uuid [not null, ref: > order_payments.id]
+  order_id uuid [not null, ref: > orders.id]
+  amount int [not null]
+  created_at timestamptz [not null]
+}
