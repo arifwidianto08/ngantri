@@ -174,37 +174,6 @@ export default function OrdersPage() {
           </button>
         </div>
 
-        {/* Success Message - Only show for pending orders */}
-        {currentView === "pending" && orders.length > 0 && (
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-            <div className="flex items-start gap-3 sm:gap-4">
-              <div className="flex-shrink-0">
-                <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-gray-900" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-green-900 mb-2">
-                  Order Placed Successfully!
-                </h2>
-                <p className="text-sm sm:text-base text-gray-900 mb-3">
-                  Your order{orders.length > 1 ? "s have" : " has"} been sent to
-                  the merchant{orders.length > 1 ? "s" : ""}. Please wait for
-                  confirmation.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {orders.map((order: Order) => (
-                    <span
-                      key={order.id}
-                      className="inline-block px-3 py-1.5 bg-white border-2 border-green-300 rounded-full text-xs sm:text-sm font-mono text-green-900 shadow-sm"
-                    >
-                      #{order.id.slice(0, 12)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Status Banner */}
         {currentView === "pending" && anyReady && !allCompleted && (
           <div className="bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-300 rounded-xl p-4 mb-4 sm:mb-6">
