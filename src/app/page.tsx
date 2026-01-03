@@ -57,7 +57,9 @@ export default function Home() {
       try {
         const buyerSession = await getOrCreateBuyerSession();
         if (buyerSession) {
+          const cachedName = localStorage.getItem("ngantri_customer_name");
           setSession(buyerSession);
+          setCustomerName(cachedName || "");
 
           if (!buyerSession.tableNumber) setShowSetupDialog(true);
 
