@@ -160,7 +160,7 @@ export default function Home() {
       const updatedCart = await addToCart(
         menuItem.id,
         menuItem.name,
-        menuItem.merchantId,
+        selectedMerchant!.id,
         selectedMerchant?.name || "Unknown Merchant",
         menuItem.price,
         1,
