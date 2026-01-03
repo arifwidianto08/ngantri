@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { UtensilsCrossed, Store } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { UtensilsCrossed, Store, ClipboardList} from "lucide-react";
 import {
   getOrCreateBuyerSession,
   updateSessionTableNumber,
@@ -38,6 +39,7 @@ interface MenuItem {
 
 export default function Home() {
   // unchanged
+  const router = useRouter();
   const [session, setSession] = useState<BuyerSession | null>(null);
   const [cart, setCart] = useState<Cart | null>(null);
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(
@@ -198,8 +200,18 @@ export default function Home() {
                 Food Court Ordering
               </p>
             </div>
-            <div className="hidden md:block">
-              <CartWidget />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => router.push("/orders")}
+                className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 font-bold shadow-lg hover:shadow-xl active:scale-95 transition-all"
+              >
+                <ClipboardList className="h-5 w-5 sm:h-6 sm:w-6" />
+                <span className="hidden sm:inline">My Orders</span>
+              </button>
+              <div className="hidden md:block">
+                <CartWidget />
+              </div>
             </div>
           </div>
         </div>
