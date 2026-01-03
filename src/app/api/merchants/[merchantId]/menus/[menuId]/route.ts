@@ -23,7 +23,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { isAvailable, name, description, price, categoryId } = body;
+    const { isAvailable, name, description, price, categoryId, imageUrl } = body;
 
     // Get existing menu to verify ownership
     const [existingMenu] = await db
@@ -43,6 +43,7 @@ export async function PATCH(
     if (description !== undefined) updateData.description = description;
     if (price !== undefined) updateData.price = price;
     if (categoryId !== undefined) updateData.categoryId = categoryId;
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
     updateData.updatedAt = new Date();
 
     const [updatedMenu] = await db
