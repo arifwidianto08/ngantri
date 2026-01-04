@@ -75,6 +75,17 @@ const createBatchOrdersHandler = async (request: NextRequest) => {
     );
   }
 
+  // Validate merchant IDs are not undefined or empty
+  for (const merchantId of Object.keys(ordersByMerchant)) {
+    if (!merchantId || merchantId === "undefined") {
+      return createErrorResponse(
+        ERROR_CODES.BAD_REQUEST,
+        "Invalid merchant ID provided",
+        400
+      );
+    }
+  }
+
   try {
     // Verify session exists
     const session = await db

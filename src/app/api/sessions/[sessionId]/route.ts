@@ -38,6 +38,10 @@ const updateSessionHandler = async (
       );
     }
 
+    // Check local storage sessionId: validate in DB, create if doesn't exist
+    await sessionService.findOrCreateSession(sessionId);
+
+    // Now update the table number
     const updatedSession = await sessionService.updateTableNumber(
       sessionId,
       table_number

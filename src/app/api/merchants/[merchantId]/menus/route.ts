@@ -44,6 +44,7 @@ export async function GET(
           imageUrl: menus.imageUrl,
           isAvailable: menus.isAvailable,
           categoryId: menus.categoryId,
+          merchantId: menus.merchantId,
           categoryName: menuCategories.name,
           createdAt: menus.createdAt,
         })
