@@ -57,7 +57,6 @@ CREATE TABLE "merchants" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
-	CONSTRAINT "merchants_phone_number_unique" UNIQUE("phone_number"),
 	CONSTRAINT "merchants_merchant_number_unique" UNIQUE("merchant_number")
 );
 

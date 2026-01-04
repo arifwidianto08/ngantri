@@ -6,7 +6,6 @@ import {
   integer,
   boolean,
   timestamp,
-  unique,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -32,7 +31,7 @@ export const merchants = pgTable("merchants", {
   id: uuid("id")
     .primaryKey()
     .default(sql`uuidv7()`),
-  phoneNumber: varchar("phone_number", { length: 20 }).notNull().unique(),
+  phoneNumber: varchar("phone_number", { length: 20 }).notNull(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   merchantNumber: integer("merchant_number").notNull().unique(),
   name: varchar("name", { length: 100 }).notNull(),

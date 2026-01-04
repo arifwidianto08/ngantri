@@ -416,13 +416,6 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "merchants_phone_number_unique": {
-          "name": "merchants_phone_number_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "phone_number"
-          ]
-        },
         "merchants_merchant_number_unique": {
           "name": "merchants_merchant_number_unique",
           "nullsNotDistinct": false,

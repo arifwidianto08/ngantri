@@ -3,6 +3,9 @@ import { requireMerchantAuth } from "@/lib/merchant-auth";
 import { MerchantService } from "@/services/merchant-service";
 import { MerchantRepositoryImpl } from "@/data/repositories/merchant-repository";
 import { z } from "zod";
+import { db } from "@/lib/db";
+import { merchants } from "@/data/schema";
+import { eq, and, ne, desc } from "drizzle-orm";
 
 const merchantRepository = new MerchantRepositoryImpl();
 const merchantService = new MerchantService(merchantRepository);
@@ -10,6 +13,7 @@ const merchantService = new MerchantService(merchantRepository);
 // Validation schema for profile updates
 const profileUpdateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  phoneNumber: z.string().max(20).optional(),
   description: z.string().max(1000).optional().nullable(),
   imageUrl: z.string().max(255).optional().nullable(),
   isAvailable: z.boolean().optional(),
@@ -39,6 +43,33 @@ export async function PUT(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // Check if phone number is being updated and if it's unique
+    if (validationResult.data.phoneNumber) {
+      const existingMerchant = await db
+        .select()
+        .from(merchants)
+        .where(
+          and(
+            eq(merchants.phoneNumber, validationResult.data.phoneNumber),
+            ne(merchants.id, merchant.id)
+          )
+        )
+        .orderBy(desc(merchants.createdAt))
+        .limit(1);
+
+      if (existingMerchant.length > 0 && !existingMerchant[0].deletedAt) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              message: "Phone number already registered",
+            },
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const updates = {

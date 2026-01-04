@@ -121,6 +121,8 @@ export class MerchantService implements IMerchantService {
 
     try {
       const merchant = await this.merchantRepository.create(merchantData);
+      merchant.passwordHash = "";
+
       return merchant;
     } catch (error) {
       throw errors.internal("Failed to create merchant account", error);
@@ -336,7 +338,6 @@ export class MerchantService implements IMerchantService {
   ): Promise<boolean> {
     try {
       const existingMerchant = await this.findByPhoneNumber(phoneNumber);
-
       if (!existingMerchant) {
         return true;
       }

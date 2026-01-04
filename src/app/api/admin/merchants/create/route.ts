@@ -2,12 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
 import { merchants } from "@/data/schema";
-import { max } from "drizzle-orm";
-import { createHash } from "node:crypto";
-
-function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
-}
+import { max, eq, isNull, desc } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +25,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if phone number already exists
+    const existingMerchant = await db
+      .select()
+      .from(merchants)
+      .where(eq(merchants.phoneNumber, phoneNumber))
+      .orderBy(desc(merchants.createdAt))
+      .limit(1);
+
+    if (existingMerchant.length > 0 && !existingMerchant[0].deletedAt) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: "Phone number already registered",
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     // Get next merchant number
     const lastMerchant = await db
       .select({ maxNumber: max(merchants.merchantNumber) })
@@ -36,7 +52,9 @@ export async function POST(request: NextRequest) {
 
     const nextMerchantNumber = (lastMerchant[0]?.maxNumber || 0) + 1;
 
-    const passwordHash = hashPassword(password);
+    // Hash password using bcrypt
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
 
     const newMerchant = await db
       .insert(merchants)

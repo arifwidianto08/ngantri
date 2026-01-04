@@ -27,6 +27,7 @@ import Link from "next/link";
 export function NavUser({
   user,
   onLogout,
+  profileUrl = "/dashboard/profile",
 }: {
   user: {
     name: string;
@@ -34,6 +35,7 @@ export function NavUser({
     avatar?: string;
   };
   onLogout?: () => Promise<void>;
+  profileUrl?: string;
 }) {
   const { isMobile } = useSidebar();
 
@@ -86,7 +88,7 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/profile" className="cursor-pointer">
+                <Link href={profileUrl} className="cursor-pointer">
                   <IconUserCircle />
                   Profile
                 </Link>

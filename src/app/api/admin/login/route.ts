@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
 
     const validation = await validateAdminCredentials(username, password);
 
-    if (validation.valid && validation.adminId) {
-      await createAdminSession(validation.adminId, username);
+    if (validation.valid && validation.id) {
+      await createAdminSession(validation.id, username, validation.name);
 
       return NextResponse.json({
         success: true,
