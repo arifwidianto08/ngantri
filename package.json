@@ -12,7 +12,7 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "type-check": "tsc --noEmit",
-    "test": "jest",
+    "test": "jest --verbose",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:e2e": "playwright test",
@@ -24,9 +24,9 @@
     "docker:clean": "docker-compose down -v --remove-orphans",
     "docker:restart": "npm run docker:down && npm run docker:up",
     "db:generate": "npx cross-env DATABASE_URL=postgres://postgres:postgres@localhost:5433/ngantri drizzle-kit generate",
-    "db:migrate": "npx cross-env DATABASE_URL=postgres://postgres:postgres@localhost:5433/ngantri drizzle-kit migrate",
+    "db:migrate": "npx cross-env drizzle-kit migrate",
     "db:studio": "npx cross-env DATABASE_URL=postgres://postgres:postgres@localhost:5433/ngantri drizzle-kit studio",
-    "db:seed": "npx cross-env DATABASE_URL=postgres://postgres:postgres@localhost:5433/ngantri tsx scripts/seed.ts",
+    "db:seed": "npx cross-env DATABASE_URL=postgresql://neondb_owner:npg_OhB9qdlAYLb1@ep-spring-feather-a1awax8p-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`menu_${Date.now()}_${Math.random().toString(36).substr(2, 9)} tsx scripts/seed.ts",
     "db:reset": "npm run docker:clean && npm run docker:up && npm run db:wait && npm run db:migrate && npm run db:seed",
     "db:wait": "npx wait-on tcp:localhost:5433",
     "setup": "npm install && npm run docker:up && npm run db:wait && npm run db:migrate && npm run db:seed"
@@ -58,6 +58,7 @@
     "sharp": "^0.34.4",
     "tailwind-merge": "^3.3.1",
     "uuid": "^13.0.0",
+    "uuidv7": "^1.1.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {
