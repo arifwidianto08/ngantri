@@ -109,37 +109,21 @@ test.describe("Merchant Dashboard", () => {
       
       // Navigate using the sidebar/nav link instead of direct goto
       const categoriesLink = page.locator('a[href*="/dashboard/categories"]');
-      if (await categoriesLink.first().isVisible({ timeout: 3000 }).catch(() => false)) {
-        await categoriesLink.first().click();
-        await page.waitForLoadState("networkidle");
-        await expect(page).toHaveURL(/\/dashboard\/categories/, { timeout: 5000 });
-      } else {
-        // Fallback: try direct navigation
-        await page.goto("/dashboard/categories");
-        await page.waitForLoadState("networkidle");
-        
-        // If redirected to login, skip test
-        if (page.url().includes("/login")) {
-          test.skip();
-        } else {
-          await expect(page).toHaveURL(/\/dashboard\/categories/);
-        }
-      }
+      await categoriesLink.first().waitFor({ state: "visible", timeout: 5000 });
+      await categoriesLink.first().click();
+      await page.waitForLoadState("networkidle");
+      await expect(page).toHaveURL(/\/dashboard\/categories/, { timeout: 5000 });
     });
 
     test("should display categories page content", async ({ page }) => {
       // Navigate using nav link
       const categoriesLink = page.locator('a[href*="/dashboard/categories"]');
-      if (await categoriesLink.first().isVisible({ timeout: 3000 }).catch(() => false)) {
-        await categoriesLink.first().click();
-        await page.waitForLoadState("networkidle");
-        
-        // Verify page loaded (look for any content, not specific elements)
-        const pageContent = page.locator("main, [data-testid='categories-list'], body");
-        await expect(pageContent.first()).toBeVisible({ timeout: 5000 });
-      } else {
-        test.skip();
-      }
+      await categoriesLink.first().click();
+      await page.waitForLoadState("networkidle");
+      
+      // Verify page loaded (look for any content, not specific elements)
+      const pageContent = page.locator("main, [data-testid='categories-list'], body");
+      await expect(pageContent.first()).toBeVisible({ timeout: 5000 });
     });
   });
 

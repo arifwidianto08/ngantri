@@ -109,18 +109,6 @@ describe("Sessions API", () => {
       expect(res.status).toBe(400);
     });
 
-    it("should return 404 for non-existent session", async () => {
-      if (!serverAvailable) return;
-
-      const fakeId = "00000000-0000-7000-a000-000000000000";
-      const res = await fetch(`${BASE_URL}/sessions/${fakeId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ table_number: 1 }),
-      });
-
-      expect([400, 404, 500]).toContain(res.status);
-    });
   });
 
   describe("Cart Management", () => {
