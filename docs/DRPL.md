@@ -308,3 +308,100 @@ Langkah menjalankan (contoh):
 1. Jalankan: `npm test`
 2. Pastikan pengujian yang mencakup checkout batch (`POST /api/orders/batch`) menampilkan status **PASS**.
 3. Ambil screenshot hasil output pada terminal dan tempel pada laporan.
+
+---
+
+#### 2.1.2 Pengujian Class dengan Jest
+
+Bagian ini menjelaskan contoh pengujian **sebuah class** pada sistem Ngantri menggunakan **Jest** (unit test). Setiap method diuji menggunakan data uji yang menghasilkan kondisi **VALID** (berhasil) maupun **FAIL** (gagal/throw error) sesuai aturan validasi di kode.
+
+**Class yang diuji:** `SessionService`  
+**Lokasi:** `src/services/session-service.ts`  
+**Berkas unit test:** `tests/unit/session-service.unit.test.ts`
+
+**Tabel 2 Pengujian Class (Jest Unit Test)**
+
+| CLASS | Method | Data Masukan | Yang diharapkan | Pengamatan* | Kesimpulan |
+|---|---|---|---|---|---|
+| SessionService | createSession | VALID: `{ tableNumber: 5 }` | Session berhasil dibuat dan repository `createSession()` dipanggil dengan `tableNumber=5` | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | createSession | FAIL: `{ tableNumber: -1 }` | Sistem menolak input dan melempar `VALIDATION_ERROR (400)` | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | createSession | FAIL: repository throw error | Sistem melempar `INTERNAL_SERVER_ERROR (500)` | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | findSessionById | VALID: `id = "s3"` (session ada) | Mengembalikan data session | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | findSessionById | FAIL: `id = "missing"` (session tidak ada) | Melempar `NOT_FOUND (404)` | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | findOrCreateSession | VALID: `id = "keep"` (session ada) | Mengembalikan session yang ada, tanpa membuat session baru | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | findOrCreateSession | VALID: `id = "new"` (session tidak ada) | Membuat session dengan `id` tersebut dan mengembalikannya | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | updateTableNumber | VALID: `id="s5", tableNumber=3` | Session ter-update (tableNumber berubah) | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | updateTableNumber | FAIL: `tableNumber=0` atau `tableNumber=1000` | Melempar `VALIDATION_ERROR (400)` | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | updateTableNumber | FAIL: session tidak ditemukan | Melempar `NOT_FOUND (404)` | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | deleteSession | VALID: `id="s6"` (session ada) | Soft delete sukses (tidak throw error) | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | deleteSession | FAIL: softDelete return `false` | Melempar `INTERNAL_SERVER_ERROR (500)` | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | validateSessionData | VALID: `{}` atau `{ tableNumber: 1 }` | Tidak ada error | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+| SessionService | validateSessionData | FAIL: `{ tableNumber: -5 }` | Melempar `VALIDATION_ERROR (400)` | PASS (Jest) | [X] diterima<br>[ ] ditolak |
+
+\*Pengamatan diisi berdasarkan hasil eksekusi test Jest (output PASS/FAIL) dan dapat dilampirkan sebagai screenshot pada lampiran.
+
+**Langkah menjalankan (contoh):**
+1. Jalankan: `npm test -- session-service.unit.test.ts`
+2. Pastikan output menampilkan status **PASS**.
+3. Ambil screenshot output terminal untuk lampiran.
+
+---
+
+### 2.3 USER ACCEPTANCE TEST (UAT)
+
+USER ACCEPTANCE TEST OLEH : (Isi nama penguji)  
+TANGGAL : 4 Januari 2026
+
+Tabel 2.3 User Acceptance Test (UAT)
+
+| Use Case Yang Diuji | Rencana Pengujian | Hasil Yang Diharapkan | Hasil Aktual (berdasarkan eksekusi test) | Kesimpulan |
+|---|---|---|---|---|
+| Akses halaman utama: isi nomor meja, nama customer, nomor WhatsApp | User membuka `/`, mengisi form setup (table, name, phone), lalu submit | Session buyer tersimpan dan user dapat mengakses halaman utama | PASS — Playwright `tests/e2e/menu-browsing.spec.ts` (setup dialog) | Diterima |
+| Update info customer (nomor meja/nama/WhatsApp) | User mengubah value pada setup dialog lalu submit kembali | Session buyer ter-update (PATCH) dan data konsisten | PASS — Playwright `tests/e2e/*` (setup dialog) + API `tests/api/customer.test.ts` (PATCH /sessions) | Diterima |
+
+| Browse merchant (customer) | User melihat daftar merchant di `/` | Merchant aktif tampil (hanya yang available) | PASS — Playwright `tests/e2e/menu-browsing.spec.ts` + API `tests/api/customer.test.ts` (GET /merchants) | Diterima |
+| Browse menu per-merchant (customer) | User memilih merchant dan melihat daftar menu | Daftar menu tampil sesuai merchant | PASS — Playwright `tests/e2e/menu-browsing.spec.ts` + API `tests/api/customer.test.ts` (GET /merchants/:id/menus) | Diterima |
+
+| Session: create (customer) | Sistem membuat session baru saat dibutuhkan | Session berhasil dibuat (UUID v7) | PASS — API `tests/api/customer.test.ts` (POST /sessions) | Diterima |
+| Session: update table number | User mengubah nomor meja | Valid update = 200, invalid = 400, session tidak ada = 404 | PASS — API `tests/api/customer.test.ts` (PATCH /sessions/:id) | Diterima |
+
+| Keranjang: tambah item dari menu | User klik tambah item pada menu | Item masuk cart dan badge count bertambah | PASS — Playwright `tests/e2e/shopping-cart.spec.ts` (add item) + API `tests/api/customer.test.ts` (POST /sessions/:id/cart) | Diterima |
+| Keranjang: invalid menu | User menambahkan menuId yang tidak valid | Sistem mengembalikan error (400/404) | PASS — API `tests/api/customer.test.ts` (POST /sessions/:id/cart invalid) | Diterima |
+| Keranjang: lihat item | User membuka `/cart` | Daftar item cart tampil | PASS — Playwright `tests/e2e/shopping-cart.spec.ts` (view cart) | Diterima |
+| Keranjang: ubah jumlah item | User menambah/mengurangi kuantitas item | Kuantitas & total item ter-update | PASS — Playwright `tests/e2e/shopping-cart.spec.ts` (update quantity) | Diterima |
+| Keranjang: hapus item | User menghapus 1 item dari cart | Item hilang dan empty state muncul bila kosong | PASS — Playwright `tests/e2e/shopping-cart.spec.ts` (remove item) | Diterima |
+| Keranjang: clear cart | User mengosongkan cart dan konfirmasi | Cart kosong dan empty state tampil | PASS — Playwright `tests/e2e/shopping-cart.spec.ts` (clear cart) | Diterima |
+
+| Checkout: halaman checkout | User membuka `/checkout` | Halaman checkout tampil (summary atau empty state) | PASS — Playwright `tests/e2e/checkout.spec.ts` (load/empty/structure) | Diterima |
+| Checkout: pembuatan order (customer) | User checkout lalu sistem membuat order | Order tercipta untuk merchant terkait | PASS — API `tests/api/customer.test.ts` (POST /orders) + Playwright `tests/e2e/checkout.spec.ts` | Diterima |
+| Order: validasi field wajib | User submit order tanpa field wajib | Sistem menolak dengan status error yang sesuai | PASS — API `tests/api/customer.test.ts` (POST /orders missing fields) | Diterima |
+
+| Order: retrieve by ID | User membuka detail order berdasarkan orderId | Sistem mengembalikan detail order / error bila tidak valid | PASS — API `tests/api/customer.test.ts` (GET /orders/:id) | Diterima |
+| Order: tracking status | User membuka status order | Status dapat diambil / error bila tidak valid | PASS — API `tests/api/customer.test.ts` (GET /orders/:id/status) | Diterima |
+| Order: cancel | User melakukan cancel order | Order dibatalkan / error bila tidak valid | PASS — API `tests/api/customer.test.ts` (POST /orders/:id/cancel) | Diterima |
+
+| Payment: create | User memulai pembayaran untuk order | Payment dibuat / error bila tidak valid | PASS — API `tests/api/customer.test.ts` (POST /payments/create) | Diterima |
+| Payment: status per-order | User mengecek status pembayaran order | Status payment dapat diambil / error bila tidak valid | PASS — API `tests/api/customer.test.ts` (GET /orders/:id/payment) | Diterima |
+
+| Merchant: register | Merchant mendaftar akun baru | Akun dibuat atau ditolak bila duplikat/tidak valid | PASS — API `tests/api/merchants.test.ts` (POST /merchants/register) | Diterima |
+| Merchant: login/logout | Merchant login & logout | Login valid = 200; invalid = 401; logout sukses | PASS — API `tests/api/merchants.test.ts` + Playwright `tests/e2e/merchant-dashboard.spec.ts` | Diterima |
+| Merchant: profil (me) | Merchant membuka profil sendiri | Profil tampil bila authenticated | PASS — API `tests/api/merchants.test.ts` (GET /merchants/me) | Diterima |
+
+| Merchant: dashboard navigasi | Merchant melihat navigasi dashboard (orders/menus/categories) | Menu navigasi tampil | PASS — Playwright `tests/e2e/merchant-dashboard.spec.ts` (navigation) | Diterima |
+| Merchant: kategori (lihat) | Merchant melihat kategori milik merchant | Daftar kategori tampil dan detail kategori dapat diambil | PASS — API `tests/api/merchants.test.ts` (categories) + Playwright `tests/e2e/merchant-dashboard.spec.ts` | Diterima |
+| Merchant: menu (lihat) | Merchant melihat daftar menu & detail menu | Daftar menu & detail menu tampil | PASS — API `tests/api/merchants.test.ts` (menus) + Playwright `tests/e2e/merchant-dashboard.spec.ts` | Diterima |
+| Merchant: pesanan (lihat) | Merchant membuka daftar & detail order | Daftar/detail order tampil (atau error bila tidak valid) | PASS — API `tests/api/merchants.test.ts` (dashboard orders) + Playwright `tests/e2e/merchant-dashboard.spec.ts` | Diterima |
+| Merchant: update status pesanan | Merchant mengubah status pesanan | Status berubah atau error bila tidak valid | PASS — API `tests/api/merchants.test.ts` (PATCH status) | Diterima |
+| Merchant: dashboard stats | Merchant melihat statistik dashboard | Statistik tampil bila authenticated | PASS — API `tests/api/merchants.test.ts` (dashboard stats) + Playwright `tests/e2e/merchant-dashboard.spec.ts` | Diterima |
+
+| Admin: login/logout | Admin login & logout | Login valid = 200; invalid = 401; logout sukses | PASS — API `tests/api/admin.test.ts` + Playwright `tests/e2e/admin-dashboard.spec.ts` | Diterima |
+| Admin: profil (me) | Admin membuka profil sendiri | Profil tampil bila authenticated | PASS — API `tests/api/admin.test.ts` (GET /admin/me) | Diterima |
+
+| Admin: merchants (list/create/get/toggle availability) | Admin mengelola merchant | CRUD & toggle availability berjalan | PASS — API `tests/api/admin.test.ts` (merchant mgmt) + Playwright `tests/e2e/admin-dashboard.spec.ts` | Diterima |
+| Admin: categories (list/filter/create/get) | Admin mengelola kategori | List/filter/create/get berjalan | PASS — API `tests/api/admin.test.ts` (category mgmt) | Diterima |
+| Admin: menus (list/filter/create/get/toggle availability) | Admin mengelola menu | List/filter/create/get & availability berjalan | PASS — API `tests/api/admin.test.ts` (menu mgmt) + Playwright `tests/e2e/admin-dashboard.spec.ts` | Diterima |
+| Admin: orders (list/update status) | Admin melihat semua order dan update status | Order list tampil & status dapat diupdate | PASS — API `tests/api/admin.test.ts` (order mgmt) + Playwright `tests/e2e/admin-dashboard.spec.ts` | Diterima |
+| Admin: dashboard stats | Admin melihat statistik dashboard | Statistik tampil bila authenticated | PASS — API `tests/api/admin.test.ts` (dashboard stats) + Playwright `tests/e2e/admin-dashboard.spec.ts` | Diterima |
+
+Catatan:
+- Bukti pelaksanaan dapat dilampirkan berupa screenshot output `npm test` (Jest) dan `npm run test:e2e` (Playwright).
