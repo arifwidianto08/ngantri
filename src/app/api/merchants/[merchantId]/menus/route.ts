@@ -110,7 +110,6 @@ export async function POST(
     const [newMenu] = await db
       .insert(menus)
       .values({
-        id: `menu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name,
         description: description || null,
         price,

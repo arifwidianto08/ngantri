@@ -6,13 +6,21 @@
 
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { orders, orderItems, buyerSessions, merchants } from "@/data/schema";
-import { eq } from "drizzle-orm";
+import {
+  orders,
+  orderItems,
+  buyerSessions,
+  merchants,
+  menus,
+} from "@/data/schema";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
   createSuccessResponse,
   createErrorResponse,
   withErrorHandler,
   ERROR_CODES,
+  AppError,
+  errors,
 } from "@/lib/errors";
 import { v4 as uuidv4 } from "uuid";
 
@@ -87,19 +95,79 @@ const createBatchOrdersHandler = async (request: NextRequest) => {
     const results = await db.transaction(async (tx) => {
       const createdOrders: BatchOrderResult[] = [];
 
-      // Process each merchant's orders
-      for (const [merchantId, { merchantName, items }] of Object.entries(
-        ordersByMerchant
-      )) {
-        // Verify merchant exists
-        const merchant = await tx
-          .select()
-          .from(merchants)
-          .where(eq(merchants.id, merchantId))
-          .limit(1);
+      const merchantEntries = Object.entries(ordersByMerchant);
+      const merchantIds = merchantEntries.map(([merchantId]) => merchantId);
 
-        if (merchant.length === 0) {
-          throw new Error(`Merchant ${merchantName} not found`);
+      // Preload merchants once (avoid SELECT in loop)
+      const merchantRows = await tx
+        .select({
+          id: merchants.id,
+          name: merchants.name,
+          isAvailable: merchants.isAvailable,
+        })
+        .from(merchants)
+        .where(and(inArray(merchants.id, merchantIds), isNull(merchants.deletedAt)));
+
+      const merchantsById = new Map(
+        merchantRows.map((m) => [m.id, { name: m.name, isAvailable: m.isAvailable }])
+      );
+
+      // Preload menus once (avoid SELECT in loop)
+      const allMenuIds = Array.from(
+        new Set(
+          merchantEntries.flatMap(([, { items }]) =>
+            (items ?? []).map((i) => i.menuId)
+          )
+        )
+      );
+
+      const menuRows = allMenuIds.length
+        ? await tx
+            .select({
+              id: menus.id,
+              name: menus.name,
+              isAvailable: menus.isAvailable,
+              merchantId: menus.merchantId,
+            })
+            .from(menus)
+            .where(and(inArray(menus.id, allMenuIds), isNull(menus.deletedAt)))
+        : [];
+
+      const menusById = new Map(
+        menuRows.map((m) => [
+          m.id,
+          { name: m.name, isAvailable: m.isAvailable, merchantId: m.merchantId },
+        ])
+      );
+
+      // Process each merchant's orders
+      for (const [merchantId, { merchantName, items }] of merchantEntries) {
+        if (!items || items.length === 0) {
+          throw errors.validation(
+            `No items provided for merchant ${merchantName}`
+          );
+        }
+
+        // Verify merchant exists (in-memory lookup)
+        const merchantRecord = merchantsById.get(merchantId);
+        if (!merchantRecord) {
+          throw errors.merchantNotFound(merchantId);
+        }
+
+        if (!merchantRecord.isAvailable) {
+          throw errors.merchantInactive(merchantRecord.name);
+        }
+
+        // Validate menu item availability for this merchant (in-memory lookups)
+        for (const item of items) {
+          const menuRecord = menusById.get(item.menuId);
+          if (!menuRecord || menuRecord.merchantId !== merchantId) {
+            throw errors.menuNotFound(item.menuId);
+          }
+
+          if (!menuRecord.isAvailable) {
+            throw errors.menuUnavailable(menuRecord.name || item.menuName);
+          }
         }
 
         // Calculate total amount
@@ -158,17 +226,20 @@ const createBatchOrdersHandler = async (request: NextRequest) => {
   } catch (error) {
     console.error("Error creating batch orders:", error);
 
-    if (error instanceof Error) {
-      if (error.message.includes("not found")) {
-        return createErrorResponse(ERROR_CODES.NOT_FOUND, error.message, 404);
-      }
+    if (error instanceof AppError) {
+      return createErrorResponse(
+        error.code,
+        error.message,
+        error.statusCode,
+        error.details
+      );
     }
 
-    return createErrorResponse(
-      ERROR_CODES.INTERNAL_SERVER_ERROR,
-      "Failed to create orders",
-      500
-    );
+    if (error instanceof Error && error.message.includes("not found")) {
+      return createErrorResponse(ERROR_CODES.NOT_FOUND, error.message, 404);
+    }
+
+    return createErrorResponse(ERROR_CODES.INTERNAL_SERVER_ERROR, "Failed to create orders", 500);
   }
 };
 
