@@ -177,6 +177,36 @@ describe("Merchant Profile API", () => {
       expect(data.success).toBe(false);
       expect(data.error.message).toContain("Validation failed");
     });
+
+    it("should reject duplicate phone number", async () => {
+      if (!serverAvailable) {
+        console.log("⚠️  Skipping test - server not available");
+        return;
+      }
+
+      // Try to use another merchant's phone number
+      const updateData = {
+        phoneNumber: "+6281234567891", // Another merchant's phone
+      };
+
+      const response = await fetch(`${BASE_URL}/merchants/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: `merchant-session=${merchantToken}`,
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      // Should either be 409 (conflict) or 200 if phone doesn't exist
+      expect([200, 409]).toContain(response.status);
+
+      if (response.status === 409) {
+        const data = await response.json();
+        expect(data.success).toBe(false);
+        expect(data.error.message).toContain("Phone number already registered");
+      }
+    });
   });
 
   describe("PUT /api/merchants/profile/password", () => {

@@ -31,7 +31,7 @@ Table cart_items {
 
 Table merchants {
   id uuid [pk]
-  phone_number varchar(20) [not null, unique]
+  phone_number varchar(20) [not null]
   password_hash varchar(255) [not null]
   merchant_number int [not null, unique]
   name varchar(100) [not null]
