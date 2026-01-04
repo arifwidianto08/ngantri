@@ -10,7 +10,6 @@ let serverAvailable = true;
 let adminToken: string;
 let merchantId: string;
 let categoryId: string;
-let menuId: string;
 
 describe("Admin API", () => {
   beforeAll(async () => {
@@ -24,9 +23,9 @@ describe("Admin API", () => {
           password: "admin123",
         }),
       });
-      
+
       serverAvailable = loginRes.ok;
-      
+
       if (serverAvailable) {
         const loginData = await loginRes.json();
         if (loginData.success && loginData.data?.admin) {
@@ -127,7 +126,7 @@ describe("Admin API", () => {
 
         const res = await fetch(`${BASE_URL}/admin/merchants`, {
           headers: adminToken ? { Cookie: `admin-session=${adminToken}` } : {},
-        });      
+        });
         expect([200, 401]).toContain(res.status);
       });
     });
@@ -191,7 +190,7 @@ describe("Admin API", () => {
 
         const res = await fetch(`${BASE_URL}/admin/categories`, {
           headers: adminToken ? { Cookie: `admin-session=${adminToken}` } : {},
-        });     
+        });
         expect([200, 401]).toContain(res.status);
       });
 
@@ -290,7 +289,8 @@ describe("Admin API", () => {
         expect([200, 201, 400]).toContain(res.status);
         if (res.ok) {
           const data = await res.json();
-          menuId = data.data.menu.id;
+          expect(data.success).toBe(true);
+          expect(data.data.menu.id).toBeTruthy();
         }
       });
     });

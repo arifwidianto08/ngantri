@@ -13,17 +13,36 @@ jest.mock("../../../src/lib/db", () => ({
   db,
 }));
 
-const makeSelectChain = <T>(results: T[]) => {
-  const chain: any = {
-    from: jest.fn(() => chain),
-    where: jest.fn(() => chain),
-    orderBy: jest.fn(() => chain),
-    leftJoin: jest.fn(() => chain),
-    limit: jest.fn(async () => results),
-  };
+interface MockSelectChain<T> {
+  from: jest.Mock;
+  where: jest.Mock;
+  orderBy: jest.Mock;
+  leftJoin: jest.Mock;
+  limit: jest.Mock;
+  then: (resolve: (value: T[]) => void) => Promise<T[]>;
+}
 
-  chain.then = (resolve: any, reject: any) =>
-    Promise.resolve(results).then(resolve, reject);
+const makeSelectChain = <T>(results: T[]): MockSelectChain<T> => {
+  const chain = {
+    from: jest.fn(function (this: MockSelectChain<T>) {
+      return this;
+    }),
+    where: jest.fn(function (this: MockSelectChain<T>) {
+      return this;
+    }),
+    orderBy: jest.fn(function (this: MockSelectChain<T>) {
+      return this;
+    }),
+    leftJoin: jest.fn(function (this: MockSelectChain<T>) {
+      return this;
+    }),
+    limit: jest.fn(async () => results),
+  } as MockSelectChain<T>;
+
+  chain.then = (resolve: (value: T[]) => void): Promise<T[]> => {
+    resolve(results);
+    return Promise.resolve(results);
+  };
 
   return chain;
 };
@@ -55,9 +74,9 @@ describe("SessionRepositoryImpl (unit)", () => {
   });
 
   it("createSession: returns created row", async () => {
-    const { SessionRepositoryImpl } = require("../../../src/data/repositories/session-repository") as {
-      SessionRepositoryImpl: typeof import("../../../src/data/repositories/session-repository").SessionRepositoryImpl;
-    };
+    const { SessionRepositoryImpl } = await import(
+      "../../../src/data/repositories/session-repository"
+    );
 
     const repo = new SessionRepositoryImpl();
     const created = {
@@ -76,9 +95,9 @@ describe("SessionRepositoryImpl (unit)", () => {
   });
 
   it("findSessionById: returns null when not found", async () => {
-    const { SessionRepositoryImpl } = require("../../../src/data/repositories/session-repository") as {
-      SessionRepositoryImpl: typeof import("../../../src/data/repositories/session-repository").SessionRepositoryImpl;
-    };
+    const { SessionRepositoryImpl } = await import(
+      "../../../src/data/repositories/session-repository"
+    );
 
     const repo = new SessionRepositoryImpl();
     db.select.mockImplementationOnce(() => makeSelectChain([]));
@@ -88,9 +107,9 @@ describe("SessionRepositoryImpl (unit)", () => {
   });
 
   it("updateSession: returns updated row", async () => {
-    const { SessionRepositoryImpl } = require("../../../src/data/repositories/session-repository") as {
-      SessionRepositoryImpl: typeof import("../../../src/data/repositories/session-repository").SessionRepositoryImpl;
-    };
+    const { SessionRepositoryImpl } = await import(
+      "../../../src/data/repositories/session-repository"
+    );
 
     const repo = new SessionRepositoryImpl();
     const updated = {
@@ -109,9 +128,9 @@ describe("SessionRepositoryImpl (unit)", () => {
   });
 
   it("softDeleteSession: returns false when nothing deleted", async () => {
-    const { SessionRepositoryImpl } = require("../../../src/data/repositories/session-repository") as {
-      SessionRepositoryImpl: typeof import("../../../src/data/repositories/session-repository").SessionRepositoryImpl;
-    };
+    const { SessionRepositoryImpl } = await import(
+      "../../../src/data/repositories/session-repository"
+    );
 
     const repo = new SessionRepositoryImpl();
     mockUpdateReturningOnce([]);
@@ -121,9 +140,9 @@ describe("SessionRepositoryImpl (unit)", () => {
   });
 
   it("addCartItems: updates existing item", async () => {
-    const { SessionRepositoryImpl } = require("../../../src/data/repositories/session-repository") as {
-      SessionRepositoryImpl: typeof import("../../../src/data/repositories/session-repository").SessionRepositoryImpl;
-    };
+    const { SessionRepositoryImpl } = await import(
+      "../../../src/data/repositories/session-repository"
+    );
 
     const repo = new SessionRepositoryImpl();
 
@@ -161,9 +180,9 @@ describe("SessionRepositoryImpl (unit)", () => {
   });
 
   it("getCartTotal: returns aggregate total", async () => {
-    const { SessionRepositoryImpl } = require("../../../src/data/repositories/session-repository") as {
-      SessionRepositoryImpl: typeof import("../../../src/data/repositories/session-repository").SessionRepositoryImpl;
-    };
+    const { SessionRepositoryImpl } = await import(
+      "../../../src/data/repositories/session-repository"
+    );
 
     const repo = new SessionRepositoryImpl();
     db.select.mockImplementationOnce(() => makeSelectChain([{ total: 12345 }]));

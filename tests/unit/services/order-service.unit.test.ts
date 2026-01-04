@@ -71,7 +71,9 @@ describe("OrderService (unit)", () => {
 
   describe("createOrder", () => {
     it("VALID: creates order and items", async () => {
-      repo.create.mockResolvedValue(makeOrder({ id: "o2", totalAmount: 20000 }));
+      repo.create.mockResolvedValue(
+        makeOrder({ id: "o2", totalAmount: 20000 })
+      );
       repo.addOrderItems.mockResolvedValue([makeItem({ orderId: "o2" })]);
 
       const res = await service.createOrder({
@@ -92,10 +94,11 @@ describe("OrderService (unit)", () => {
     it("FAIL: rejects missing sessionId", async () => {
       await expect(
         service.createOrder({
-          // @ts-expect-error intentional invalid test
           sessionId: "",
           merchantId: "m1",
-          items: [{ menuId: "menu1", menuName: "Menu", quantity: 1, unitPrice: 1 }],
+          items: [
+            { menuId: "menu1", menuName: "Menu", quantity: 1, unitPrice: 1 },
+          ],
         })
       ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
     });
@@ -107,7 +110,9 @@ describe("OrderService (unit)", () => {
         service.createOrder({
           sessionId: "s1",
           merchantId: "m1",
-          items: [{ menuId: "menu1", menuName: "Menu", quantity: 1, unitPrice: 1 }],
+          items: [
+            { menuId: "menu1", menuName: "Menu", quantity: 1, unitPrice: 1 },
+          ],
         })
       ).rejects.toMatchObject({ code: ERROR_CODES.INTERNAL_SERVER_ERROR });
     });
@@ -116,7 +121,9 @@ describe("OrderService (unit)", () => {
   describe("findOrderById", () => {
     it("VALID: returns order", async () => {
       repo.findById.mockResolvedValue(makeOrder({ id: "o3" }));
-      await expect(service.findOrderById("o3")).resolves.toMatchObject({ id: "o3" });
+      await expect(service.findOrderById("o3")).resolves.toMatchObject({
+        id: "o3",
+      });
     });
 
     it("FAIL: throws ORDER_NOT_FOUND", async () => {
@@ -130,9 +137,13 @@ describe("OrderService (unit)", () => {
   describe("updateOrderStatus", () => {
     it("VALID: updates status", async () => {
       repo.findById.mockResolvedValue(makeOrder({ id: "o4" }));
-      repo.updateStatusWithPayment.mockResolvedValue(makeOrder({ id: "o4", status: "ready" }));
+      repo.updateStatusWithPayment.mockResolvedValue(
+        makeOrder({ id: "o4", status: "ready" })
+      );
 
-      await expect(service.updateOrderStatus("o4", "ready")).resolves.toMatchObject({
+      await expect(
+        service.updateOrderStatus("o4", "ready")
+      ).resolves.toMatchObject({
         status: "ready",
       });
     });
@@ -153,7 +164,9 @@ describe("OrderService (unit)", () => {
 
     it("FAIL: rejects invalid status", async () => {
       repo.findById.mockResolvedValue(makeOrder({ id: "o4" }));
-      await expect(service.updateOrderStatus("o4", "bogus")).rejects.toMatchObject({
+      await expect(
+        service.updateOrderStatus("o4", "bogus")
+      ).rejects.toMatchObject({
         code: ERROR_CODES.VALIDATION_ERROR,
       });
     });
@@ -161,14 +174,22 @@ describe("OrderService (unit)", () => {
 
   describe("cancelOrder", () => {
     it("VALID: cancels when not completed/cancelled", async () => {
-      repo.findById.mockResolvedValue(makeOrder({ id: "o5", status: "pending" }));
-      repo.updateStatus.mockResolvedValue(makeOrder({ id: "o5", status: "cancelled" }));
+      repo.findById.mockResolvedValue(
+        makeOrder({ id: "o5", status: "pending" })
+      );
+      repo.updateStatus.mockResolvedValue(
+        makeOrder({ id: "o5", status: "cancelled" })
+      );
 
-      await expect(service.cancelOrder("o5")).resolves.toMatchObject({ status: "cancelled" });
+      await expect(service.cancelOrder("o5")).resolves.toMatchObject({
+        status: "cancelled",
+      });
     });
 
     it("FAIL: cannot cancel completed", async () => {
-      repo.findById.mockResolvedValue(makeOrder({ id: "o6", status: "completed" }));
+      repo.findById.mockResolvedValue(
+        makeOrder({ id: "o6", status: "completed" })
+      );
       await expect(service.cancelOrder("o6")).rejects.toMatchObject({
         code: ERROR_CODES.BAD_REQUEST,
       });

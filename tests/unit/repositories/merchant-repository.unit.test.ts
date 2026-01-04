@@ -12,16 +12,35 @@ jest.mock("../../../src/lib/db", () => ({
   db,
 }));
 
-const makeSelectChain = <T>(results: T[]) => {
-  const chain: any = {
-    from: jest.fn(() => chain),
-    where: jest.fn(() => chain),
-    orderBy: jest.fn(() => chain),
-    leftJoin: jest.fn(() => chain),
+interface MockSelectChain<T> {
+  from: jest.Mock;
+  where: jest.Mock;
+  orderBy: jest.Mock;
+  leftJoin: jest.Mock;
+  limit: jest.Mock;
+  then: (resolve: (value: T[]) => void) => Promise<T[]>;
+}
+
+const makeSelectChain = <T>(results: T[]): MockSelectChain<T> => {
+  const chain = {
+    from: jest.fn(function (this: MockSelectChain<T>) {
+      return this;
+    }),
+    where: jest.fn(function (this: MockSelectChain<T>) {
+      return this;
+    }),
+    orderBy: jest.fn(function (this: MockSelectChain<T>) {
+      return this;
+    }),
+    leftJoin: jest.fn(function (this: MockSelectChain<T>) {
+      return this;
+    }),
     limit: jest.fn(async () => results),
+  } as MockSelectChain<T>;
+  chain.then = (resolve: (value: T[]) => void): Promise<T[]> => {
+    resolve(results);
+    return Promise.resolve(results);
   };
-  chain.then = (resolve: any, reject: any) =>
-    Promise.resolve(results).then(resolve, reject);
   return chain;
 };
 
@@ -42,9 +61,9 @@ describe("MerchantRepositoryImpl (unit)", () => {
   });
 
   it("create: returns created merchant", async () => {
-    const { MerchantRepositoryImpl } = require("../../../src/data/repositories/merchant-repository") as {
-      MerchantRepositoryImpl: typeof import("../../../src/data/repositories/merchant-repository").MerchantRepositoryImpl;
-    };
+    const { MerchantRepositoryImpl } = await import(
+      "../../../src/data/repositories/merchant-repository"
+    );
 
     const repo = new MerchantRepositoryImpl();
     const created = {
@@ -77,12 +96,14 @@ describe("MerchantRepositoryImpl (unit)", () => {
   });
 
   it("getNextMerchantNumber: returns max + 1", async () => {
-    const { MerchantRepositoryImpl } = require("../../../src/data/repositories/merchant-repository") as {
-      MerchantRepositoryImpl: typeof import("../../../src/data/repositories/merchant-repository").MerchantRepositoryImpl;
-    };
+    const { MerchantRepositoryImpl } = await import(
+      "../../../src/data/repositories/merchant-repository"
+    );
 
     const repo = new MerchantRepositoryImpl();
-    db.select.mockImplementationOnce(() => makeSelectChain([{ maxNumber: 41 }]));
+    db.select.mockImplementationOnce(() =>
+      makeSelectChain([{ maxNumber: 41 }])
+    );
 
     const next = await repo.getNextMerchantNumber();
     expect(next).toBe(42);
