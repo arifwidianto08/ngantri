@@ -39,16 +39,16 @@ async function seedDatabase() {
   try {
     // Clean existing data (in reverse dependency order)
     console.log("🧹 Cleaning existing data...");
-    await db.delete(orderItems);
-    await db.delete(orderPaymentItems);
-    await db.delete(orderPayments);
-    await db.delete(orders);
-    await db.delete(cartItems);
-    await db.delete(buyerSessions);
-    await db.delete(menus);
-    await db.delete(menuCategories);
-    await db.delete(merchants);
-    await db.delete(admins);
+    // await db.delete(orderItems);
+    // await db.delete(orderPaymentItems);
+    // await db.delete(orderPayments);
+    // await db.delete(orders);
+    // await db.delete(cartItems);
+    // await db.delete(buyerSessions);
+    // await db.delete(menus);
+    // await db.delete(menuCategories);
+    // await db.delete(merchants);
+    // await db.delete(admins);
 
     // Seed admins
     console.log("👤 Seeding admins...");

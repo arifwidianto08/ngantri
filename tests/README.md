@@ -6,22 +6,62 @@ This directory contains comprehensive tests for the ngantri food ordering system
 
 ```
 tests/
-├── api/                    # API integration tests
-│   ├── cart.test.ts       # Shopping cart endpoints
-│   ├── orders.test.ts     # Order management endpoints
-│   ├── menus.test.ts      # Menu management endpoints
-│   └── sessions.test.ts   # Session management endpoints
+├── api/                    # API integration tests (separated by user role)
+│   ├── admin.test.ts      # Admin-only endpoints (/api/admin/*)
+│   ├── merchants.test.ts  # Merchant dashboard endpoints (/api/merchants/*)
+│   ├── customer.test.ts   # Customer-facing endpoints (sessions, orders, payments)
+│   ├── menus.test.ts      # (Deprecated - see admin.test.ts and customer.test.ts)
+│   ├── orders.test.ts     # (Deprecated - see customer.test.ts, admin.test.ts, merchants.test.ts)
+│   └── sessions.test.ts   # (Deprecated - see customer.test.ts)
 ├── e2e/                   # End-to-end tests (Playwright)
 │   ├── shopping-cart.spec.ts      # Shopping cart user flow
 │   ├── checkout.spec.ts           # Checkout and order placement
 │   ├── admin-dashboard.spec.ts    # Admin dashboard features
 │   ├── merchant-dashboard.spec.ts # Merchant dashboard features
 │   └── menu-browsing.spec.ts      # Menu browsing experience
-├── contract/              # Contract tests (API contracts)
-│   ├── merchants-*.test.ts        # Merchant API contracts
 ├── utils.ts              # Shared test utilities and helpers
 └── setup.js             # Test environment setup
 ```
+
+## Test Organization by Role
+
+### Admin Tests (`admin.test.ts`)
+Tests for admin-only endpoints:
+- Admin authentication (login/logout)
+- Merchant management (CRUD operations)
+- Category management
+- Menu management
+- Order oversight
+- Dashboard statistics
+
+**Test Credentials** (from seeder):
+- Username: `admin`
+- Password: `admin123`
+
+### Merchant Tests (`merchants.test.ts`)
+Tests for merchant dashboard endpoints:
+- Merchant authentication (register/login/logout)
+- Category browsing
+- Menu management for own merchant
+- Order management (view, update status)
+- Dashboard statistics
+
+**Test Credentials** (from seeder):
+- Phone: `+6281234567890`
+- Password: `password123`
+- Merchant: Warung Nasi Padang Sederhana
+
+### Customer Tests (`customer.test.ts`)
+Tests for public/customer-facing endpoints:
+- Public merchant browsing
+- Menu browsing by merchant
+- Session creation and management
+- Shopping cart operations
+- Order placement
+- Payment creation and status
+- Order tracking
+
+**No authentication required** for most endpoints.
 
 ## Running Tests
 
@@ -29,6 +69,19 @@ tests/
 
 ```bash
 npm test
+```
+
+### Specific Test Suite
+
+```bash
+# Admin endpoints only
+npm test -- admin.test.ts
+
+# Merchant endpoints only
+npm test -- merchants.test.ts
+
+# Customer endpoints only
+npm test -- customer.test.ts
 ```
 
 ### API Tests Only
@@ -43,11 +96,6 @@ npm run test:api
 npm run test:e2e
 ```
 
-### Contract Tests
-
-```bash
-npm run test:contract
-```
 
 ### Coverage Report
 

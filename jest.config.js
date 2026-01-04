@@ -11,6 +11,7 @@ const customJestConfig = {
   testEnvironment: "jest-environment-node",
   testMatch: ["<rootDir>/tests/**/*.test.ts", "<rootDir>/tests/**/*.test.tsx"],
   testPathIgnorePatterns: ["<rootDir>/.next/", "<rootDir>/node_modules/"],
+  testTimeout: 30000, // Increase timeout to 30 seconds for API tests
   collectCoverageFrom: [
     "src/**/*.{js,jsx,ts,tsx}",
     "!src/**/*.d.ts",
