@@ -7,6 +7,8 @@ export interface AuthenticatedMerchant {
   id: string;
   name: string;
   phoneNumber: string;
+  description: string | null;
+  imageUrl: string | null;
   merchantNumber: number;
   isAvailable: boolean;
 }
@@ -38,6 +40,8 @@ export async function getAuthenticatedMerchant(
     return {
       id: merchant.id,
       name: merchant.name,
+      description: merchant.description,
+      imageUrl: merchant.imageUrl,
       phoneNumber: merchant.phoneNumber,
       merchantNumber: merchant.merchantNumber,
       isAvailable: merchant.isAvailable,

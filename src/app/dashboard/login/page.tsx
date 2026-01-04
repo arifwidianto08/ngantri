@@ -92,7 +92,7 @@ export default function MerchantLogin() {
                       id="phoneNumber"
                       data-testid="merchant-phone"
                       type="tel"
-                      placeholder="+6281234567890"
+                      placeholder="Enter your phone number"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       required

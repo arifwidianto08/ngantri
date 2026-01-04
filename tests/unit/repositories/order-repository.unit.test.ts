@@ -52,6 +52,16 @@ const mockInsertReturningOnce = <T>(rows: T[]) => {
   }));
 };
 
+const mockUpdateReturningOnce = <T>(rows: T[]) => {
+  db.update.mockImplementationOnce(() => ({
+    set: jest.fn(() => ({
+      where: jest.fn(() => ({
+        returning: jest.fn(async () => rows),
+      })),
+    })),
+  }));
+};
+
 describe("OrderRepositoryImpl (unit)", () => {
   beforeEach(() => {
     db.insert.mockReset();
@@ -116,6 +126,45 @@ describe("OrderRepositoryImpl (unit)", () => {
     expect(res.hasMore).toBe(true);
   });
 
+  it("updateStatus: returns updated order", async () => {
+    const { OrderRepositoryImpl } = await import(
+      "../../../src/data/repositories/order-repository"
+    );
+
+    const repo = new OrderRepositoryImpl();
+    const updated = {
+      id: "o1",
+      sessionId: "s1",
+      merchantId: "m1",
+      status: "ready",
+      totalAmount: 1000,
+      customerName: null,
+      customerPhone: null,
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+
+    mockUpdateReturningOnce([updated]);
+
+    const res = await repo.updateStatus("o1", "ready");
+    expect(db.update).toHaveBeenCalled();
+    expect(res).toEqual(updated);
+  });
+
+  it("updateStatus: returns null when not found", async () => {
+    const { OrderRepositoryImpl } = await import(
+      "../../../src/data/repositories/order-repository"
+    );
+
+    const repo = new OrderRepositoryImpl();
+    mockUpdateReturningOnce([]);
+
+    const res = await repo.updateStatus("missing", "ready");
+    expect(res).toBeNull();
+  });
+
   it("removeOrderItem: returns false when delete throws", async () => {
     const { OrderRepositoryImpl } = await import(
       "../../../src/data/repositories/order-repository"
@@ -141,5 +190,137 @@ describe("OrderRepositoryImpl (unit)", () => {
 
     const res = await repo.findPaymentsByOrderId("o1");
     expect(res).toEqual([]);
+  });
+
+  it("addOrderItem: returns created order item", async () => {
+    const { OrderRepositoryImpl } = await import(
+      "../../../src/data/repositories/order-repository"
+    );
+
+    const repo = new OrderRepositoryImpl();
+    const created = {
+      id: "i1",
+      orderId: "o1",
+      menuId: "menu1",
+      menuName: "Nasi",
+      menuImageUrl: null,
+      quantity: 2,
+      unitPrice: 10000,
+      subtotal: 20000,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+
+    mockInsertReturningOnce([created]);
+
+    const res = await repo.addOrderItem({
+      orderId: created.orderId,
+      menuId: created.menuId,
+      menuName: created.menuName,
+      menuImageUrl: null,
+      quantity: created.quantity,
+      unitPrice: created.unitPrice,
+      subtotal: created.subtotal,
+    });
+
+    expect(db.insert).toHaveBeenCalled();
+    expect(res).toEqual(created);
+  });
+
+  it("addOrderItems: returns created order items", async () => {
+    const { OrderRepositoryImpl } = await import(
+      "../../../src/data/repositories/order-repository"
+    );
+
+    const repo = new OrderRepositoryImpl();
+    const created = [
+      {
+        id: "i1",
+        orderId: "o1",
+        menuId: "menu1",
+        menuName: "Nasi",
+        menuImageUrl: null,
+        quantity: 1,
+        unitPrice: 10000,
+        subtotal: 10000,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      },
+      {
+        id: "i2",
+        orderId: "o1",
+        menuId: "menu2",
+        menuName: "Teh",
+        menuImageUrl: null,
+        quantity: 2,
+        unitPrice: 5000,
+        subtotal: 10000,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      },
+    ];
+
+    mockInsertReturningOnce(created);
+
+    const res = await repo.addOrderItems(
+      created.map((row) => ({
+        orderId: row.orderId,
+        menuId: row.menuId,
+        menuName: row.menuName,
+        menuImageUrl: null,
+        quantity: row.quantity,
+        unitPrice: row.unitPrice,
+        subtotal: row.subtotal,
+      }))
+    );
+
+    expect(db.insert).toHaveBeenCalled();
+    expect(res).toEqual(created);
+  });
+
+  it("updateOrderItem: returns updated item", async () => {
+    const { OrderRepositoryImpl } = await import(
+      "../../../src/data/repositories/order-repository"
+    );
+
+    const repo = new OrderRepositoryImpl();
+    const updated = {
+      id: "i1",
+      orderId: "o1",
+      menuId: "menu1",
+      menuName: "Nasi",
+      menuImageUrl: null,
+      quantity: 3,
+      unitPrice: 10000,
+      subtotal: 30000,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+
+    mockUpdateReturningOnce([updated]);
+
+    const res = await repo.updateOrderItem("i1", {
+      quantity: 3,
+      subtotal: 30000,
+    });
+
+    expect(db.update).toHaveBeenCalled();
+    expect(res).toEqual(updated);
+  });
+
+  it("updateOrderItem: returns null when not found", async () => {
+    const { OrderRepositoryImpl } = await import(
+      "../../../src/data/repositories/order-repository"
+    );
+
+    const repo = new OrderRepositoryImpl();
+    mockUpdateReturningOnce([]);
+
+    const res = await repo.updateOrderItem("missing", { quantity: 2 });
+    expect(res).toBeNull();
   });
 });
