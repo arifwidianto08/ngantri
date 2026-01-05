@@ -139,18 +139,27 @@ Menjelaskan strategi dan metode pengujian yang akan digunakan.
 
 Tabel 1.2 Jadwal Pengujian
 
-| Use Case                                       | PIC | Jadwal pengujian |
-| ---------------------------------------------- | --- | ---------------- |
-| Akses halaman utama                            |     | 4 Januari 2026   |
-| browsing merchant dan menu                     |     | 4 Januari 2026   |
-| Menambah Pesanan pada keranjang belanja        |     | 4 Januari 2026   |
-| Checkout dan konfirmasi order                  |     | 4 Januari 2026   |
-| Halaman riwayat/daftar order dan status order. |     | 4 Januari 2026   |
-| Halaman riwayat/daftar order dan status order. |     | 4 Januari 2026   |
-| Manajemen menu                                 |     | 4 Januari 2026   |
-| Manajemen pesanan                              |     | 4 Januari 2026   |
-| Manajemen Merchant                             |     | 4 Januari 2026   |
-| Melihat dan mengatur order status(admin)       |     | 4 Januari 2026   |
+| Use Case                                      | PIC    | Jadwal pengujian |
+| --------------------------------------------- | ------ | ---------------- |
+| Akses halaman utama (isi info meja/nama/WA)   | Arif   | 4 Januari 2026   |
+| Update info meja/nama/WA                      | Arif   | 4 Januari 2026   |
+| browsing merchant dan menu                    | Gardha | 4 Januari 2026   |
+| Keranjang belanja (tambah/hapus/ubah jumlah)  | Farhan | 4 Januari 2026   |
+| Checkout dan konfirmasi order                 | Arif   | 4 Januari 2026   |
+| Halaman riwayat/daftar order dan status order | Gardha | 4 Januari 2026   |
+| Merchant: Login                               | Iqbal  | 4 Januari 2026   |
+| Merchant: Dashboard Overview                  | Iqbal  | 4 Januari 2026   |
+| Merchant: Kelola Profil                       | Farhan | 4 Januari 2026   |
+| Merchant: Manajemen menu                      | Arif   | 4 Januari 2026   |
+| Merchant: Manajemen kategori                  | Admin  | 4 Januari 2026   |
+| Merchant: Manajemen pesanan                   | Iqbal  | 4 Januari 2026   |
+| Admin: Login                                  | Gardha | 4 Januari 2026   |
+| Admin: Dashboard Overview                     | Gardha | 4 Januari 2026   |
+| Admin: Kelola Profil                          | Gardha | 4 Januari 2026   |
+| Admin: Manajemen merchant (tambah/ubah/hapus) | Farhan | 4 Januari 2026   |
+| Admin: Manajemen kategori                     | Farhan | 4 Januari 2026   |
+| Admin: Melihat & mengatur order status        | Iqbal  | 4 Januari 2026   |
+| Admin: Manajemen menu                         | Arif   | 4 Januari 2026   |
 
 ---
 
@@ -167,136 +176,274 @@ Tabel 1.2 Jadwal Pengujian
 Untuk pengujian white-box pada sistem Ngantri, proses **checkout** direpresentasikan oleh fungsi pemrosesan **checkout pesanan gabungan** (pembuatan beberapa pesanan dalam satu proses), yaitu:
 
 - **Unit yang diuji**: Fungsi pemrosesan checkout pesanan gabungan
-- **Nama fungsi**: `createBatchOrdersHandler`
-- **Lokasi kode**: Modul checkout pesanan gabungan pada kode sumber
+- **Nama fungsi**: `createBatchOrders`
+- **Lokasi kode**: `src/services/order-service.ts`
 
-Fungsi ini dipilih karena berada pada jalur kritikal checkout (pembuatan pesanan untuk multi-merchant dalam satu transaksi) dan memuat validasi utama yang menentukan apakah checkout dapat diproses, khususnya pemeriksaan **ketersediaan merchant dan menu**. Selain itu, fungsi ini melakukan penyimpanan data dalam satu transaksi agar seluruh pesanan bersifat atomik (seluruhnya berhasil atau seluruhnya gagal).
+Fungsi ini dipilih karena berada pada jalur kritikal checkout (pembuatan pesanan untuk multi-merchant dalam satu transaksi) dan memuat validasi utama yang menentukan apakah checkout dapat diproses, khususnya pemeriksaan **format nomor WhatsApp**, **ketersediaan merchant**, serta **ketersediaan dan kepemilikan menu per-merchant**. Selain itu, fungsi ini melakukan penyimpanan data dalam satu transaksi agar seluruh pesanan bersifat atomik (seluruhnya berhasil atau seluruhnya gagal).
+
+Catatan penting: pada versi terbaru, sebagian besar percabangan logika checkout telah dipindahkan ke helper method. Karena itu, unit white-box yang diuji dipahami sebagai **alur checkout** yang dimulai dari `createBatchOrders` dan melewati helper berikut (critical path):
+
+- `validatePhoneNumber` (validasi format nomor)
+- `validateBatchMerchants` (validasi merchant + ketersediaan + items tidak kosong)
+- `validateAndPrepareBatchItems` (validasi menu + qty/price + akumulasi total)
+- `preloadBatchMerchants` / `preloadBatchMenus` (bulk preload data)
+- `buildBatchOrders` (membentuk payload insert)
 
 Fungsi ini memproses checkout sebagai berikut:
 
-1. Memeriksa kelengkapan data checkout (identitas sesi, identitas pelanggan, serta daftar pesanan per merchant). Jika tidak lengkap atau tidak ada pesanan yang diberikan, proses ditolak.
-2. Memastikan sesi penggunaan valid. Jika sesi tidak ditemukan, proses ditolak.
-3. Menjalankan penyimpanan data dalam satu transaksi untuk menjamin seluruh perubahan konsisten.
-4. Memuat data merchant dan menu yang relevan, lalu melakukan pemeriksaan:
-   - Merchant harus ada dan masih aktif.
-   - Merchant harus tersedia untuk menerima pesanan.
-   - Menu harus ada dan sesuai dengan merchant.
-   - Menu harus tersedia untuk dipesan.
-5. Jika pemeriksaan lolos, sistem membuat pesanan per-merchant dan menyimpan item-itemnya.
-6. Jika terjadi kegagalan pada proses penyimpanan, seluruh perubahan dibatalkan dan sistem mengembalikan informasi kegagalan yang sesuai.
+1. Memeriksa kelengkapan data checkout (sessionId, customerName, customerPhone, ordersByMerchant). Jika tidak lengkap, proses ditolak.
+2. Memvalidasi format nomor WhatsApp customer (Indonesia). Jika tidak valid, proses ditolak.
+3. Memastikan pesanan per-merchant tidak kosong serta setiap merchantId valid (bukan kosong/"undefined").
+4. Memastikan sesi penggunaan (buyer session) ada. Jika sesi tidak ditemukan, proses ditolak.
+5. Menjalankan penyimpanan data dalam satu transaksi agar seluruh pembuatan order bersifat atomik.
+6. Memuat data merchant (yang belum dihapus) dan menu (yang belum dihapus) sekali di awal transaksi (bulk preload), lalu melakukan pemeriksaan:
+   - Merchant harus ada.
+   - Merchant harus tersedia untuk menerima pesanan (`isAvailable`).
+   - Setiap item harus mengacu ke menu yang ada dan milik merchant tersebut.
+   - Menu harus tersedia untuk dipesan (`isAvailable`).
+7. Memvalidasi setiap item (qty integer > 0 dan <= 100, unitPrice > 0), serta mengakumulasi subtotal menjadi totalAmount per merchant.
+8. Jika pemeriksaan lolos, sistem membuat ID order per-merchant, menghitung total per merchant, lalu melakukan **bulk insert** untuk seluruh order dan order item.
+9. Jika terjadi kegagalan saat transaksi (validasi atau error DB), transaksi dibatalkan dan sistem mengembalikan error sesuai kategorinya.
 
 ---
 
 **b. Flowchart/Flowgraph**
 
-Flowgraph checkout dengan memperhatikan tiga jalur utama: **kegagalan kelengkapan data**, **kegagalan ketersediaan menu/merchant**, dan **kegagalan proses penyimpanan data**.
+Flowgraph checkout mencakup jalur utama: **validasi input (bad request)**, **validasi sesi (not found)**, **validasi merchant/menu (validation/not found)**, dan **kegagalan proses penyimpanan data (internal error)**.
+
+**Versi 1: Main (ringkas, report friendly)**
 
 ```mermaid
-flowchart TD
-	A([Mulai]) --> B[Validasi request body]
-	B --> C{Input lengkap?}
-	C -- Tidak --> X[Proses ditolak: data tidak lengkap] --> Z([Selesai])
-	C -- Ya --> D{ordersByMerchant kosong?}
-	D -- Ya --> X2[Proses ditolak: tidak ada pesanan] --> Z
-	D -- Tidak --> E[Query buyerSessions by sessionId]
-	E --> F{Session ditemukan?}
-	F -- Tidak --> X3[Proses ditolak: sesi tidak ditemukan] --> Z
-	F -- Ya --> G[Mulai transaksi penyimpanan data]
-	G --> H[Preload merchants & menus (1x)]
-	H --> I[Loop tiap merchant]
-	I --> J{Items kosong?}
-	J -- Ya --> V0[Ditolak: data pesanan tidak valid] --> CATCH
-	J -- Tidak --> K{Merchant ada & aktif?}
-	K -- Tidak --> V1[Ditolak: merchant tidak tersedia] --> CATCH
-	K -- Ya --> L[Loop tiap item]
-	L --> M{Menu ada & milik merchant?}
-	M -- Tidak --> V2[Ditolak: menu tidak ditemukan] --> CATCH
-	M -- Ya --> N{Menu tersedia?}
-	N -- Tidak --> V3[Ditolak: menu tidak tersedia] --> CATCH
-	N -- Ya --> O[Insert order]
-	O --> P[Insert bulk order_items]
-	P --> Q{Masih ada merchant?}
-	Q -- Ya --> I
-	Q -- Tidak --> R[Selesai: perubahan disimpan] --> Z
-	G --> CATCH[Catch]
-	CATCH --> S{Error AppError?}
-	S -- Ya --> T[Ditolak: alasan sesuai ketentuan] --> Z
-	S -- Tidak --> U[Ditolak: gangguan sistem] --> Z
+flowchart TB
+S([Start]) --> A[Parse JSON body]
+A --> B[Validasi input dan format nomor]
+B --> C{Validasi sukses}
+C -- Tidak --> VERR[Throw validation error 400]
+VERR --> E([End])
+C -- Ya --> D[Query buyerSessions]
+D --> E1{Session ditemukan}
+E1 -- Tidak --> N404[Throw not found 404]
+N404 --> E
+E1 -- Ya --> T[Transaksi database atomic]
+T --> P[Preload merchants dan menus]
+P --> Q[Validasi merchant dan menu]
+Q --> I[Bulk insert orders dan order items]
+I --> R[Return success 200]
+R --> E
+T -->|Error| X[Catch error]
+X --> Y{AppError}
+Y -- Ya --> YA[Return AppError]
+YA --> E
+Y -- Tidak --> YB[Throw internal error 500]
+YB --> E
 ```
+
+**Versi 2: Extended (lebih detail, tetap vertikal)**
+
+```mermaid
+flowchart TB
+S2([Start]) --> A2[Parse body]
+A2 --> C2{Input OK}
+C2 -- No --> E400I[400 input]
+E400I --> END2([End])
+
+C2 -- Yes --> PF2{Phone OK}
+PF2 -- No --> E400P[400 phone]
+E400P --> END2
+
+PF2 -- Yes --> MID2{Merchant id OK}
+MID2 -- No --> E400M[400 merchant id]
+E400M --> END2
+
+MID2 -- Yes --> SESS2{Session found}
+SESS2 -- No --> E404S[404 session]
+E404S --> END2
+
+SESS2 -- Yes --> TX2[TX atomic]
+TX2 --> PRE2[Preload data]
+
+PRE2 --> MEROK2{Merchant found}
+MEROK2 -- No --> E404M2[404 merchant]
+E404M2 --> END2
+
+MEROK2 -- Yes --> MAV2{Merchant available}
+MAV2 -- No --> E400MA2[400 merchant]
+E400MA2 --> END2
+
+MAV2 -- Yes --> MENUOK2{Menu found and owned}
+MENUOK2 -- No --> E404MN2[404 menu]
+E404MN2 --> END2
+
+MENUOK2 -- Yes --> MENUAV2{Menu available}
+MENUAV2 -- No --> E400MN2[400 menu]
+E400MN2 --> END2
+
+MENUAV2 -- Yes --> ITEM2{Item OK}
+ITEM2 -- No --> E400IT2[400 item]
+E400IT2 --> END2
+
+ITEM2 -- Yes --> INS2[Insert]
+INS2 --> OK2[200 ok]
+OK2 --> END2
+
+TX2 -->|Error| CX2[Catch]
+CX2 --> AE2{AppError}
+AE2 -- Yes --> RA2[Return AppError]
+RA2 --> END2
+AE2 -- No --> I5002[500]
+I5002 --> END2
+```
+
+Keterangan (Versi Extended):
+
+- 400 input: field wajib kosong atau ordersByMerchant kosong
+- 400 phone: format nomor WhatsApp tidak valid
+- 400 merchant id: merchantId kosong atau "undefined"
+- 404 session: sessionId tidak ditemukan
+- 404 merchant: merchant tidak ditemukan
+- 400 merchant: merchant tidak tersedia
+- 404 menu: menu tidak ditemukan atau bukan milik merchant
+- 400 menu: menu tidak tersedia
+- 400 item: quantity atau unit price tidak valid
+- 500: error internal saat transaksi
 
 ---
 
 **c. Hitung cyclomatic complexity**
 
-Perhitungan Cyclomatic Complexity (menggunakan pendekatan **jumlah keputusan + 1**) untuk alur proses checkout pesanan gabungan:
+1. Fungsi `createBatchOrders` (checkout pesanan gabungan)
 
-Keputusan (jalur alternatif) yang relevan pada checkout:
+- Catatan metode perhitungan
 
-1. Input wajib lengkap atau tidak
-2. Daftar pesanan per merchant kosong atau tidak
-3. Session ditemukan atau tidak
-4. Items per-merchant kosong atau tidak
-5. Merchant ada atau tidak
-6. Merchant tersedia atau tidak
-7. Menu ada dan milik merchant yang benar atau tidak
-8. Menu tersedia atau tidak
-9. Kesalahan yang tertangkap merupakan kesalahan terduga atau tidak
+  Pada versi terbaru, logika checkout dipisah ke beberapa helper. Karena itu, ditampilkan dua metrik:
 
-Jumlah keputusan = 9  
-Maka Cyclomatic Complexity:
+  1.  **CC (fungsi utama)**: hanya menghitung decision point di dalam `createBatchOrders`.
+  2.  **CC (expanded/checkout path)**: menghitung decision point gabungan pada `createBatchOrders` + helper utama yang berada pada jalur checkout (validasi input/merchant/menu) sehingga lebih representatif terhadap kompleksitas alur checkout.
 
-$$CC = 9 + 1 = 10$$
+  Aturan decision point yang digunakan:
 
-Artinya terdapat **10 jalur independen** secara teoritis. Pada laporan ini, basis path difokuskan pada jalur yang paling representatif terhadap risiko bisnis checkout.
+  - `if`, `for`, dan operator ternary `?:` dihitung sebagai decision point.
+  - Kondisi gabungan dengan `||` / `&&` dihitung menambah decision point (mis. `if (a || b)` dihitung 2 decision point: `if` + operator `||`).
+
+- Struktur logika (fungsi utama `createBatchOrders`):
+
+  - 7 buah percabangan `if` (validasi input: `sessionId`, `customerName`, `customerPhone`, `ordersByMerchant`, validasi `merchantId`, validasi session, dan klasifikasi error pada `catch`).
+  - 1 buah perulangan `for` (validasi `merchantId` agar tidak kosong/"undefined").
+  - Validasi merchant dan menu tetap ada, namun sudah diekstrak ke helper (`validateBatchMerchants`, `validateAndPrepareBatchItems`) sehingga fungsi utama lebih ringkas.
+  - Penanganan error terpusat melalui `try/catch` dan hanya dibedakan menjadi: `AppError` vs error umum.
+
+- Perhitungan cyclomatic complexity (fungsi utama):
+
+  - Jumlah decision point = 8, berasal dari:
+    1. `sessionId` ada atau tidak
+    2. `customerName` ada atau tidak
+    3. `customerPhone` ada atau tidak
+    4. `ordersByMerchant` kosong atau tidak
+    5. Loop validasi `merchantId` (iterasi ada atau tidak)
+    6. `merchantId` valid atau tidak
+    7. Session ditemukan atau tidak
+    8. Error yang tertangkap merupakan `AppError` atau bukan
+  - Rumus: $CC = \text{decision points} + 1$
+  - $CC = 8 + 1 = 9$
+
+- Perhitungan cyclomatic complexity (expanded/checkout path)
+
+  Helper yang dihitung (jalur checkout):
+
+  - `createBatchOrders`
+  - `validatePhoneNumber`
+  - `preloadBatchMenus`
+  - `validateBatchMerchants`
+  - `validateAndPrepareBatchItems`
+  - `generateBatchOrderIds`
+  - `buildBatchOrders`
+
+  Tabel ringkas (per-method):
+
+  | Method                         | Decision Points |  CC |
+  | ------------------------------ | --------------: | --: |
+  | `createBatchOrders`            |               8 |   9 |
+  | `validatePhoneNumber`          |               3 |   4 |
+  | `preloadBatchMenus`            |               1 |   2 |
+  | `validateBatchMerchants`       |               5 |   6 |
+  | `validateAndPrepareBatchItems` |               9 |  10 |
+  | `generateBatchOrderIds`        |               1 |   2 |
+  | `buildBatchOrders`             |               1 |   2 |
+
+  Total decision points (expanded) = $8 + 3 + 1 + 5 + 9 + 1 + 1 = 28$
+
+  Dengan pendekatan gabungan:
+
+  - $CC_{expanded} = 28 + 1 = 29$
+
+- Interpretasi:
+  - **CC (fungsi utama) = 9** termasuk kategori **Low Risk (1–10)**.
+  - **CC (expanded) = 29** termasuk kategori **High Risk (21–50)** untuk keseluruhan alur checkout, karena banyak jalur validasi (merchant/menu/quantity/price) dan transaksi.
+  - Kesimpulan praktik: meskipun fungsi utama tampak ringkas, pengujian white-box tetap perlu menutup jalur gagal/sukses pada helper yang menentukan keberhasilan checkout.
+
+Ringkasan Nilai Cyclomatic Complexity
+
+- Fungsi `createBatchOrders()` : $CC = 9$ → Low Risk.
+- Total gabungan (expanded checkout path): $CC_{expanded} = 29$ → High Risk.
+
+Kategori umum Cyclomatic Complexity:
+
+- 1–10: Low Risk — Kode sederhana, mudah diuji dan dipelihara.
+- 11–20: Moderate Risk — Kode mulai kompleks, perlu perhatian ekstra.
+- 21–50: High Risk — Kode kompleks, cukup sulit diuji.
+- > 50: Very High Risk — Kode sangat kompleks, sangat disarankan refactoring.
+
+Kesimpulan
+
+Fungsi `createBatchOrders()` memiliki $CC = 9$ (Low Risk) pada fungsi utamanya, karena sebagian percabangan sudah dipindahkan ke helper. Namun, bila dihitung sebagai satu alur checkout (expanded) dengan helper validasi utama, kompleksitas menjadi $CC_{expanded} = 29$ (High Risk). Oleh karena itu, pengujian white-box tetap menargetkan basis path untuk menutup skenario gagal validasi input, session tidak ditemukan, merchant/menu tidak valid/tidak tersedia, validasi item (qty/price), dan jalur sukses transaksi.
 
 ---
 
-**d. Daftar path yang perlu diuji (Basis Path)**
+**d. Daftar Path yang perlu diuji**
 
-Berikut daftar basis path yang digunakan untuk pengujian white-box checkout:
+Tabel 2.1 Daftar Path
 
-1. **P1 (Kegagalan ketersediaan menu/merchant)**: menu atau merchant tidak tersedia → checkout ditolak.
-2. **P2 (Sukses)**: seluruh pemeriksaan lolos → sistem menyimpan pesanan dan itemnya.
-3. **P3 (Kegagalan proses penyimpanan data)**: pemeriksaan lolos, namun terjadi gangguan saat penyimpanan → transaksi dibatalkan.
+| Path   | Deskripsi Alur                                                                                                                                                                                                                |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Path 1 | Payload checkout tidak lengkap/invalid (mis. `sessionId`/`customerName`/`customerPhone` kosong, atau `ordersByMerchant` kosong). Sistem menolak request dengan error validasi (400) dan tidak membuat order.                  |
+| Path 2 | Payload valid, namun `merchantId` tidak valid (kosong atau string "undefined"). Sistem menolak request dengan error validasi (400) dan tidak membuat order.                                                                   |
+| Path 3 | Payload valid, namun `sessionId` tidak ditemukan pada `buyerSessions`. Sistem menolak request (404) dan tidak membuat order.                                                                                                  |
+| Path 4 | Payload valid, session ada, namun merchant/menu tidak valid (merchant tidak ada/tidak available, menu tidak ada/tidak available/tidak milik merchant). Sistem menolak request (400/404 sesuai kasus) dan tidak membuat order. |
+| Path 5 | Payload valid, session ada, semua merchant & menu valid, transaksi sukses. Sistem membuat order per-merchant secara atomik dan mengembalikan respons sukses (200).                                                            |
 
 ---
 
-**e. Data uji untuk setiap path**
+**e. Siapkan data uji untuk setiap path**
 
-Karena ini pengujian white-box pada proses checkout, data uji disusun dengan kombinasi **perubahan kondisi ketersediaan** (untuk memicu penolakan pada menu/merchant) serta skenario kegagalan proses penyimpanan.
+Tabel 2.2 Data Uji
 
-Contoh data checkout minimal (1 item):
-
-- Identitas sesi penggunaan
-- Identitas merchant
-- Identitas pelanggan (nama dan nomor WhatsApp)
-- Daftar item: menu yang dipesan, jumlah, dan harga
-
-Tabel data uji:
-
-| Path | Data uji (input)                                                                                                        | Perilaku mock repository                                        | Ekspektasi hasil                                                   |
-| ---- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
-| P1   | **Menu/merchant tidak tersedia**: gunakan data checkout normal, namun atur kondisi menu/merchant menjadi tidak tersedia | Transaksi **dibatalkan**; tidak ada data pesanan yang tersimpan | Sistem menolak proses checkout karena menu/merchant tidak tersedia |
-| P2   | **Data normal**: seluruh merchant/menu tersedia dan data pesanan lengkap                                                | Sistem menyimpan pesanan dan item-itemnya                       | Sistem memproses checkout dan menyimpan pesanan sesuai ketentuan   |
-| P3   | **Gangguan penyimpanan**: data normal seperti P2, namun dipaksa terjadi gangguan saat penyimpanan                       | Transaksi **dibatalkan**                                        | Sistem membatalkan perubahan dan mengembalikan informasi kegagalan |
+| Path   | Kondisi Pengujian                                                                                                                                     | Hasil yang Diharapkan                                                                                                                                                     |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Path 1 | Payload checkout tanpa salah satu field wajib (mis. `customerPhone=""`) atau `ordersByMerchant={}`.                                                   | API mengembalikan error validasi (400) dengan pesan sesuai field yang hilang; tidak ada order yang dibuat.                                                                |
+| Path 2 | Payload valid, namun ada key merchant seperti `"undefined"` atau `""` pada `ordersByMerchant`.                                                        | API mengembalikan error validasi (400) "Invalid merchant ID provided"; tidak ada order yang dibuat.                                                                       |
+| Path 3 | Payload valid, namun `sessionId` tidak ada pada DB.                                                                                                   | API mengembalikan error not found (404) "Session not found"; tidak ada order yang dibuat.                                                                                 |
+| Path 4 | Payload valid, session ada, namun (a) merchant `isAvailable=false` / tidak ada, atau (b) menu tidak ada / `isAvailable=false` / tidak milik merchant. | API mengembalikan error (400/404 sesuai kasus) seperti "Merchant <name> is not available" atau "Menu not found: <id>"; transaksi dibatalkan; tidak ada order yang dibuat. |
+| Path 5 | Payload valid, session ada, semua merchant & menu valid.                                                                                              | API mengembalikan sukses (200) dan membuat order per-merchant secara atomik (all succeed or all fail).                                                                    |
 
 ---
 
 **f. Tangkapan layar hasil**
 
-Tangkapan layar yang dilampirkan berasal dari hasil eksekusi pengujian unit (Jest) untuk path P1–P3.
+Tangkapan layar yang dilampirkan berasal dari hasil eksekusi pengujian unit (Jest) untuk Path 1–5, dengan fokus pada validasi backend API handler (`createBatchOrders`).
 
 ---
 
 **g. Tabel kasus dan hasil uji (format laporan)**
 
-Tabel berikut disusun berdasarkan basis path P1–P3 pada checkout. Bagian **Pengamatan** dan referensi **Lampiran** dapat disesuaikan dengan hasil eksekusi pengujian dan dokumentasi yang dilampirkan.
+Tabel berikut disusun berdasarkan basis path P1–P5 pada checkout. Bagian **Pengamatan** dan referensi **Lampiran** dapat disesuaikan dengan hasil eksekusi pengujian dan dokumentasi yang dilampirkan.
 
-| Kelas                            | Metode                    | Data Masukan                                                                                                             | Yang Diharapkan                                                       | Pengamatan\*           | Kesimpulan |
-| -------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- | ---------------------- | ---------- |
-| Proses checkout pesanan gabungan | Checkout pesanan gabungan | **Kasus P1 — menu/merchant tidak tersedia**: data checkout normal, namun salah satu menu/merchant dibuat tidak tersedia. | Sistem menolak proses checkout dan tidak menyimpan pesanan.           | (Isi sesuai hasil uji) | Diterima   |
-| Proses checkout pesanan gabungan | Checkout pesanan gabungan | **Kasus P2 — data normal**: seluruh data lengkap serta menu/merchant tersedia.                                           | Sistem memproses checkout dan menyimpan pesanan beserta item-itemnya. | (Isi sesuai hasil uji) | Diterima   |
-| Proses checkout pesanan gabungan | Checkout pesanan gabungan | **Kasus P3 — gangguan penyimpanan**: data normal seperti P2, namun terjadi gangguan saat penyimpanan.                    | Sistem membatalkan seluruh perubahan agar data tetap konsisten.       | (Isi sesuai hasil uji) | Diterima   |
+| Kelas                            | Metode                    | Data Masukan                                                                               | Yang Diharapkan                                                                                | Pengamatan\*           | Kesimpulan |
+| -------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- | ---------------------- | ---------- |
+| Proses checkout pesanan gabungan | Checkout pesanan gabungan | **Path 1 — input/checkout tidak valid**: payload checkout tidak lengkap atau cart kosong.  | Sistem menolak request (400) dan tidak membuat order.                                          | (Isi sesuai hasil uji) | Diterima   |
+| Proses checkout pesanan gabungan | Checkout pesanan gabungan | **Path 2 — merchantId tidak valid**: payload valid, namun key merchant kosong/"undefined". | Sistem menolak request (400) dan tidak membuat order.                                          | (Isi sesuai hasil uji) | Diterima   |
+| Proses checkout pesanan gabungan | Checkout pesanan gabungan | **Path 3 — session tidak ditemukan**: payload valid, namun `sessionId` tidak ada.          | Sistem menolak request (404) dan tidak membuat order.                                          | (Isi sesuai hasil uji) | Diterima   |
+| Proses checkout pesanan gabungan | Checkout pesanan gabungan | **Path 4 — merchant/menu tidak valid**: merchant/menu tidak ada atau tidak tersedia.       | Sistem menolak request (400/404) dan tidak membuat order (transaksi dibatalkan).               | (Isi sesuai hasil uji) | Diterima   |
+| Proses checkout pesanan gabungan | Checkout pesanan gabungan | **Path 5 — sukses checkout**: payload valid, `sessionId` valid, item valid.                | Sistem membuat order per-merchant dalam satu transaksi dan mengembalikan respons sukses (200). | (Isi sesuai hasil uji) | Diterima   |
 
 \*Pengamatan diisi berdasarkan hasil pelaksanaan pengujian dan dapat dirujuk pada lampiran (tangkapan layar/log) yang disediakan.
 
