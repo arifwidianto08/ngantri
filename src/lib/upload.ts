@@ -1,6 +1,6 @@
 import multer from "multer";
 import path from "path";
-import { v4 as uuidv4 } from "uuid";
+import { v7 as uuidv7 } from "uuid";
 import { NextRequest } from "next/server";
 
 // Allowed file types for uploads
@@ -18,7 +18,7 @@ const merchantImageStorage = multer.diskStorage({
     cb(null, "public/uploads/merchants/");
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    const uniqueName = `${uuidv7()}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
   },
 });
@@ -29,7 +29,7 @@ const menuImageStorage = multer.diskStorage({
     cb(null, "public/uploads/menus/");
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    const uniqueName = `${uuidv7()}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
   },
 });
@@ -165,7 +165,7 @@ export const isAllowedExtension = (filename: string): boolean => {
 // Generate unique filename with UUID
 export const generateUniqueFilename = (originalName: string): string => {
   const ext = path.extname(originalName);
-  return `${uuidv4()}${ext}`;
+  return `${uuidv7()}${ext}`;
 };
 
 // File upload configuration constants

@@ -132,7 +132,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <NavMain items={adminData.navMain} />
         </SidebarContent>
         <SidebarFooter>
-          <NavUser user={adminData.user} onLogout={handleLogout} />
+          <NavUser
+            user={adminData.user}
+            onLogout={handleLogout}
+            profileUrl="/admin/profile"
+          />
         </SidebarFooter>
       </Sidebar>
 

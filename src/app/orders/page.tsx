@@ -19,7 +19,6 @@ interface OrderItem {
 interface Order {
   id: string;
   merchantId: string;
-  merchantName?: string;
   status: string;
   paymentStatus: string;
   totalAmount: number;
@@ -28,6 +27,11 @@ interface Order {
   notes?: string;
   items: OrderItem[];
   createdAt: string;
+  merchant?: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+  };
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -244,7 +248,7 @@ export default function OrdersPage() {
                   <div className="flex items-start justify-between mb-3 gap-3">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-gray-900 text-base sm:text-lg truncate">
-                        {order.merchantName || "Merchant"}
+                        {order.merchant?.name || "Merchant"}
                       </h3>
                       <p className="text-xs sm:text-sm text-gray-500 font-mono">
                         #{order.id.slice(0, 12)}

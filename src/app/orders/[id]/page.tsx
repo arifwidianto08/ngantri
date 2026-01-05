@@ -30,7 +30,6 @@ interface OrderItem {
 interface Order {
   id: string;
   merchantId: string;
-  merchantName?: string;
   status: string;
   paymentStatus: string;
   totalAmount: number;
@@ -40,6 +39,11 @@ interface Order {
   items: OrderItem[];
   createdAt: string;
   updatedAt?: string;
+  merchant?: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+  };
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -296,7 +300,7 @@ export default function OrderDetailPage() {
               <div>
                 <p className="text-sm text-gray-600">Merchant Name</p>
                 <p className="text-base font-semibold text-gray-900">
-                  {order.merchantName || "Merchant"}
+                  {order.merchant?.name || "Merchant"}
                 </p>
               </div>
               <div>

@@ -12,6 +12,16 @@ import type {
 import { buildPaginatedResult } from "../lib/pagination";
 import { AppError, errors } from "../lib/errors";
 import { calculateOrderTotal } from "../lib/currency";
+import { db } from "../lib/db";
+import {
+  buyerSessions,
+  merchants,
+  menus,
+  orders,
+  orderItems,
+} from "../data/schema";
+import { and, eq, inArray, isNull } from "drizzle-orm";
+import { v7 as uuidv7 } from "uuid";
 
 // Service-specific types
 export interface OrderItemData {
@@ -31,6 +41,35 @@ export interface CreateOrderData {
   notes?: string;
 }
 
+export interface BatchOrderItem {
+  menuId: string;
+  menuName: string;
+  quantity: number;
+  unitPrice: number;
+  menuImageUrl?: string;
+}
+
+export interface BatchOrderData {
+  sessionId: string;
+  customerName: string;
+  customerPhone: string;
+  notes?: string;
+  ordersByMerchant: Record<
+    string,
+    {
+      merchantName: string;
+      items: BatchOrderItem[];
+    }
+  >;
+}
+
+export interface BatchOrderResult {
+  merchantId: string;
+  merchantName: string;
+  orderId: string;
+  totalAmount: number;
+}
+
 export interface OrderSearchOptions {
   merchantId?: string;
   sessionId?: string;
@@ -43,6 +82,26 @@ export interface OrderSearchOptions {
     | "cancelled";
   startDate?: Date;
   endDate?: Date;
+}
+
+export interface OrderWithDetails extends Order {
+  items: OrderItem[];
+  paymentStatus: string;
+  merchant: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+  };
+}
+
+export interface OrderWithSessionDetails extends Order {
+  items: OrderItem[];
+  paymentStatus: string;
+  merchant: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+  };
 }
 
 export interface OrderStats {
@@ -58,15 +117,16 @@ export interface OrderStats {
 export interface IOrderService {
   // Order operations
   createOrder(data: CreateOrderData): Promise<Order>;
+  createBatchOrders(data: BatchOrderData): Promise<BatchOrderResult[]>;
   findOrderById(id: string): Promise<Order>;
   findOrdersByMerchant(
     merchantId: string,
     params: CursorPaginationParams
-  ): Promise<PaginatedResult<Order>>;
+  ): Promise<PaginatedResult<OrderWithDetails>>;
   findOrdersBySession(
     sessionId: string,
     params: CursorPaginationParams
-  ): Promise<PaginatedResult<Order>>;
+  ): Promise<PaginatedResult<OrderWithSessionDetails>>;
   updateOrderStatus(id: string, status: string): Promise<Order>;
   cancelOrder(id: string, reason?: string): Promise<Order>;
 
@@ -77,7 +137,7 @@ export interface IOrderService {
   searchOrders(
     options: OrderSearchOptions,
     params: CursorPaginationParams
-  ): Promise<PaginatedResult<Order>>;
+  ): Promise<PaginatedResult<OrderWithDetails | OrderWithSessionDetails>>;
   getOrderStats(
     merchantId: string,
     startDate?: Date,
@@ -139,6 +199,109 @@ export class OrderService implements IOrderService {
   }
 
   /**
+   * Create multiple orders for different merchants in a single transaction
+   * All orders succeed or all fail (atomic transaction)
+   */
+  async createBatchOrders(data: BatchOrderData): Promise<BatchOrderResult[]> {
+    const { sessionId, customerName, customerPhone, notes, ordersByMerchant } =
+      data;
+
+    // Validate input
+    if (!sessionId?.trim()) {
+      throw errors.validation("Session ID is required");
+    }
+
+    if (!customerName?.trim()) {
+      throw errors.validation("Customer name is required");
+    }
+
+    if (!customerPhone?.trim()) {
+      throw errors.validation("Customer phone is required");
+    }
+
+    if (!ordersByMerchant || Object.keys(ordersByMerchant).length === 0) {
+      throw errors.validation("No orders provided");
+    }
+
+    // Validate phone number format
+    this.validatePhoneNumber(customerPhone);
+
+    // Validate merchant IDs are not undefined or empty
+    for (const merchantId of Object.keys(ordersByMerchant)) {
+      if (!merchantId || merchantId === "undefined") {
+        throw errors.validation("Invalid merchant ID provided");
+      }
+    }
+
+    try {
+      // Verify session exists
+      const session = await db
+        .select()
+        .from(buyerSessions)
+        .where(eq(buyerSessions.id, sessionId))
+        .limit(1);
+
+      if (session.length === 0) {
+        throw errors.notFound("Session not found");
+      }
+
+      // Execute all orders in a single transaction
+      const results = await db.transaction(async (tx) => {
+        const merchantEntries = Object.entries(ordersByMerchant);
+        const merchantIds = merchantEntries.map(([merchantId]) => merchantId);
+
+        // Preload merchants and menus in parallel (independent queries)
+        const [merchantsById, menusById] = await Promise.all([
+          this.preloadBatchMerchants(tx, merchantIds),
+          this.preloadBatchMenus(tx, merchantEntries),
+        ]);
+
+        // Validate all merchants
+        this.validateBatchMerchants(merchantEntries, merchantsById);
+
+        // Flatten all items and generate order IDs
+        const allItemsFlat = this.flattenBatchItems(merchantEntries);
+        const { orderIdByMerchant, totalsByMerchant } =
+          this.generateBatchOrderIds(merchantEntries);
+
+        // Validate all items and prepare order items
+        const allOrderItems = this.validateAndPrepareBatchItems(
+          allItemsFlat,
+          menusById,
+          orderIdByMerchant,
+          totalsByMerchant
+        );
+
+        // Build orders and results
+        const { ordersToInsert, createdOrders } = this.buildBatchOrders(
+          merchantEntries,
+          orderIdByMerchant,
+          totalsByMerchant,
+          sessionId,
+          customerName,
+          customerPhone,
+          notes
+        );
+
+        // SINGLE bulk insert for ALL orders and items in parallel (independent operations)
+        await Promise.all([
+          tx.insert(orders).values(ordersToInsert),
+          tx.insert(orderItems).values(allOrderItems),
+        ]);
+
+        return createdOrders;
+      });
+
+      return results;
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw errors.internal("Failed to create batch orders", error);
+    }
+  }
+
+  /**
    * Find order by ID
    */
   async findOrderById(id: string): Promise<Order> {
@@ -162,12 +325,16 @@ export class OrderService implements IOrderService {
   async findOrdersByMerchant(
     merchantId: string,
     params: CursorPaginationParams
-  ): Promise<PaginatedResult<Order>> {
+  ): Promise<PaginatedResult<OrderWithDetails>> {
     try {
-      const result = await this.orderRepository.findByMerchant(merchantId, {
-        cursor: params.cursor,
-        limit: params.limit,
-      });
+      const result = await this.orderRepository.findByMerchantWithDetails(
+        merchantId,
+        {
+          cursor: params.cursor,
+          limit: params.limit,
+          status: params.status,
+        }
+      );
 
       return buildPaginatedResult(result.data, params);
     } catch (error) {
@@ -181,13 +348,16 @@ export class OrderService implements IOrderService {
   async findOrdersBySession(
     sessionId: string,
     params: CursorPaginationParams
-  ): Promise<PaginatedResult<Order>> {
+  ): Promise<PaginatedResult<OrderWithSessionDetails>> {
     try {
-      const result = await this.orderRepository.findBySession(sessionId, {
-        cursor: params.cursor,
-        limit: params.limit,
-        status: params.status,
-      });
+      const result = await this.orderRepository.findBySessionWithDetails(
+        sessionId,
+        {
+          cursor: params.cursor,
+          limit: params.limit,
+          status: params.status,
+        }
+      );
 
       return buildPaginatedResult(result.data, params);
     } catch (error) {
@@ -293,7 +463,7 @@ export class OrderService implements IOrderService {
   async searchOrders(
     options: OrderSearchOptions,
     params: CursorPaginationParams
-  ): Promise<PaginatedResult<Order>> {
+  ): Promise<PaginatedResult<OrderWithDetails | OrderWithSessionDetails>> {
     try {
       // For now, use merchant-based search as basic implementation
       // TODO: Implement proper search in repository layer
@@ -415,5 +585,307 @@ export class OrderService implements IOrderService {
     if (digitsOnly.length < 10 || digitsOnly.length > 15) {
       throw errors.validation("Invalid Indonesian phone number format");
     }
+  }
+
+  /**
+   * Preload merchants for batch orders in bulk
+   */
+  private async preloadBatchMerchants(
+    tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+    merchantIds: string[]
+  ): Promise<Map<string, { name: string; isAvailable: boolean }>> {
+    const merchantRows = await tx
+      .select({
+        id: merchants.id,
+        name: merchants.name,
+        isAvailable: merchants.isAvailable,
+      })
+      .from(merchants)
+      .where(
+        and(inArray(merchants.id, merchantIds), isNull(merchants.deletedAt))
+      );
+
+    return new Map(
+      merchantRows.map(
+        (m: { id: string; name: string; isAvailable: boolean }) => [
+          m.id,
+          { name: m.name, isAvailable: m.isAvailable },
+        ]
+      )
+    );
+  }
+
+  /**
+   * Preload menus for batch orders in bulk
+   */
+  private async preloadBatchMenus(
+    tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+    merchantEntries: Array<
+      [string, { merchantName: string; items: BatchOrderItem[] }]
+    >
+  ): Promise<
+    Map<string, { name: string; isAvailable: boolean; merchantId: string }>
+  > {
+    const allMenuIds = Array.from(
+      new Set(
+        merchantEntries.flatMap(([, { items }]) =>
+          (items ?? []).map((i) => i.menuId)
+        )
+      )
+    );
+
+    const menuRows = allMenuIds.length
+      ? await tx
+          .select({
+            id: menus.id,
+            name: menus.name,
+            isAvailable: menus.isAvailable,
+            merchantId: menus.merchantId,
+          })
+          .from(menus)
+          .where(and(inArray(menus.id, allMenuIds), isNull(menus.deletedAt)))
+      : [];
+
+    return new Map(
+      menuRows.map(
+        (m: {
+          id: string;
+          name: string;
+          isAvailable: boolean;
+          merchantId: string;
+        }) => [
+          m.id,
+          {
+            name: m.name,
+            isAvailable: m.isAvailable,
+            merchantId: m.merchantId,
+          },
+        ]
+      )
+    );
+  }
+
+  /**
+   * Validate all merchants for batch orders
+   */
+  private validateBatchMerchants(
+    merchantEntries: Array<
+      [string, { merchantName: string; items: BatchOrderItem[] }]
+    >,
+    merchantsById: Map<string, { name: string; isAvailable: boolean }>
+  ): void {
+    for (const [merchantId, { merchantName, items }] of merchantEntries) {
+      if (!items || items.length === 0) {
+        throw errors.validation(
+          `No items provided for merchant ${merchantName}`
+        );
+      }
+
+      const merchantRecord = merchantsById.get(merchantId);
+      if (!merchantRecord) {
+        throw errors.notFound(`Merchant not found: ${merchantId}`);
+      }
+
+      if (!merchantRecord.isAvailable) {
+        throw errors.badRequest(
+          `Merchant ${merchantRecord.name} is not available`
+        );
+      }
+    }
+  }
+
+  /**
+   * Flatten all items from all merchants for batch orders
+   */
+  private flattenBatchItems(
+    merchantEntries: Array<
+      [string, { merchantName: string; items: BatchOrderItem[] }]
+    >
+  ): Array<{ merchantId: string; merchantName: string; item: BatchOrderItem }> {
+    return merchantEntries.flatMap(([merchantId, { merchantName, items }]) =>
+      (items ?? []).map((item) => ({ merchantId, merchantName, item }))
+    );
+  }
+
+  /**
+   * Generate order IDs for each merchant in batch
+   */
+  private generateBatchOrderIds(
+    merchantEntries: Array<
+      [string, { merchantName: string; items: BatchOrderItem[] }]
+    >
+  ): {
+    orderIdByMerchant: Map<string, string>;
+    totalsByMerchant: Map<string, number>;
+  } {
+    const orderIdByMerchant = new Map<string, string>();
+    const totalsByMerchant = new Map<string, number>();
+
+    for (const [merchantId] of merchantEntries) {
+      orderIdByMerchant.set(merchantId, uuidv7());
+      totalsByMerchant.set(merchantId, 0);
+    }
+
+    return { orderIdByMerchant, totalsByMerchant };
+  }
+
+  /**
+   * Validate all items and prepare order items for batch orders
+   */
+  private validateAndPrepareBatchItems(
+    allItemsFlat: Array<{
+      merchantId: string;
+      merchantName: string;
+      item: BatchOrderItem;
+    }>,
+    menusById: Map<
+      string,
+      { name: string; isAvailable: boolean; merchantId: string }
+    >,
+    orderIdByMerchant: Map<string, string>,
+    totalsByMerchant: Map<string, number>
+  ): Array<{
+    id: string;
+    orderId: string;
+    menuId: string;
+    menuName: string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+    menuImageUrl: string | null;
+    createdAt: Date;
+  }> {
+    const allOrderItems: Array<{
+      id: string;
+      orderId: string;
+      menuId: string;
+      menuName: string;
+      quantity: number;
+      unitPrice: number;
+      subtotal: number;
+      menuImageUrl: string | null;
+      createdAt: Date;
+    }> = [];
+
+    for (const { merchantId, item } of allItemsFlat) {
+      const menuRecord = menusById.get(item.menuId);
+      if (!menuRecord || menuRecord.merchantId !== merchantId) {
+        throw errors.notFound(`Menu not found: ${item.menuId}`);
+      }
+
+      if (!menuRecord.isAvailable) {
+        throw errors.badRequest(
+          `Menu ${menuRecord.name || item.menuName} is not available`
+        );
+      }
+
+      if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+        throw errors.validation("Quantity must be a positive integer");
+      }
+
+      if (item.quantity > 100) {
+        throw errors.validation("Maximum quantity per item is 100");
+      }
+
+      if (typeof item.unitPrice !== "number" || item.unitPrice <= 0) {
+        throw errors.validation("Unit price must be a positive number");
+      }
+
+      const orderId = orderIdByMerchant.get(merchantId)!;
+      const subtotal = item.quantity * item.unitPrice;
+
+      // Accumulate total for this merchant
+      totalsByMerchant.set(
+        merchantId,
+        (totalsByMerchant.get(merchantId) || 0) + subtotal
+      );
+
+      allOrderItems.push({
+        id: uuidv7(),
+        orderId,
+        menuId: item.menuId,
+        menuName: item.menuName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        subtotal,
+        menuImageUrl: item.menuImageUrl || null,
+        createdAt: new Date(),
+      });
+    }
+
+    return allOrderItems;
+  }
+
+  /**
+   * Build orders and results for batch orders
+   */
+  private buildBatchOrders(
+    merchantEntries: Array<
+      [string, { merchantName: string; items: BatchOrderItem[] }]
+    >,
+    orderIdByMerchant: Map<string, string>,
+    totalsByMerchant: Map<string, number>,
+    sessionId: string,
+    customerName: string,
+    customerPhone: string,
+    notes?: string
+  ): {
+    ordersToInsert: Array<{
+      id: string;
+      sessionId: string;
+      merchantId: string;
+      customerName: string;
+      customerPhone: string;
+      totalAmount: number;
+      notes: string | null;
+      status: "pending";
+      createdAt: Date;
+      updatedAt: Date;
+      deletedAt: null;
+    }>;
+    createdOrders: BatchOrderResult[];
+  } {
+    const ordersToInsert: Array<{
+      id: string;
+      sessionId: string;
+      merchantId: string;
+      customerName: string;
+      customerPhone: string;
+      totalAmount: number;
+      notes: string | null;
+      status: "pending";
+      createdAt: Date;
+      updatedAt: Date;
+      deletedAt: null;
+    }> = [];
+    const createdOrders: BatchOrderResult[] = [];
+
+    for (const [merchantId, { merchantName }] of merchantEntries) {
+      const orderId = orderIdByMerchant.get(merchantId)!;
+      const totalAmount = totalsByMerchant.get(merchantId) || 0;
+
+      ordersToInsert.push({
+        id: orderId,
+        sessionId,
+        merchantId,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        totalAmount,
+        notes: notes || null,
+        status: "pending",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      });
+
+      createdOrders.push({
+        merchantId,
+        merchantName,
+        orderId,
+        totalAmount,
+      });
+    }
+
+    return { ordersToInsert, createdOrders };
   }
 }

@@ -10,7 +10,6 @@ let serverAvailable = true;
 let adminToken: string;
 let merchantId: string;
 let categoryId: string;
-let menuId: string;
 
 describe("Admin API", () => {
   beforeAll(async () => {
@@ -24,9 +23,9 @@ describe("Admin API", () => {
           password: "admin123",
         }),
       });
-      
+
       serverAvailable = loginRes.ok;
-      
+
       if (serverAvailable) {
         const loginData = await loginRes.json();
         if (loginData.success && loginData.data?.admin) {
@@ -127,7 +126,7 @@ describe("Admin API", () => {
 
         const res = await fetch(`${BASE_URL}/admin/merchants`, {
           headers: adminToken ? { Cookie: `admin-session=${adminToken}` } : {},
-        });      
+        });
         expect([200, 401]).toContain(res.status);
       });
     });
@@ -150,6 +149,44 @@ describe("Admin API", () => {
         });
 
         expect([200, 201, 400, 401, 409, 500]).toContain(res.status);
+      });
+
+      it("should reject duplicate phone number", async () => {
+        if (!serverAvailable) return;
+
+        // Login first to get session cookie
+        const loginRes = await fetch(`${BASE_URL}/admin/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: "admin",
+            password: "admin123",
+          }),
+        });
+
+        const cookies = loginRes.headers.get("set-cookie");
+        const headers: HeadersInit = { "Content-Type": "application/json" };
+        if (cookies) {
+          headers.Cookie = cookies;
+        }
+
+        // Try to create merchant with existing phone number
+        const res = await fetch(`${BASE_URL}/admin/merchants/create`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            name: "Duplicate Phone Merchant",
+            phoneNumber: "+6281234567890", // Existing merchant phone
+            password: "password123",
+            description: "Should fail",
+          }),
+        });
+
+        expect(res.status).toBe(409);
+
+        const data = await res.json();
+        expect(data.success).toBe(false);
+        expect(data.error.message).toContain("Phone number already registered");
       });
     });
 
@@ -182,6 +219,33 @@ describe("Admin API", () => {
         expect(res.status).toBe(200);
       });
     });
+
+    describe("PUT /api/admin/merchants/[merchantId]", () => {
+      it("should reject duplicate phone number when updating", async () => {
+        if (!serverAvailable || !merchantId) return;
+
+        // Try to update with another merchant's phone number
+        const res = await fetch(`${BASE_URL}/admin/merchants/${merchantId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Updated Merchant",
+            phoneNumber: "+6281234567891", // Another merchant's phone
+          }),
+        });
+
+        // Should either be 409 (conflict) or 200 if phone doesn't exist
+        expect([200, 409]).toContain(res.status);
+
+        if (res.status === 409) {
+          const data = await res.json();
+          expect(data.success).toBe(false);
+          expect(data.error.message).toContain(
+            "Phone number already registered"
+          );
+        }
+      });
+    });
   });
 
   describe("Admin Category Management", () => {
@@ -191,7 +255,7 @@ describe("Admin API", () => {
 
         const res = await fetch(`${BASE_URL}/admin/categories`, {
           headers: adminToken ? { Cookie: `admin-session=${adminToken}` } : {},
-        });     
+        });
         expect([200, 401]).toContain(res.status);
       });
 
@@ -290,7 +354,8 @@ describe("Admin API", () => {
         expect([200, 201, 400]).toContain(res.status);
         if (res.ok) {
           const data = await res.json();
-          menuId = data.data.menu.id;
+          expect(data.success).toBe(true);
+          expect(data.data.menu.id).toBeTruthy();
         }
       });
     });

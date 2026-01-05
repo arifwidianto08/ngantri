@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
 import { merchants } from "@/data/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, desc } from "drizzle-orm";
 
 export async function DELETE(
   request: NextRequest,
@@ -23,8 +23,6 @@ export async function DELETE(
       data: { message: "Merchant deleted successfully" },
     });
   } catch (error) {
-    console.error("Error deleting merchant:", error);
-
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json(
         {
@@ -54,7 +52,7 @@ export async function PUT(
 
     const { merchantId } = await params;
     const body = await request.json();
-    const { name, description, imageUrl, isAvailable } = body;
+    const { name, phoneNumber, description, imageUrl, isAvailable } = body;
 
     // Validation
     if (!name) {
@@ -67,14 +65,51 @@ export async function PUT(
       );
     }
 
+    // Check if phone number is being updated and if it's unique
+    if (phoneNumber) {
+      const existingMerchant = await db
+        .select()
+        .from(merchants)
+        .where(
+          and(
+            eq(merchants.phoneNumber, phoneNumber),
+            ne(merchants.id, merchantId)
+          )
+        )
+        .orderBy(desc(merchants.createdAt))
+        .limit(1);
+
+      if (existingMerchant.length > 0 && !existingMerchant[0].deletedAt) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { message: "Phone number already registered" },
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    const updateData: {
+      name: string;
+      description: string | null;
+      imageUrl: string | null;
+      isAvailable: boolean;
+      phoneNumber?: string;
+    } = {
+      name,
+      description: description || null,
+      imageUrl: imageUrl || null,
+      isAvailable: isAvailable ?? true,
+    };
+
+    if (phoneNumber) {
+      updateData.phoneNumber = phoneNumber;
+    }
+
     const updatedMerchant = await db
       .update(merchants)
-      .set({
-        name,
-        description: description || null,
-        imageUrl: imageUrl || null,
-        isAvailable: isAvailable ?? true,
-      })
+      .set(updateData)
       .where(eq(merchants.id, merchantId))
       .returning();
 

@@ -142,6 +142,7 @@ describe("MenuService (unit)", () => {
       const res = await service.findMenuItemsByMerchant("merch1", {
         cursor: undefined,
         limit: 10,
+        direction: "desc",
       });
 
       expect(res.data.length).toBe(1);
@@ -162,9 +163,9 @@ describe("MenuService (unit)", () => {
 
     it("FAIL: rejects invalid price", async () => {
       repo.findById.mockResolvedValue(makeMenu({ id: "m4" }));
-      await expect(service.updateMenuItem("m4", { price: -1 })).rejects.toMatchObject(
-        { code: ERROR_CODES.VALIDATION_ERROR }
-      );
+      await expect(
+        service.updateMenuItem("m4", { price: -1 })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
     });
   });
 
@@ -196,7 +197,9 @@ describe("MenuService (unit)", () => {
     });
 
     it("VALID: updates category", async () => {
-      repo.updateCategory.mockResolvedValue(makeCategory({ id: "c3", name: "A" }));
+      repo.updateCategory.mockResolvedValue(
+        makeCategory({ id: "c3", name: "A" })
+      );
 
       await expect(service.updateCategory("c3", "A")).resolves.toMatchObject({
         id: "c3",
@@ -220,7 +223,10 @@ describe("MenuService (unit)", () => {
 
   describe("searchMenuItems", () => {
     it("VALID: returns empty when no merchantId", async () => {
-      const res = await service.searchMenuItems({}, { cursor: undefined, limit: 10 });
+      const res = await service.searchMenuItems(
+        {},
+        { cursor: undefined, limit: 10, direction: "desc" }
+      );
       expect(res.data).toEqual([]);
     });
   });

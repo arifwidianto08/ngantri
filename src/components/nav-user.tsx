@@ -22,10 +22,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import Link from "next/link";
 
 export function NavUser({
   user,
   onLogout,
+  profileUrl = "/dashboard/profile",
 }: {
   user: {
     name: string;
@@ -33,6 +35,7 @@ export function NavUser({
     avatar?: string;
   };
   onLogout?: () => Promise<void>;
+  profileUrl?: string;
 }) {
   const { isMobile } = useSidebar();
 
@@ -84,9 +87,11 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <IconUserCircle />
-                Account
+              <DropdownMenuItem asChild>
+                <Link href={profileUrl} className="cursor-pointer">
+                  <IconUserCircle />
+                  Profile
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

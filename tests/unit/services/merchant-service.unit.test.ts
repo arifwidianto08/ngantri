@@ -1,7 +1,15 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import {
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
 
 import type { MerchantRepository } from "../../../src/data/interfaces/merchant-repository";
 import type { Merchant } from "../../../src/data/schema";
+import type { MerchantService as MerchantServiceType } from "../../../src/services/merchant-service";
 import { ERROR_CODES } from "../../../src/lib/errors";
 
 jest.mock("bcryptjs", () => ({
@@ -12,17 +20,21 @@ jest.mock("bcryptjs", () => ({
   },
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const bcrypt = require("bcryptjs").default as {
-  hash: jest.Mock;
-  compare: jest.Mock;
+const bcrypt = {
+  hash: jest.fn() as jest.MockedFunction<
+    (data: string | Buffer, saltOrRounds: number) => Promise<string>
+  >,
+  compare: jest.fn() as jest.MockedFunction<
+    (data: string | Buffer, encrypted: string) => Promise<boolean>
+  >,
 };
 
-// Load after mocks are registered
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { MerchantService } = require("../../../src/services/merchant-service") as {
-  MerchantService: typeof import("../../../src/services/merchant-service").MerchantService;
-};
+jest.doMock("bcryptjs", () => ({
+  __esModule: true,
+  default: bcrypt,
+}));
+
+let MerchantService: typeof MerchantServiceType;
 
 const makeMerchant = (overrides: Partial<Merchant> = {}): Merchant => {
   const now = new Date();
@@ -44,7 +56,12 @@ const makeMerchant = (overrides: Partial<Merchant> = {}): Merchant => {
 
 describe("MerchantService (unit)", () => {
   let repo: jest.Mocked<MerchantRepository>;
-  let service: MerchantService;
+  let service: MerchantServiceType;
+
+  beforeAll(async () => {
+    const mod = await import("../../../src/services/merchant-service");
+    MerchantService = mod.MerchantService;
+  });
 
   beforeEach(() => {
     repo = {
@@ -73,7 +90,9 @@ describe("MerchantService (unit)", () => {
       repo.findByPhoneNumber.mockResolvedValue(null);
       repo.getNextMerchantNumber.mockResolvedValue(10);
       bcrypt.hash.mockResolvedValue("hashed");
-      repo.create.mockResolvedValue(makeMerchant({ merchantNumber: 10, passwordHash: "hashed" }));
+      repo.create.mockResolvedValue(
+        makeMerchant({ merchantNumber: 10, passwordHash: "hashed" })
+      );
 
       const res = await service.register({
         phoneNumber: "+6281234567000",
@@ -148,11 +167,16 @@ describe("MerchantService (unit)", () => {
     });
 
     it("FAIL: rejects inactive merchant", async () => {
-      repo.findByPhoneNumber.mockResolvedValue(makeMerchant({ isAvailable: false }));
+      repo.findByPhoneNumber.mockResolvedValue(
+        makeMerchant({ isAvailable: false })
+      );
       bcrypt.compare.mockResolvedValue(true);
 
       await expect(
-        service.login({ phoneNumber: "+6281234567890", password: "password123" })
+        service.login({
+          phoneNumber: "+6281234567890",
+          password: "password123",
+        })
       ).rejects.toMatchObject({ code: ERROR_CODES.MERCHANT_INACTIVE });
     });
   });
@@ -160,12 +184,16 @@ describe("MerchantService (unit)", () => {
   describe("validatePassword", () => {
     it("VALID: returns compare result", async () => {
       bcrypt.compare.mockResolvedValue(true);
-      await expect(service.validatePassword(makeMerchant(), "password123")).resolves.toBe(true);
+      await expect(
+        service.validatePassword(makeMerchant(), "password123")
+      ).resolves.toBe(true);
     });
 
     it("FAIL: wraps compare errors", async () => {
       bcrypt.compare.mockRejectedValue(new Error("boom"));
-      await expect(service.validatePassword(makeMerchant(), "password123")).rejects.toMatchObject({
+      await expect(
+        service.validatePassword(makeMerchant(), "password123")
+      ).rejects.toMatchObject({
         code: ERROR_CODES.INTERNAL_SERVER_ERROR,
       });
     });
@@ -188,7 +216,9 @@ describe("MerchantService (unit)", () => {
       repo.findById.mockResolvedValue(makeMerchant({ id: "x" }));
       repo.update.mockResolvedValue(makeMerchant({ id: "x", name: "Updated" }));
 
-      await expect(service.update("x", { name: "Updated" })).resolves.toMatchObject({
+      await expect(
+        service.update("x", { name: "Updated" })
+      ).resolves.toMatchObject({
         name: "Updated",
       });
     });
@@ -204,20 +234,32 @@ describe("MerchantService (unit)", () => {
   describe("activate/deactivate/updateProfileImage", () => {
     it("VALID: activate sets isAvailable true", async () => {
       repo.findById.mockResolvedValue(makeMerchant({ id: "x" }));
-      repo.update.mockResolvedValue(makeMerchant({ id: "x", isAvailable: true }));
-      await expect(service.activate("x")).resolves.toMatchObject({ isAvailable: true });
+      repo.update.mockResolvedValue(
+        makeMerchant({ id: "x", isAvailable: true })
+      );
+      await expect(service.activate("x")).resolves.toMatchObject({
+        isAvailable: true,
+      });
     });
 
     it("VALID: deactivate sets isAvailable false", async () => {
       repo.findById.mockResolvedValue(makeMerchant({ id: "x" }));
-      repo.update.mockResolvedValue(makeMerchant({ id: "x", isAvailable: false }));
-      await expect(service.deactivate("x")).resolves.toMatchObject({ isAvailable: false });
+      repo.update.mockResolvedValue(
+        makeMerchant({ id: "x", isAvailable: false })
+      );
+      await expect(service.deactivate("x")).resolves.toMatchObject({
+        isAvailable: false,
+      });
     });
 
     it("VALID: updateProfileImage sets imageUrl", async () => {
       repo.findById.mockResolvedValue(makeMerchant({ id: "x" }));
-      repo.update.mockResolvedValue(makeMerchant({ id: "x", imageUrl: "/img.png" }));
-      await expect(service.updateProfileImage("x", "/img.png")).resolves.toMatchObject({
+      repo.update.mockResolvedValue(
+        makeMerchant({ id: "x", imageUrl: "/img.png" })
+      );
+      await expect(
+        service.updateProfileImage("x", "/img.png")
+      ).resolves.toMatchObject({
         imageUrl: "/img.png",
       });
     });
@@ -226,17 +268,23 @@ describe("MerchantService (unit)", () => {
   describe("isPhoneNumberUnique", () => {
     it("VALID: returns true when not found", async () => {
       repo.findByPhoneNumber.mockResolvedValue(null);
-      await expect(service.isPhoneNumberUnique("+6281234567000")).resolves.toBe(true);
+      await expect(service.isPhoneNumberUnique("+6281234567000")).resolves.toBe(
+        true
+      );
     });
 
     it("VALID: returns true when excludeId matches", async () => {
       repo.findByPhoneNumber.mockResolvedValue(makeMerchant({ id: "same" }));
-      await expect(service.isPhoneNumberUnique("+6281234567890", "same")).resolves.toBe(true);
+      await expect(
+        service.isPhoneNumberUnique("+6281234567890", "same")
+      ).resolves.toBe(true);
     });
 
     it("VALID: returns false when belongs to different merchant", async () => {
       repo.findByPhoneNumber.mockResolvedValue(makeMerchant({ id: "other" }));
-      await expect(service.isPhoneNumberUnique("+6281234567890", "same")).resolves.toBe(false);
+      await expect(
+        service.isPhoneNumberUnique("+6281234567890", "same")
+      ).resolves.toBe(false);
     });
   });
 });

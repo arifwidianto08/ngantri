@@ -50,7 +50,9 @@ describe("OrderService (unit)", () => {
       create: jest.fn(),
       findById: jest.fn(),
       findBySession: jest.fn(),
+      findBySessionWithDetails: jest.fn(),
       findByMerchant: jest.fn(),
+      findByMerchantWithDetails: jest.fn(),
       updateStatus: jest.fn(),
       updateStatusWithPayment: jest.fn(),
       updateCustomerInfo: jest.fn(),
@@ -71,7 +73,9 @@ describe("OrderService (unit)", () => {
 
   describe("createOrder", () => {
     it("VALID: creates order and items", async () => {
-      repo.create.mockResolvedValue(makeOrder({ id: "o2", totalAmount: 20000 }));
+      repo.create.mockResolvedValue(
+        makeOrder({ id: "o2", totalAmount: 20000 })
+      );
       repo.addOrderItems.mockResolvedValue([makeItem({ orderId: "o2" })]);
 
       const res = await service.createOrder({
@@ -92,10 +96,11 @@ describe("OrderService (unit)", () => {
     it("FAIL: rejects missing sessionId", async () => {
       await expect(
         service.createOrder({
-          // @ts-expect-error intentional invalid test
           sessionId: "",
           merchantId: "m1",
-          items: [{ menuId: "menu1", menuName: "Menu", quantity: 1, unitPrice: 1 }],
+          items: [
+            { menuId: "menu1", menuName: "Menu", quantity: 1, unitPrice: 1 },
+          ],
         })
       ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
     });
@@ -107,7 +112,9 @@ describe("OrderService (unit)", () => {
         service.createOrder({
           sessionId: "s1",
           merchantId: "m1",
-          items: [{ menuId: "menu1", menuName: "Menu", quantity: 1, unitPrice: 1 }],
+          items: [
+            { menuId: "menu1", menuName: "Menu", quantity: 1, unitPrice: 1 },
+          ],
         })
       ).rejects.toMatchObject({ code: ERROR_CODES.INTERNAL_SERVER_ERROR });
     });
@@ -116,7 +123,9 @@ describe("OrderService (unit)", () => {
   describe("findOrderById", () => {
     it("VALID: returns order", async () => {
       repo.findById.mockResolvedValue(makeOrder({ id: "o3" }));
-      await expect(service.findOrderById("o3")).resolves.toMatchObject({ id: "o3" });
+      await expect(service.findOrderById("o3")).resolves.toMatchObject({
+        id: "o3",
+      });
     });
 
     it("FAIL: throws ORDER_NOT_FOUND", async () => {
@@ -130,9 +139,13 @@ describe("OrderService (unit)", () => {
   describe("updateOrderStatus", () => {
     it("VALID: updates status", async () => {
       repo.findById.mockResolvedValue(makeOrder({ id: "o4" }));
-      repo.updateStatusWithPayment.mockResolvedValue(makeOrder({ id: "o4", status: "ready" }));
+      repo.updateStatusWithPayment.mockResolvedValue(
+        makeOrder({ id: "o4", status: "ready" })
+      );
 
-      await expect(service.updateOrderStatus("o4", "ready")).resolves.toMatchObject({
+      await expect(
+        service.updateOrderStatus("o4", "ready")
+      ).resolves.toMatchObject({
         status: "ready",
       });
     });
@@ -153,7 +166,9 @@ describe("OrderService (unit)", () => {
 
     it("FAIL: rejects invalid status", async () => {
       repo.findById.mockResolvedValue(makeOrder({ id: "o4" }));
-      await expect(service.updateOrderStatus("o4", "bogus")).rejects.toMatchObject({
+      await expect(
+        service.updateOrderStatus("o4", "bogus")
+      ).rejects.toMatchObject({
         code: ERROR_CODES.VALIDATION_ERROR,
       });
     });
@@ -161,14 +176,22 @@ describe("OrderService (unit)", () => {
 
   describe("cancelOrder", () => {
     it("VALID: cancels when not completed/cancelled", async () => {
-      repo.findById.mockResolvedValue(makeOrder({ id: "o5", status: "pending" }));
-      repo.updateStatus.mockResolvedValue(makeOrder({ id: "o5", status: "cancelled" }));
+      repo.findById.mockResolvedValue(
+        makeOrder({ id: "o5", status: "pending" })
+      );
+      repo.updateStatus.mockResolvedValue(
+        makeOrder({ id: "o5", status: "cancelled" })
+      );
 
-      await expect(service.cancelOrder("o5")).resolves.toMatchObject({ status: "cancelled" });
+      await expect(service.cancelOrder("o5")).resolves.toMatchObject({
+        status: "cancelled",
+      });
     });
 
     it("FAIL: cannot cancel completed", async () => {
-      repo.findById.mockResolvedValue(makeOrder({ id: "o6", status: "completed" }));
+      repo.findById.mockResolvedValue(
+        makeOrder({ id: "o6", status: "completed" })
+      );
       await expect(service.cancelOrder("o6")).rejects.toMatchObject({
         code: ERROR_CODES.BAD_REQUEST,
       });
@@ -224,6 +247,134 @@ describe("OrderService (unit)", () => {
           statusBreakdown: { pending: 2 },
         })
       );
+    });
+  });
+
+  describe("createBatchOrders", () => {
+    it("FAIL: rejects missing sessionId", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "",
+          customerName: "Test",
+          customerPhone: "+6281234567890",
+          ordersByMerchant: {
+            m1: {
+              merchantName: "Merchant 1",
+              items: [
+                {
+                  menuId: "menu1",
+                  menuName: "Menu",
+                  quantity: 1,
+                  unitPrice: 10000,
+                },
+              ],
+            },
+          },
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
+    });
+
+    it("FAIL: rejects missing customerName", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "s1",
+          customerName: "",
+          customerPhone: "+6281234567890",
+          ordersByMerchant: {
+            m1: {
+              merchantName: "Merchant 1",
+              items: [
+                {
+                  menuId: "menu1",
+                  menuName: "Menu",
+                  quantity: 1,
+                  unitPrice: 10000,
+                },
+              ],
+            },
+          },
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
+    });
+
+    it("FAIL: rejects missing customerPhone", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "s1",
+          customerName: "Test",
+          customerPhone: "",
+          ordersByMerchant: {
+            m1: {
+              merchantName: "Merchant 1",
+              items: [
+                {
+                  menuId: "menu1",
+                  menuName: "Menu",
+                  quantity: 1,
+                  unitPrice: 10000,
+                },
+              ],
+            },
+          },
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
+    });
+
+    it("FAIL: rejects no orders", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "s1",
+          customerName: "Test",
+          customerPhone: "+6281234567890",
+          ordersByMerchant: {},
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
+    });
+
+    it("FAIL: rejects invalid merchantId", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "s1",
+          customerName: "Test",
+          customerPhone: "+6281234567890",
+          ordersByMerchant: {
+            undefined: {
+              merchantName: "Merchant",
+              items: [
+                {
+                  menuId: "menu1",
+                  menuName: "Menu",
+                  quantity: 1,
+                  unitPrice: 10000,
+                },
+              ],
+            },
+          },
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
+    });
+
+    it("FAIL: rejects invalid phone number", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "s1",
+          customerName: "Test",
+          customerPhone: "invalid-phone",
+          ordersByMerchant: {
+            m1: {
+              merchantName: "Merchant 1",
+              items: [
+                {
+                  menuId: "menu1",
+                  menuName: "Menu",
+                  quantity: 1,
+                  unitPrice: 10000,
+                },
+              ],
+            },
+          },
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
     });
   });
 });

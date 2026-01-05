@@ -27,6 +27,7 @@ export class MerchantRepositoryImpl implements MerchantRepository {
       .where(
         and(eq(merchants.phoneNumber, phoneNumber), isNull(merchants.deletedAt))
       )
+      .orderBy(desc(merchants.createdAt))
       .limit(1);
 
     return merchant || null;

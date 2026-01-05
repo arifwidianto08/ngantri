@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, BadgeCheck } from "lucide-react";
+import { Loader2, BadgeCheck, Plus } from "lucide-react";
 import Image from "next/image";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/components/toast-provider";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 interface Merchant {
   id: string;
@@ -37,8 +39,16 @@ export default function AdminMerchantsPage() {
     null
   );
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    phoneNumber: "",
+    password: "",
+    description: "",
+    imageUrl: "",
+  });
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -70,6 +80,47 @@ export default function AdminMerchantsPage() {
     totalCount: 0,
     totalPages: 0,
   };
+
+  // Mutation: Create merchant
+  const createMerchantMutation = useMutation({
+    mutationFn: async (data: typeof createForm) => {
+      const response = await fetch("/api/admin/merchants/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result?.error?.message || "Failed to create merchant");
+      }
+      return result;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-merchants"] });
+      setShowCreateForm(false);
+      setCreateForm({
+        name: "",
+        phoneNumber: "",
+        password: "",
+        description: "",
+        imageUrl: "",
+      });
+      toast({
+        title: "Merchant created",
+        description: "New merchant has been created successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Mutation: Toggle merchant availability
   const toggleAvailabilityMutation = useMutation({
@@ -152,6 +203,11 @@ export default function AdminMerchantsPage() {
     deleteMerchantMutation.mutate(deleteId);
   };
 
+  const handleCreateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    createMerchantMutation.mutate(createForm);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -162,38 +218,164 @@ export default function AdminMerchantsPage() {
           </h1>
           <p className="text-gray-600 mt-1">Manage all registered merchants</p>
         </div>
-        <Button
-          type="button"
-          onClick={() => void refetch()}
-          disabled={isLoading || isFetching}
-          variant="outline"
-        >
-          {isLoading || isFetching ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Refreshing...</span>
-            </>
-          ) : (
-            <>
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <title>Refresh</title>
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              <span>Refresh</span>
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            onClick={() => setShowCreateForm(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Create Merchant</span>
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void refetch()}
+            disabled={isLoading || isFetching}
+            variant="outline"
+          >
+            {isLoading || isFetching ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Refreshing...</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <title>Refresh</title>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span>Refresh</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
+
+      {/* Create Merchant Form */}
+      {showCreateForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Create New Merchant</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleCreateSubmit} className="space-y-4">
+              <Field>
+                <FieldLabel htmlFor="name">
+                  Merchant Name <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="name"
+                  value={createForm.name}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, name: e.target.value })
+                  }
+                  placeholder="Enter merchant name"
+                  required
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="phoneNumber">
+                  Phone Number <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="phoneNumber"
+                  value={createForm.phoneNumber}
+                  onChange={(e) =>
+                    setCreateForm({
+                      ...createForm,
+                      phoneNumber: e.target.value,
+                    })
+                  }
+                  placeholder="e.g., +6281234567890"
+                  required
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="password">
+                  Password <span className="text-destructive">*</span>
+                </FieldLabel>
+                <Input
+                  id="password"
+                  type="password"
+                  value={createForm.password}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, password: e.target.value })
+                  }
+                  placeholder="Enter password"
+                  required
+                  minLength={8}
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="description">Description</FieldLabel>
+                <textarea
+                  id="description"
+                  value={createForm.description}
+                  onChange={(e) =>
+                    setCreateForm({
+                      ...createForm,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="Enter description (optional)"
+                  rows={3}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="imageUrl">Image URL</FieldLabel>
+                <Input
+                  id="imageUrl"
+                  type="url"
+                  value={createForm.imageUrl}
+                  onChange={(e) =>
+                    setCreateForm({ ...createForm, imageUrl: e.target.value })
+                  }
+                  placeholder="Enter image URL (optional)"
+                />
+              </Field>
+
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  disabled={createMerchantMutation.isPending}
+                >
+                  {createMerchantMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Merchant"
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateForm(false)}
+                  disabled={createMerchantMutation.isPending}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

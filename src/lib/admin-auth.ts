@@ -9,6 +9,7 @@ const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 hours
 
 export interface AdminSession {
   adminId: string;
+  name?: string | null;
   username: string;
   loginTime: number;
 }
@@ -16,28 +17,25 @@ export interface AdminSession {
 export async function validateAdminCredentials(
   username: string,
   password: string
-): Promise<{ valid: boolean; adminId?: string }> {
+): Promise<{ valid: boolean; id?: string; name?: string | null }> {
   try {
-    const admin = await db
+    const [admin] = await db
       .select()
       .from(admins)
       .where(eq(admins.username, username) && isNull(admins.deletedAt))
       .limit(1);
 
-    if (admin.length === 0) {
+    if (!admin) {
       return { valid: false };
     }
 
-    const isValidPassword = await bcrypt.compare(
-      password,
-      admin[0].passwordHash
-    );
+    const isValidPassword = await bcrypt.compare(password, admin?.passwordHash);
 
     if (!isValidPassword) {
       return { valid: false };
     }
 
-    return { valid: true, adminId: admin[0].id };
+    return { valid: true, id: admin?.id, name: admin?.name };
   } catch (error) {
     console.error("Error validating admin credentials:", error);
     return { valid: false };
@@ -46,11 +44,13 @@ export async function validateAdminCredentials(
 
 export async function createAdminSession(
   adminId: string,
-  username: string
+  username: string,
+  name?: string | null
 ): Promise<void> {
   const session: AdminSession = {
     adminId,
     username,
+    name,
     loginTime: Date.now(),
   };
 

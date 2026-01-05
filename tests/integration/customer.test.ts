@@ -8,7 +8,6 @@ import { describe, it, expect, beforeAll } from "@jest/globals";
 const BASE_URL = "http://localhost:3000/api";
 let serverAvailable = true;
 let merchantId: string;
-let sessionId: string;
 let menuId: string;
 
 describe("Customer API", () => {
@@ -24,7 +23,9 @@ describe("Customer API", () => {
 
         // Get a menu item for testing
         if (merchantId) {
-          const menusRes = await fetch(`${BASE_URL}/merchants/${merchantId}/menus`);
+          const menusRes = await fetch(
+            `${BASE_URL}/merchants/${merchantId}/menus`
+          );
           if (menusRes.ok) {
             const menusData = await menusRes.json();
             menuId = menusData.data.menus?.[0]?.id;
@@ -136,9 +137,6 @@ describe("Customer API", () => {
         expect([200, 201]).toContain(res.status);
         expect(data.success).toBe(true);
         expect(data.data).toHaveProperty("session");
-        
-        // Store for later tests
-        sessionId = data.data.session.id;
       });
 
       it("should return session with valid UUID v7", async () => {
@@ -152,7 +150,7 @@ describe("Customer API", () => {
 
         const data = await res.json();
         expect(data.data.session).toHaveProperty("id");
-        
+
         // Verify UUID v7 format
         expect(data.data.session.id).toMatch(
           /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -197,7 +195,7 @@ describe("Customer API", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ table_number: 3 }),
         });
-        
+
         expect(res.status).toBe(200);
       });
 
@@ -246,14 +244,17 @@ describe("Customer API", () => {
         it("should add item to cart", async () => {
           if (!serverAvailable || !cartSessionId || !menuId) return;
 
-          const res = await fetch(`${BASE_URL}/sessions/${cartSessionId}/cart`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              menuId: menuId,
-              quantity: 2,
-            }),
-          });
+          const res = await fetch(
+            `${BASE_URL}/sessions/${cartSessionId}/cart`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                menuId: menuId,
+                quantity: 2,
+              }),
+            }
+          );
 
           expect([200, 201]).toContain(res.status);
         });
@@ -262,14 +263,17 @@ describe("Customer API", () => {
           if (!serverAvailable || !cartSessionId) return;
 
           const fakeMenuId = "00000000-0000-7000-a000-000000000000";
-          const res = await fetch(`${BASE_URL}/sessions/${cartSessionId}/cart`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              menuId: fakeMenuId,
-              quantity: 1,
-            }),
-          });
+          const res = await fetch(
+            `${BASE_URL}/sessions/${cartSessionId}/cart`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                menuId: fakeMenuId,
+                quantity: 1,
+              }),
+            }
+          );
 
           expect([400, 404]).toContain(res.status);
         });
@@ -344,7 +348,7 @@ describe("Customer API", () => {
 
         const fakeOrderId = "00000000-0000-7000-a000-000000000000";
         const res = await fetch(`${BASE_URL}/orders/${fakeOrderId}`);
-        
+
         expect([400, 404, 500]).toContain(res.status);
       });
     });
@@ -355,7 +359,7 @@ describe("Customer API", () => {
 
         const fakeOrderId = "00000000-0000-7000-a000-000000000000";
         const res = await fetch(`${BASE_URL}/orders/${fakeOrderId}/status`);
-        
+
         expect([400, 404, 500]).toContain(res.status);
       });
     });
