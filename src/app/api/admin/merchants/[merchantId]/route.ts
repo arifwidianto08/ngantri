@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
 import { merchants } from "@/data/schema";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, desc } from "drizzle-orm";
 
 export async function DELETE(
   request: NextRequest,
@@ -23,8 +23,6 @@ export async function DELETE(
       data: { message: "Merchant deleted successfully" },
     });
   } catch (error) {
-    console.error("Error deleting merchant:", error);
-
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json(
         {
@@ -78,6 +76,7 @@ export async function PUT(
             ne(merchants.id, merchantId)
           )
         )
+        .orderBy(desc(merchants.createdAt))
         .limit(1);
 
       if (existingMerchant.length > 0 && !existingMerchant[0].deletedAt) {

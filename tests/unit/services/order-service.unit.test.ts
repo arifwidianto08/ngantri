@@ -50,7 +50,9 @@ describe("OrderService (unit)", () => {
       create: jest.fn(),
       findById: jest.fn(),
       findBySession: jest.fn(),
+      findBySessionWithDetails: jest.fn(),
       findByMerchant: jest.fn(),
+      findByMerchantWithDetails: jest.fn(),
       updateStatus: jest.fn(),
       updateStatusWithPayment: jest.fn(),
       updateCustomerInfo: jest.fn(),
@@ -245,6 +247,134 @@ describe("OrderService (unit)", () => {
           statusBreakdown: { pending: 2 },
         })
       );
+    });
+  });
+
+  describe("createBatchOrders", () => {
+    it("FAIL: rejects missing sessionId", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "",
+          customerName: "Test",
+          customerPhone: "+6281234567890",
+          ordersByMerchant: {
+            m1: {
+              merchantName: "Merchant 1",
+              items: [
+                {
+                  menuId: "menu1",
+                  menuName: "Menu",
+                  quantity: 1,
+                  unitPrice: 10000,
+                },
+              ],
+            },
+          },
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
+    });
+
+    it("FAIL: rejects missing customerName", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "s1",
+          customerName: "",
+          customerPhone: "+6281234567890",
+          ordersByMerchant: {
+            m1: {
+              merchantName: "Merchant 1",
+              items: [
+                {
+                  menuId: "menu1",
+                  menuName: "Menu",
+                  quantity: 1,
+                  unitPrice: 10000,
+                },
+              ],
+            },
+          },
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
+    });
+
+    it("FAIL: rejects missing customerPhone", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "s1",
+          customerName: "Test",
+          customerPhone: "",
+          ordersByMerchant: {
+            m1: {
+              merchantName: "Merchant 1",
+              items: [
+                {
+                  menuId: "menu1",
+                  menuName: "Menu",
+                  quantity: 1,
+                  unitPrice: 10000,
+                },
+              ],
+            },
+          },
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
+    });
+
+    it("FAIL: rejects no orders", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "s1",
+          customerName: "Test",
+          customerPhone: "+6281234567890",
+          ordersByMerchant: {},
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
+    });
+
+    it("FAIL: rejects invalid merchantId", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "s1",
+          customerName: "Test",
+          customerPhone: "+6281234567890",
+          ordersByMerchant: {
+            undefined: {
+              merchantName: "Merchant",
+              items: [
+                {
+                  menuId: "menu1",
+                  menuName: "Menu",
+                  quantity: 1,
+                  unitPrice: 10000,
+                },
+              ],
+            },
+          },
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
+    });
+
+    it("FAIL: rejects invalid phone number", async () => {
+      await expect(
+        service.createBatchOrders({
+          sessionId: "s1",
+          customerName: "Test",
+          customerPhone: "invalid-phone",
+          ordersByMerchant: {
+            m1: {
+              merchantName: "Merchant 1",
+              items: [
+                {
+                  menuId: "menu1",
+                  menuName: "Menu",
+                  quantity: 1,
+                  unitPrice: 10000,
+                },
+              ],
+            },
+          },
+        })
+      ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION_ERROR });
     });
   });
 });

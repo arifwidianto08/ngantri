@@ -22,6 +22,28 @@ export interface OrderRepository {
     nextCursor?: string;
     hasMore: boolean;
   }>;
+  findBySessionWithDetails(
+    sessionId: string,
+    options?: {
+      cursor?: string;
+      limit?: number;
+      status?: string;
+    }
+  ): Promise<{
+    data: Array<
+      Order & {
+        items: OrderItem[];
+        paymentStatus: string;
+        merchant: {
+          id: string;
+          name: string;
+          imageUrl: string | null;
+        };
+      }
+    >;
+    nextCursor?: string;
+    hasMore: boolean;
+  }>;
   findByMerchant(
     merchantId: string,
     options?: {
@@ -33,6 +55,30 @@ export interface OrderRepository {
     }
   ): Promise<{
     data: Order[];
+    nextCursor?: string;
+    hasMore: boolean;
+  }>;
+  findByMerchantWithDetails(
+    merchantId: string,
+    options?: {
+      cursor?: string;
+      limit?: number;
+      status?: string;
+      dateFrom?: Date;
+      dateTo?: Date;
+    }
+  ): Promise<{
+    data: Array<
+      Order & {
+        items: OrderItem[];
+        paymentStatus: string;
+        merchant: {
+          id: string;
+          name: string;
+          imageUrl: string | null;
+        };
+      }
+    >;
     nextCursor?: string;
     hasMore: boolean;
   }>;

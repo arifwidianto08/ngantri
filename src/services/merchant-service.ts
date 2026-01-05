@@ -283,11 +283,7 @@ export class MerchantService implements IMerchantService {
   /**
    * Get merchant statistics
    */
-  async getStats(
-    id: string,
-    startDate?: Date,
-    endDate?: Date
-  ): Promise<MerchantStats> {
+  async getStats(id: string): Promise<MerchantStats> {
     // Validate merchant exists
     await this.findById(id);
 

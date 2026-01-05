@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
 import { merchants } from "@/data/schema";
-import { max, eq, isNull, desc } from "drizzle-orm";
+import { max, eq, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
@@ -56,23 +56,46 @@ export async function POST(request: NextRequest) {
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    const newMerchant = await db
-      .insert(merchants)
-      .values({
-        name,
-        phoneNumber,
-        passwordHash,
-        merchantNumber: nextMerchantNumber,
-        description: description || null,
-        imageUrl: imageUrl || null,
-        isAvailable: true,
-      })
-      .returning();
+    try {
+      const newMerchant = await db
+        .insert(merchants)
+        .values({
+          name,
+          phoneNumber,
+          passwordHash,
+          merchantNumber: nextMerchantNumber,
+          description: description || null,
+          imageUrl: imageUrl || null,
+          isAvailable: true,
+        })
+        .returning();
 
-    return NextResponse.json({
-      success: true,
-      data: newMerchant[0],
-    });
+      return NextResponse.json({
+        success: true,
+        data: newMerchant[0],
+      });
+    } catch (insertError: unknown) {
+      // Handle unique constraint violation
+      if (
+        insertError &&
+        typeof insertError === "object" &&
+        (("code" in insertError && insertError.code === "23505") ||
+          ("message" in insertError &&
+            typeof insertError.message === "string" &&
+            insertError.message.includes("unique")))
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              message: "Phone number already registered",
+            },
+          },
+          { status: 409 }
+        );
+      }
+      throw insertError;
+    }
   } catch (error) {
     console.error("Error creating merchant:", error);
     return NextResponse.json(

@@ -16,6 +16,7 @@ import {
   orderItems,
   orderPayments,
   orderPaymentItems,
+  merchants,
   type Order,
   type NewOrder,
   type OrderItem,
@@ -99,6 +100,138 @@ export class OrderRepositoryImpl implements OrderRepository {
     };
   }
 
+  async findBySessionWithDetails(
+    sessionId: string,
+    options?: {
+      cursor?: string;
+      limit?: number;
+      status?: string;
+    }
+  ): Promise<{
+    data: Array<
+      Order & {
+        items: OrderItem[];
+        paymentStatus: string;
+        merchant: {
+          id: string;
+          name: string;
+          imageUrl: string | null;
+        };
+      }
+    >;
+    nextCursor?: string;
+    hasMore: boolean;
+  }> {
+    const limit = Math.min(options?.limit ?? 20, 100);
+    const conditions = [
+      eq(orders.sessionId, sessionId),
+      isNull(orders.deletedAt),
+    ];
+
+    if (options?.cursor) {
+      conditions.push(gt(orders.id, options.cursor));
+    }
+
+    if (options?.status) {
+      const statuses = options.status.split(",").map((s) => s.trim());
+      if (statuses.length === 1) {
+        conditions.push(eq(orders.status, statuses[0]));
+      } else {
+        conditions.push(inArray(orders.status, statuses));
+      }
+    }
+
+    // Get orders first
+    const ordersData = await db
+      .select()
+      .from(orders)
+      .where(and(...conditions))
+      .orderBy(desc(orders.id))
+      .limit(limit + 1);
+
+    const hasMore = ordersData.length > limit;
+    const ordersSlice = hasMore ? ordersData.slice(0, -1) : ordersData;
+    const orderIds = ordersSlice.map((o) => o.id);
+
+    if (orderIds.length === 0) {
+      return { data: [], nextCursor: undefined, hasMore: false };
+    }
+
+    // Get unique merchant IDs
+    const merchantIds = Array.from(
+      new Set(ordersSlice.map((o) => o.merchantId))
+    );
+
+    // Get all merchants in one query
+    const merchantRows = await db
+      .select({
+        id: merchants.id,
+        name: merchants.name,
+        imageUrl: merchants.imageUrl,
+      })
+      .from(merchants)
+      .where(inArray(merchants.id, merchantIds));
+
+    const merchantsById = new Map(
+      merchantRows.map((m) => [
+        m.id,
+        { id: m.id, name: m.name, imageUrl: m.imageUrl },
+      ])
+    );
+
+    // Get all items for these orders (single query)
+    const allItems = await db
+      .select()
+      .from(orderItems)
+      .where(inArray(orderItems.orderId, orderIds));
+
+    // Get payment status for all orders (single query with join)
+    const paymentStatuses = await db
+      .select({
+        orderId: orderPaymentItems.orderId,
+        paymentStatus: sql<string>`COALESCE(${orderPayments.status}, 'unpaid')`,
+      })
+      .from(orderPaymentItems)
+      .leftJoin(
+        orderPayments,
+        eq(orderPaymentItems.paymentId, orderPayments.id)
+      )
+      .where(inArray(orderPaymentItems.orderId, orderIds));
+
+    // Build lookup maps
+    const itemsByOrderId = allItems.reduce((acc, item) => {
+      if (!acc[item.orderId]) acc[item.orderId] = [];
+      acc[item.orderId].push(item);
+      return acc;
+    }, {} as Record<string, OrderItem[]>);
+
+    const paymentStatusByOrderId = paymentStatuses.reduce(
+      (acc, { orderId, paymentStatus }) => {
+        acc[orderId] = paymentStatus;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
+    // Combine everything (flatten order properties)
+    const data = ordersSlice.map((order) => ({
+      ...order,
+      items: itemsByOrderId[order.id] || [],
+      paymentStatus: paymentStatusByOrderId[order.id] || "unpaid",
+      merchant: merchantsById.get(order.merchantId) || {
+        id: order.merchantId,
+        name: "Unknown Merchant",
+        imageUrl: null,
+      },
+    }));
+
+    return {
+      data,
+      nextCursor: hasMore ? ordersSlice[ordersSlice.length - 1].id : undefined,
+      hasMore,
+    };
+  }
+
   async findByMerchant(
     merchantId: string,
     options?: {
@@ -155,6 +288,133 @@ export class OrderRepositoryImpl implements OrderRepository {
     return {
       data,
       nextCursor,
+      hasMore,
+    };
+  }
+
+  async findByMerchantWithDetails(
+    merchantId: string,
+    options?: {
+      cursor?: string;
+      limit?: number;
+      status?: string;
+      dateFrom?: Date;
+      dateTo?: Date;
+    }
+  ): Promise<{
+    data: Array<
+      Order & {
+        items: OrderItem[];
+        paymentStatus: string;
+        merchant: {
+          id: string;
+          name: string;
+          imageUrl: string | null;
+        };
+      }
+    >;
+    nextCursor?: string;
+    hasMore: boolean;
+  }> {
+    const limit = Math.min(options?.limit ?? 20, 100);
+    const conditions = [
+      eq(orders.merchantId, merchantId),
+      isNull(orders.deletedAt),
+    ];
+
+    if (options?.cursor) {
+      conditions.push(gt(orders.id, options.cursor));
+    }
+
+    if (options?.status) {
+      const statuses = options.status.split(",").map((s) => s.trim());
+      if (statuses.length === 1) {
+        conditions.push(eq(orders.status, statuses[0]));
+      } else {
+        conditions.push(inArray(orders.status, statuses));
+      }
+    }
+
+    if (options?.dateFrom) {
+      conditions.push(gte(orders.createdAt, options.dateFrom));
+    }
+
+    if (options?.dateTo) {
+      conditions.push(lte(orders.createdAt, options.dateTo));
+    }
+
+    // Get orders first
+    const ordersData = await db
+      .select()
+      .from(orders)
+      .where(and(...conditions))
+      .orderBy(desc(orders.id))
+      .limit(limit + 1);
+
+    const hasMore = ordersData.length > limit;
+    const ordersSlice = hasMore ? ordersData.slice(0, -1) : ordersData;
+    const orderIds = ordersSlice.map((o) => o.id);
+
+    if (orderIds.length === 0) {
+      return { data: [], nextCursor: undefined, hasMore: false };
+    }
+
+    // Get merchant info (single query)
+    const [merchantData] = await db
+      .select({
+        id: merchants.id,
+        name: merchants.name,
+        imageUrl: merchants.imageUrl,
+      })
+      .from(merchants)
+      .where(eq(merchants.id, merchantId))
+      .limit(1);
+
+    // Get all items for these orders (single query)
+    const allItems = await db
+      .select()
+      .from(orderItems)
+      .where(inArray(orderItems.orderId, orderIds));
+
+    // Get payment status for all orders (single query with join)
+    const paymentStatuses = await db
+      .select({
+        orderId: orderPaymentItems.orderId,
+        paymentStatus: sql<string>`COALESCE(${orderPayments.status}, 'unpaid')`,
+      })
+      .from(orderPaymentItems)
+      .leftJoin(
+        orderPayments,
+        eq(orderPaymentItems.paymentId, orderPayments.id)
+      )
+      .where(inArray(orderPaymentItems.orderId, orderIds));
+
+    // Build lookup maps
+    const itemsByOrderId = allItems.reduce((acc, item) => {
+      if (!acc[item.orderId]) acc[item.orderId] = [];
+      acc[item.orderId].push(item);
+      return acc;
+    }, {} as Record<string, OrderItem[]>);
+
+    const paymentStatusByOrderId = paymentStatuses.reduce(
+      (acc, { orderId, paymentStatus }) => {
+        acc[orderId] = paymentStatus;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
+    // Combine everything (flatten order properties)
+    const data = ordersSlice.map((order) => ({
+      ...order,
+      items: itemsByOrderId[order.id] || [],
+      paymentStatus: paymentStatusByOrderId[order.id] || "unpaid",
+      merchant: merchantData,
+    }));
+
+    return {
+      data,
+      nextCursor: hasMore ? ordersSlice[ordersSlice.length - 1].id : undefined,
       hasMore,
     };
   }
@@ -298,13 +558,12 @@ export class OrderRepositoryImpl implements OrderRepository {
     return Number(result?.count || 0);
   }
 
-  async getOrderStats(
-    merchantId: string,
-    options?: {
-      dateFrom?: Date;
-      dateTo?: Date;
-    }
-  ): Promise<{
+  async getOrderStats(): // _merchantId: string,
+  // _options?: {
+  //   dateFrom?: Date;
+  //   dateTo?: Date;
+  // }
+  Promise<{
     totalOrders: number;
     totalRevenue: number;
     averageOrderValue: number;

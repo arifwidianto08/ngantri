@@ -154,10 +154,26 @@ describe("Admin API", () => {
       it("should reject duplicate phone number", async () => {
         if (!serverAvailable) return;
 
+        // Login first to get session cookie
+        const loginRes = await fetch(`${BASE_URL}/admin/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: "admin",
+            password: "admin123",
+          }),
+        });
+
+        const cookies = loginRes.headers.get("set-cookie");
+        const headers: HeadersInit = { "Content-Type": "application/json" };
+        if (cookies) {
+          headers.Cookie = cookies;
+        }
+
         // Try to create merchant with existing phone number
         const res = await fetch(`${BASE_URL}/admin/merchants/create`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             name: "Duplicate Phone Merchant",
             phoneNumber: "+6281234567890", // Existing merchant phone

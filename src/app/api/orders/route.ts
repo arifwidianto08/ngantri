@@ -108,31 +108,17 @@ export async function GET(request: NextRequest) {
         ...(statusParam && { status: statusParam }),
       });
 
-      // Fetch items and payment status for all orders in one query
-      const orderIds = result.data.map((o) => o.id);
-      const ordersWithDetails =
-        await orderRepository.findOrdersWithItemsAndPaymentStatus(orderIds);
-
-      // Merge with original order data to preserve pagination info
-      const ordersWithItems = result.data.map((order) => {
-        const details = ordersWithDetails.find((d) => d.order.id === order.id);
-        return {
-          ...order,
-          items: details?.items || [],
-          paymentStatus: details?.paymentStatus || "unpaid",
-        };
-      });
-
+      // Data already includes items and paymentStatus from single set of queries
       return NextResponse.json({
         success: true,
-        data: ordersWithItems,
+        data: result.data,
       });
     }
 
     // Otherwise, get orders for authenticated merchant
     const authenticatedMerchant = await requireMerchantAuth(request);
 
-    // Get orders for this merchant with pagination
+    // Get orders for this merchant with pagination (includes items, payment, merchant)
     const paginationParams = {
       limit,
       direction,
@@ -145,24 +131,10 @@ export async function GET(request: NextRequest) {
       paginationParams
     );
 
-    // Fetch items and payment status for all orders in one query
-    const orderIds = result.data.map((o) => o.id);
-    const ordersWithDetails =
-      await orderRepository.findOrdersWithItemsAndPaymentStatus(orderIds);
-
-    // Merge with original order data to preserve pagination info
-    const ordersWithItems = result.data.map((order) => {
-      const details = ordersWithDetails.find((d) => d.order.id === order.id);
-      return {
-        ...order,
-        items: details?.items || [],
-        paymentStatus: details?.paymentStatus || "unpaid",
-      };
-    });
-
+    // Data already includes items, paymentStatus, and merchant from single query
     return NextResponse.json({
       success: true,
-      data: ordersWithItems,
+      data: result.data,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {

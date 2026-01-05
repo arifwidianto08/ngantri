@@ -19,6 +19,7 @@ import {
 import { useToast } from "@/components/toast-provider";
 
 interface ValidationErrors {
+  table?: string;
   name?: string;
   whatsapp?: string;
 }
@@ -196,6 +197,10 @@ export default function CheckoutPage() {
 
   const validateInputs = (): boolean => {
     const newErrors: ValidationErrors = {};
+
+    if (!tableNumber.trim()) {
+      newErrors.table = "Nomor meja belum diisi";
+    }
 
     if (!customerName.trim()) {
       newErrors.name = "Username tidak boleh kosong";
@@ -424,19 +429,19 @@ export default function CheckoutPage() {
                     value={tableNumber}
                     onChange={(e) => {
                       setTableNumber(e.target.value);
-                      setErrors((prev) => ({ ...prev, name: undefined }));
+                      setErrors((prev) => ({ ...prev, table: undefined }));
                     }}
                     placeholder="Enter your table number"
                     className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base ${
-                      errors.name
-                        ? "border-gray-300 bg-gray-50"
+                      errors.table
+                        ? "border-red-300 bg-red-50"
                         : "border-gray-200"
                     }`}
                   />
-                  {errors.name && (
-                    <p className="text-sm text-gray-900 mt-2 flex items-center gap-1">
+                  {errors.table && (
+                    <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
                       <IconAlertCircle className="w-4 h-4" />
-                      <span>{errors.name}</span>
+                      <span>{errors.table}</span>
                     </p>
                   )}
                 </div>
@@ -460,12 +465,12 @@ export default function CheckoutPage() {
                     placeholder="Enter your name"
                     className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base ${
                       errors.name
-                        ? "border-gray-300 bg-gray-50"
+                        ? "border-red-300 bg-red-50"
                         : "border-gray-200"
                     }`}
                   />
                   {errors.name && (
-                    <p className="text-sm text-gray-900 mt-2 flex items-center gap-1">
+                    <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
                       <IconAlertCircle className="w-4 h-4" />
                       <span>{errors.name}</span>
                     </p>
@@ -499,13 +504,13 @@ export default function CheckoutPage() {
                       placeholder="812-3456-7890"
                       className={`w-full pl-14 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base ${
                         errors.whatsapp
-                          ? "border-gray-300 bg-gray-50"
+                          ? "border-red-300 bg-red-50"
                           : "border-gray-200"
                       }`}
                     />
                   </div>
                   {errors.whatsapp && (
-                    <p className="text-sm text-gray-900 mt-2 flex items-center gap-1">
+                    <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
                       <IconAlertCircle className="w-4 h-4" />
                       <span>{errors.whatsapp}</span>
                     </p>
