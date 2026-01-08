@@ -29,6 +29,13 @@
       "when": 1764718553295,
       "tag": "0003_solid_swarm",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1767465321561,
+      "tag": "0004_young_kree",
+      "breakpoints": true
     }
   ]
 }

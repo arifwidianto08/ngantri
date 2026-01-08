@@ -1,5 +1,4 @@
 ---
-# https://vitepress.dev/reference/default-theme-home-page
 layout: home
 
 hero:
@@ -11,22 +10,21 @@ hero:
       text: 🚀 Quick Start
       link: /guide/setup
     - theme: alt
-      text: Overview
+      text: Tech Stack
       link: /guide/overview
     - theme: alt
-      text: Operation
-      link: /guide/operations
+      text: Operations
+      link: /guide/customer
     - theme: alt
-      text: Learn More
-      link: /guide/learn-more
-
+      text: Deployment & Maintenance
+      link: /guide/troubleshooting
 
 features:
   - title: Modern Tech Stack
     details: Menggunakan Next.js 14+, TypeScript, PostgreSQL, dan App Router
 
   - title: Docker Ready
-    details: Environtment konsisten menggunakan Docker & Docker Compose
+    details: Environment konsisten menggunakan Docker & Docker Compose
 
   - title: Database
     details: Menggunakan Drizzle ORM dengan migrasi, seeding, dan database studio

@@ -1,0 +1,1 @@
+ALTER TABLE "order_payments" ALTER COLUMN "status" SET DEFAULT 'unpaid';

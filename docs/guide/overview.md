@@ -1,16 +1,31 @@
-# 🍽️ Overview
+# Overview
 
-**Ngantri** adalah aplikasi web modern untuk mengelola sistem pemesanan food court.
+**Ngantri** adalah aplikasi web pemesanan makanan di area food court.
 
-## Tech Stack
+Aplikasi ini mendukung tiga peran utama:
+- **Customer (Pembeli)**
+- **Merchant (Penjual)**
+- **Admin (Pengelola Sistem)**
 
-- **Frontend**: Next.js 14+
-- **Language**: TypeScript
-- **Database**: PostgreSQL
-- **ORM**: Drizzle ORM
-- **Containerization**: Docker & Docker Compose
+## Status Pesanan
 
-## Font Optimization
+| Status | Deskripsi |
+|------|----------|
+| pending | Pesanan dibuat |
+| accepted | Pesanan diterima merchant |
+| preparing | Pesanan sedang disiapkan |
+| ready | Pesanan siap diambil |
+| completed | Pesanan selesai |
+| cancelled | Pesanan dibatalkan |
 
-Project ini menggunakan [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts)  
-untuk mengoptimalkan dan memuat font **Geist** dari Vercel secara otomatis.
+**Catatan Pembayaran**  
+Customer melakukan pembayaran **langsung di counter merchant**.
+
+## URL Penting (Local Development)
+
+- Customer: `http://localhost:3000`
+- Customer Orders: `http://localhost:3000/orders`
+- Merchant Login: `http://localhost:3000/dashboard/login`
+- Merchant Dashboard: `http://localhost:3000/dashboard`
+- Admin Login: `http://localhost:3000/admin/login`
+- Admin Dashboard: `http://localhost:3000/admin`

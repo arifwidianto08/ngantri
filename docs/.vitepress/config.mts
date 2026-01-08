@@ -8,18 +8,31 @@ export default defineConfig({
     nav: [
       { text: 'Overview', link: '/guide/overview' },
       { text: 'Setup', link: '/guide/setup' },
-      { text: 'Operations', link: '/guide/operations' },
-      { text: 'Learn More', link: '/guide/learn-more' }
+      { text: 'Customer', link: '/guide/customer' },
+      { text: 'Merchant', link: '/guide/merchant' },
+      { text: 'Admin', link: '/guide/admin' }
     ],
 
     sidebar: [
       {
-        text: 'Guide',
+        text: 'Getting Started',
         items: [
           { text: 'Overview', link: '/guide/overview' },
-          { text: 'Setup & Quick Start', link: '/guide/setup' },
-          { text: 'Operations & Maintenance', link: '/guide/operations' },
-          { text: 'Learn More', link: '/guide/learn-more' }
+          { text: 'Setup & Quick Start', link: '/guide/setup' }
+        ]
+      },
+      {
+        text: 'User Guides',
+        items: [
+          { text: 'Customer Guide', link: '/guide/customer' },
+          { text: 'Merchant Guide', link: '/guide/merchant' },
+          { text: 'Admin Guide', link: '/guide/admin' }
+        ]
+      },
+      {
+        text: 'Maintenance',
+        items: [
+          { text: 'Troubleshooting', link: '/guide/troubleshooting' }
         ]
       }
     ]

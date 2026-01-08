@@ -1,17 +1,14 @@
-# ⚡ Setup & Quick Start
+# Setup & Quick Start
 
-## Prerequisites
+## Prasyarat
 
-Pastikan tools berikut sudah terinstall:
-
-- Node.js 18+ & npm
-- Docker & Docker Compose
+- Node.js 18+
+- Docker Desktop (Docker Compose)
 - Git
 
-## 🚀 Setup Project
+## Setup Cepat (Recommended)
 
-### 1. Clone Repository
+Jalankan dari root project:
 
 ```bash
-git clone <repository-url>
-cd ngantri
+npm run setup
